@@ -20,6 +20,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 const BRAND = "ALLOY";           // the platform
 const MAKER = "Forj";            // the company behind it
 const BRAND_FULL = "ALLOY by FORJ";
+const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
 
 // ---- små helpers ----
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -4116,10 +4117,11 @@ function LoginScreen({ onAuthed }) {
             <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
             <ForjLogo height={15} color={C.ink} />
           </div>
+          <div style={{ fontSize: 12.5, color: C.dim, marginTop: 3, letterSpacing: ".02em" }}>{SLOGAN}</div>
         </div>
         <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderRadius: 4, padding: 26 }}>
           <div style={{ fontSize: 19, fontFamily: FONT_DISPLAY, color: C.text }}>Sign in</div>
-          <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 20 }}>The prospecting platform, by {MAKER}</div>
+          <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 20 }}>Sign in to continue</div>
 
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             {[["password", "Password"], ["magic", "Magic link"]].map(([k, l]) => (
