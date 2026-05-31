@@ -3266,8 +3266,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
       <OutcomePanel company={company} flash={flash} />
 
-      {/* lead analysis & call hypothesis */}
-      <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
+      {/* Lead-analysis panel removed (2026-05-31): the co-pilot Funding Brief now owns
+          "what to say on the call", AWS-native; the old panel duplicated it and leaked
+          raw <cite> markup. researchLead/draftOutreach agents remain in code for reuse. */}
 
       {/* follow-up + activity - the next step lives with the call log so it's never empty dead-space */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
