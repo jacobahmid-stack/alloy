@@ -2887,6 +2887,7 @@ function OutcomePanel({ company, flash }) {
 function CoPilotPanel({ company, contacts, onUpdate, flash }) {
   const [fit, setFit] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false });
   const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
 
@@ -2915,6 +2916,18 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
   const topContact = (contacts || [])[0];
   const stageKey = company.stage || "lead";
   const nextMove = pb.nextByStage[stageKey] || pb.nextByStage.lead || "Confirm the play and book a discovery call.";
+  const score = fit ? (fit.fundability_score ?? 0) : null;
+  const scoreColor = score == null ? C.dim2 : score >= 65 ? C.green : score >= 45 ? C.amber : C.dim2;
+
+  async function rescore() {
+    setBusy(true);
+    try {
+      const r = await scoreFundingFit(company.id, true); // apply:true → persists
+      if (r) { setFit({ ...r, scored_at: new Date().toISOString() }); flash("Funding fit scored"); }
+      else flash("No score returned");
+    } catch (e) { flash("Funding scoring failed: " + (e?.message || e)); }
+    finally { setBusy(false); }
+  }
 
   const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
   const secHead = (key, label, hint) => (
@@ -2964,8 +2977,31 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>AWS co-pilot</span>
           <Pill color={C.accent}>{meta.label}</Pill>
         </div>
-        {!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>play estimated from cloud — score funding fit for exact</span>}
+        {!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>play estimated from cloud</span>}
       </div>
+
+      {/* fundability score (folded in from the old Funding-fit box) */}
+      {loaded && (fit ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <div style={{ flex: "0 0 120px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+              <span style={{ fontSize: 24, fontWeight: 400, color: scoreColor, fontFamily: FONT_DISPLAY, lineHeight: 1 }}>{score}</span>
+              <span style={{ fontSize: 11, color: C.dim2 }}>/100 fundability</span>
+            </div>
+            <div style={{ height: 5, background: C.line2, borderRadius: 3, marginTop: 5, overflow: "hidden" }}>
+              <div style={{ width: score + "%", height: "100%", background: scoreColor }} />
+            </div>
+          </div>
+          {fit.confidence && <Pill color={fit.confidence === "high" ? C.green : fit.confidence === "med" ? C.amber : C.dim2}>{fit.confidence} confidence</Pill>}
+          {fit.est_spend_band && <Pill color={C.dim}>{fit.est_spend_band} est. spend</Pill>}
+          <span style={{ flex: 1 }} />
+          <button onClick={rescore} disabled={busy} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 11.5, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD }}>{busy ? <Spinner size={11} /> : "↻"} Re-score</button>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          <Btn variant="dark" size="sm" onClick={rescore} disabled={busy}>{busy ? <Spinner /> : <Icon name="tag" size={13} color={C.cream} />} {busy ? "Scoring…" : "Score funding fit"}</Btn>
+        </div>
+      ))}
 
       {/* 1 — FUNDING BRIEF (meeting prep) */}
       {secHead("brief", "Funding brief", "what to say in the room")}
@@ -3266,10 +3302,8 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
       {/* company intelligence (merged cloud + web tech + data/AI) */}
       <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
 
-      {/* AWS funding fit - deterministic pre-score (track + fundability), upstream of Partner Central */}
-      <FundingFitPanel company={company} flash={flash} />
-
-      {/* AWS co-pilot - arms the rep: funding brief, next-best-action, qualification, co-sell */}
+      {/* AWS co-pilot - the single AWS box: fundability score + funding brief, next-best-action,
+          qualification, co-sell. (Funding-fit folded in here 2026-05-31 to kill the duplicate.) */}
       <CoPilotPanel company={company} contacts={myContacts} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
