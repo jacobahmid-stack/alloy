@@ -2349,6 +2349,31 @@ const FUND_TRACK_META = {
   GREENFIELD_PGP: { label: "Greenfield (PGP)",          blurb: "No current cloud — net-new build" },
   NONE:           { label: "No funding signal",         blurb: "Pure AWS or no migration signal" },
 };
+
+// Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
+// already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
+// services a typical migration uses — so there is never a second, contradictory number.
+// $0, no AWS creds. The exact figure is refined in the AWS Pricing Calculator (link below);
+// a future MCP sidecar can mint a real shareable calculator.aws estimate URL post-AWS-move.
+const CALC = {
+  regionLabel: "Europe (Stockholm) · eu-north-1",
+  calcUrl: "https://calculator.aws/#/",
+  mapOffsetPct: 25,   // mirrors funding_config.migration_offset_pct (display only here)
+  split: [            // typical MAP migration cost split (sums to 1.0)
+    ["Compute (EC2)", 0.50],
+    ["Database (RDS)", 0.22],
+    ["Storage (S3 / EBS)", 0.13],
+    ["Network / data transfer", 0.08],
+    ["Mgmt, backup, support", 0.07],
+  ],
+};
+function estimateAwsCost(annualUsd) {
+  const yr = Number(annualUsd) || 0;
+  if (yr <= 0) return null;
+  const mo = yr / 12;
+  const items = CALC.split.map(([label, pct]) => ({ label, mo: mo * pct }));
+  return { yr, mo, items, mapYr: yr * (CALC.mapOffsetPct / 100) };
+}
 function FundingFitPanel({ company, flash }) {
   const [fit, setFit] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -2452,6 +2477,33 @@ function FundingFitPanel({ company, flash }) {
               <div style={{ fontSize: 11, color: C.dim2, marginTop: 6 }}>Stage: <strong>{ace.stage || "Qualified"}</strong>{ace.expected_revenue_usd ? <> · Est. revenue: <strong>${Number(ace.expected_revenue_usd).toLocaleString("en-US")}</strong></> : null}</div>
             </div>
           )}
+
+          {["MAP", "MAP_MODERNIZE", "POC", "GREENFIELD_PGP"].includes(track) && estimateAwsCost(ace.expected_revenue_usd) && (() => {
+            const est = estimateAwsCost(ace.expected_revenue_usd);
+            return (
+              <div style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2 }}>AWS cost estimate · {CALC.regionLabel}</div>
+                  <a href={CALC.calcUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, textDecoration: "none" }}>Open AWS Calculator ↗</a>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 20, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{fmtMoney(est.yr, "USD")}<span style={{ fontSize: 12, color: C.dim2 }}>/yr</span></span>
+                  <span style={{ fontSize: 13, color: C.dim }}>{fmtMoney(est.mo, "USD")}/mo est. AWS spend</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
+                  {est.items.map((it) => (
+                    <div key={it.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: C.dim }}>
+                      <span>{it.label}</span><span style={{ fontFamily: FONT_MONO }}>{fmtMoney(it.mo, "USD")}/mo</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.text, background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "6px 9px" }}>
+                  Est. MAP funding offset (~{CALC.mapOffsetPct}%): <strong style={{ color: C.accent }}>{fmtMoney(est.mapYr, "USD")}/yr</strong>
+                </div>
+                <div style={{ fontSize: 10, color: C.dim2, marginTop: 6, lineHeight: 1.5 }}>Rough estimate from the spend band — refine the exact figure in the AWS Pricing Calculator. Offset is a partner heuristic; AWS sets the final amount.</div>
+              </div>
+            );
+          })()}
 
           <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5, marginBottom: 10 }}>{ace.partner_path_note || "Pre-score only. AWS's Partner Central agent makes the authoritative funding call after handoff."}</div>
           <button onClick={rescore} disabled={busy} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_HEAD }}>{busy ? <Spinner size={12} /> : "↻"} Re-score</button>
