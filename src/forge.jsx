@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 
 /* ============================================================================
-   ALLOY by FORJ — Forj's prospecting platform
+   ALLOY by FORJ - Forj's prospecting platform
    ----------------------------------------------------------------------------
    Stomme: G-FLOW-logik (hub, produktion, dashboard, företagskort, webbteknik-
    analys, lead-analys, callbacks, mål). Ovanpå: Forjs två-fas-modell
    (Commercial Readiness -> Pipeline).
 
    Dataåtkomst går genom `db` längst ner. Idag window.storage. Byt bara ut
-   db-modulen för Supabase senare — resten av appen rörs inte.
+   db-modulen för Supabase senare - resten av appen rörs inte.
 
    Webbteknik-analys + Lead-analys körs mot Anthropic-API:t som artifacts har
    inbyggd tillgång till (ingen nyckel behövs). Resultat cachas per company_id.
@@ -72,7 +72,7 @@ function isThisMonth(iso) {
 }
 
 /* ============================================================================
-   PIPELINE-STADIER  —  Forjs två faser
+   PIPELINE-STADIER  -  Forjs två faser
    ============================================================================ */
 const PHASES = {
   readiness: {
@@ -109,9 +109,9 @@ function phaseOf(stage) {
   if (PIPELINE_KEYS.includes(stage)) return "pipeline";
   return "readiness";
 }
-/* One-click call outcomes — drive activity log + next action + stage in one tap */
+/* One-click call outcomes - drive activity log + next action + stage in one tap */
 const OUTCOMES = {
-  no_answer:    { label: "No answer",      type: "Call",    act: "No answer",            days: 2,    next: "Call again — no answer",  tone: "dim" },
+  no_answer:    { label: "No answer",      type: "Call",    act: "No answer",            days: 2,    next: "Call again - no answer",  tone: "dim" },
   gatekeeper:   { label: "Gatekeeper",     type: "Call",    act: "Reached gatekeeper",   days: 3,    next: "Get past gatekeeper",     stage: "kontaktad", tone: "dim" },
   spoke:        { label: "Spoke",          type: "Call",    act: "Spoke with prospect",  days: 7,    next: "Follow up after call",    stage: "kontaktad", tone: "blue" },
   booked:       { label: "Booked",         type: "Meeting", act: "Meeting booked",       days: null, next: "Prepare for meeting",     stage: "mote_bokat", clearDate: true, always: true, tone: "green" },
@@ -145,17 +145,17 @@ function fmtSEK(n) {
 }
 
 /* ============================================================================
-   CUSTOMER AWS FUNDING JOURNEY — catalog + per-deal recommendation logic
+   CUSTOMER AWS FUNDING JOURNEY - catalog + per-deal recommendation logic
    Customer-facing programs only, by journey phase: OLA/MRA (assess),
    POC / Credits / Jumpstart (build & prove), MAP / WMP (migrate & modernize).
    ============================================================================ */
 const FUNDING_STAGES = ["Created", "AWS Review", "Tech Approval", "Business Approval", "Finance Approval", "Pre-Approval", "Cash Claim", "Completed"];
 const FUNDING_STATUSES = ["Draft", "Submitted", "Approved", "Active", "Completed", "Rejected", "Cancelled"];
 const MAP_PHASES = ["Assess", "Mobilize", "Migrate & Modernize"];
-/* The customer's AWS funding journey — every program a prospect can tap, by phase. */
+/* The customer's AWS funding journey - every program a prospect can tap, by phase. */
 const FUNDING_JOURNEY = ["Assess", "Build & Prove", "Migrate & Modernize"];
 const FUNDING_PROGRAMS = {
-  OLA:       { name: "Optimization & Licensing Assessment (OLA)", journey: "Assess",              type: "credits", blurb: "Free AWS assessment of the customer's workloads & licensing — surfaces right-sizing and cost savings. A strong door-opener." },
+  OLA:       { name: "Optimization & Licensing Assessment (OLA)", journey: "Assess",              type: "credits", blurb: "Free AWS assessment of the customer's workloads & licensing - surfaces right-sizing and cost savings. A strong door-opener." },
   MRA:       { name: "Migration Readiness Assessment (MRA)",      journey: "Assess",              type: "credits", blurb: "Structured review of the customer's readiness to migrate; identifies gaps and builds the migration business case." },
   POC:       { name: "Proof of Concept (POC)",                    journey: "Build & Prove",       type: "credits", blurb: "AWS credits to build a POC / pilot for the customer. Routes through AWS Review + Tech Approval (PSA)." },
   Credits:   { name: "AWS Promotional Credits",                   journey: "Build & Prove",       type: "credits", blurb: "Credits that de-risk experimentation and early build for the customer." },
@@ -169,7 +169,7 @@ function fmtMoney(amount, currency) {
   const n = v >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " M" : v >= 1e3 ? Math.round(v / 1e3) + " k" : String(Math.round(v));
   return c === "USD" ? "$" + n : n + " " + c;
 }
-/* Rough planning estimate only — AWS determines real eligibility/amounts. opp_value is annual SEK. */
+/* Rough planning estimate only - AWS determines real eligibility/amounts. opp_value is annual SEK. */
 function estimateFunding(program, oppValueSEK) {
   const usd = (Number(oppValueSEK) || 0) / 10.5;
   if (program === "MAP") return Math.round(Math.min(usd * 0.25, 100000));
@@ -179,7 +179,7 @@ function estimateFunding(program, oppValueSEK) {
   if (program === "Jumpstart") return 2500;
   return 0; // OLA & MRA are free assessments
 }
-/* Which customer-journey programs this prospect can tap — mirrors AWS's stage + value + use-case + AWS-path logic */
+/* Which customer-journey programs this prospect can tap - mirrors AWS's stage + value + use-case + AWS-path logic */
 function recommendFunding(company) {
   const txt = lc([company.industry, company.enrichment?.aws_value, company.enrichment?.description, company.enrichment?.research_notes, company.leadanalysis?.angle].filter(Boolean).join(" "));
   const onAws = !!company.aws_detected;
@@ -187,18 +187,18 @@ function recommendFunding(company) {
   const optimizeSignal = /cost|kostnad|optim|licens|right-?siz|spend|besparing/.test(txt);
   const recs = [];
   if (!onAws) {
-    recs.push({ key: "MRA", reason: "Not on AWS yet — an MRA maps their readiness to migrate and builds the business case before you commit them." });
-    recs.push({ key: "MAP", reason: "Greenfield migration play — MAP co-funds the whole journey (assess → mobilize → migrate)." });
+    recs.push({ key: "MRA", reason: "Not on AWS yet - an MRA maps their readiness to migrate and builds the business case before you commit them." });
+    recs.push({ key: "MAP", reason: "Greenfield migration play - MAP co-funds the whole journey (assess → mobilize → migrate)." });
   } else {
-    recs.push({ key: "OLA", reason: "Already on AWS — OLA surfaces right-sizing and licensing savings to justify the next phase." });
-    if (optimizeSignal) recs.push({ key: "MAP", reason: "Cost/optimization signals in the notes — MAP funding can underwrite the modernization phase." });
+    recs.push({ key: "OLA", reason: "Already on AWS - OLA surfaces right-sizing and licensing savings to justify the next phase." });
+    if (optimizeSignal) recs.push({ key: "MAP", reason: "Cost/optimization signals in the notes - MAP funding can underwrite the modernization phase." });
   }
   if (phaseOf(company.stage) === "readiness" || company.stage === "kontaktad") {
-    recs.push({ key: "POC", reason: "Early in the cycle — POC credits fund a pilot to prove value before a bigger commitment." });
+    recs.push({ key: "POC", reason: "Early in the cycle - POC credits fund a pilot to prove value before a bigger commitment." });
   } else {
     recs.push({ key: "Credits", reason: "Promotional credits de-risk the customer's next workload and keep momentum." });
   }
-  if (migrationSignal && !recs.some((r) => r.key === "MAP")) recs.push({ key: "MAP", reason: "Migration language in the notes — MAP is the core migration funding vehicle." });
+  if (migrationSignal && !recs.some((r) => r.key === "MAP")) recs.push({ key: "MAP", reason: "Migration language in the notes - MAP is the core migration funding vehicle." });
   const seen = new Set(); const out = [];
   for (const r of recs) { if (!seen.has(r.key) && FUNDING_PROGRAMS[r.key]) { seen.add(r.key); out.push(r); } if (out.length === 3) break; }
   return out;
@@ -208,7 +208,7 @@ const STATUS_COLOR = {
   kontaktad: "#3E5A7A", mote_bokat: "#4E7A3E", kvalificerad: "#3E5A7A",
   forslag: "#9A6A18", vunnen: "#4E7A3E", forlorad: "#A33214",
 };
-// Canonical contact-status vocabulary — the single set the UI writes. The read
+// Canonical contact-status vocabulary - the single set the UI writes. The read
 // path and the write path share this vocabulary (see normalizeStatus).
 const CONTACT_STATUSES = [
   "Not contacted", "Contacted", "Active dialogue", "Ready to call",
@@ -225,7 +225,7 @@ const STATUS_ALIASES = {
   "EJ INTRESSERAD": "Not interested", "Aktiv dialog": "Active dialogue",
   "Redo att ringa": "Ready to call",
   "Håll varm": "Keep warm", "Håll varm – möte efter sommaren": "Keep warm",
-  // "Cloud Family" left unmapped on purpose — it's an existing-partner signal,
+  // "Cloud Family" left unmapped on purpose - it's an existing-partner signal,
   // not a contact status, and should become a real flag (see audit).
 };
 function normalizeStatus(s) {
@@ -236,7 +236,7 @@ function normalizeStatus(s) {
 const statusLabel = normalizeStatus;
 
 /* ============================================================================
-   CSV-IMPORT  —  återanvänd från tidigare, robust mot tre listformat
+   CSV-IMPORT  -  återanvänd från tidigare, robust mot tre listformat
    ============================================================================ */
 function parseCSV(text) {
   const rows = [];
@@ -381,7 +381,7 @@ function parseToRecords(text, source) {
 }
 
 /* ============================================================================
-   CLAUDE-API  —  webbteknik-analys + lead-analys
+   CLAUDE-API  -  webbteknik-analys + lead-analys
    ----------------------------------------------------------------------------
    Artifacts har inbyggd åtkomst till Anthropic /v1/messages utan nyckel.
    Vi ber Claude hämta sajten (web_fetch) och returnera strukturerad JSON.
@@ -396,11 +396,11 @@ async function callClaude({ user, tools, maxTokens = 2000, task }) {
   //      server-side in the edge function and the client authenticates with its JWT
   //      (the anon key satisfies verify_jwt). Works inside a Claude artifact too.
   //   3. Key-less in-artifact endpoint, only as a last resort when no Supabase config
-  //      is present (otherwise this 401s on a deployed build — the bug this replaces).
+  //      is present (otherwise this 401s on a deployed build - the bug this replaces).
   const sbUrl = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__?.url) || "";
   const explicitProxy = (typeof window !== "undefined" && window.__ALLOY_CLAUDE_PROXY__) || "";
   const proxy = explicitProxy || (sbUrl ? `${sbUrl}/functions/v1/claude-proxy` : "");
-  if (!proxy) throw new Error("Alloy requires its backend — claude-proxy is not configured.");
+  if (!proxy) throw new Error("Alloy requires its backend - claude-proxy is not configured.");
   const body = {
     model: MODEL_API,
     max_tokens: maxTokens,
@@ -432,7 +432,7 @@ async function callClaude({ user, tools, maxTokens = 2000, task }) {
       continue;
     }
     let msg = "API " + res.status;
-    try { const j = JSON.parse(detail); msg += " — " + (j?.error?.message || j?.message || detail.slice(0, 160)); } catch { if (detail) msg += " — " + detail.slice(0, 160); }
+    try { const j = JSON.parse(detail); msg += " - " + (j?.error?.message || j?.message || detail.slice(0, 160)); } catch { if (detail) msg += " - " + detail.slice(0, 160); }
     throw new Error(msg);
   }
 }
@@ -449,8 +449,8 @@ function extractJSON(text) {
 const TECH_CATEGORIES = [
   { key: "ramverk", label: "Frameworks & libraries" },
   { key: "cms", label: "CMS & e-commerce" },
-  { key: "datadriven", label: "Customer data & product analytics" },  // CDP + product analytics — data-maturity tell
-  { key: "sok", label: "Site search & discovery" },                   // Algolia etc — applied ML
+  { key: "datadriven", label: "Customer data & product analytics" },  // CDP + product analytics - data-maturity tell
+  { key: "sok", label: "Site search & discovery" },                   // Algolia etc - applied ML
   { key: "baas", label: "App platform / BaaS" },                      // Supabase/Firebase
   { key: "genai_ui", label: "AI interface" },                         // browser-visible GenAI artifacts
   { key: "analys", label: "Analytics & tracking" },
@@ -472,11 +472,11 @@ async function detectAws(domain) {
   if (ak) { headers["Authorization"] = "Bearer " + ak; headers["apikey"] = ak; }
   const res = await fetch(base + "/functions/v1/aws-detect", { method: "POST", headers, body: JSON.stringify({ domain }) });
   const text = await res.text();
-  if (!res.ok) throw new Error("aws-detect " + res.status + " — " + text.slice(0, 160));
+  if (!res.ok) throw new Error("aws-detect " + res.status + " - " + text.slice(0, 160));
   return JSON.parse(text);
 }
 
-// Deterministic AWS funding-program fit (track + score + rationale). $0 — no LLM.
+// Deterministic AWS funding-program fit (track + score + rationale). $0 - no LLM.
 // apply:false = compute/preview; apply:true = persist to funding_eligibility.
 async function scoreFundingFit(companyId, apply = false) {
   const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
@@ -489,7 +489,7 @@ async function scoreFundingFit(companyId, apply = false) {
     method: "POST", headers, body: JSON.stringify({ company_ids: [companyId], apply }),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error("funding-eligibility " + res.status + " — " + text.slice(0, 160));
+  if (!res.ok) throw new Error("funding-eligibility " + res.status + " - " + text.slice(0, 160));
   const data = JSON.parse(text);
   return (data.report || [])[0] || null;
 }
@@ -503,7 +503,7 @@ async function registrySearch(params) {
   if (ak) { headers["Authorization"] = "Bearer " + ak; headers["apikey"] = ak; }
   const res = await fetch(base + "/functions/v1/registry-search", { method: "POST", headers, body: JSON.stringify(params || {}) });
   const text = await res.text();
-  if (!res.ok) throw new Error("registry-search " + res.status + " — " + text.slice(0, 160));
+  if (!res.ok) throw new Error("registry-search " + res.status + " - " + text.slice(0, 160));
   const data = JSON.parse(text);
   if (data && data.error) throw new Error(data.error);
   return data;
@@ -534,7 +534,7 @@ async function seIngest(body) {
     body: JSON.stringify(body || {}),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error("se-ingest " + res.status + " — " + text.slice(0, 200));
+  if (!res.ok) throw new Error("se-ingest " + res.status + " - " + text.slice(0, 200));
   const data = JSON.parse(text);
   if (data && data.ok === false) throw new Error(data.error || "ingest failed");
   return data;
@@ -552,7 +552,7 @@ async function seEdge(name, body) {
     body: JSON.stringify(body || {}),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(name + " " + res.status + " — " + text.slice(0, 200));
+  if (!res.ok) throw new Error(name + " " + res.status + " - " + text.slice(0, 200));
   const data = JSON.parse(text);
   if (data && data.ok === false) throw new Error(data.error || (name + " failed"));
   return data;
@@ -574,7 +574,7 @@ async function seIngestState() {
 
 async function analyzeTechStack(domain) {
   const url = domain.startsWith("http") ? domain : "https://" + domain.replace(/^\/+/, "");
-  // Agent loop with the real-HTML fetch_tech tool — frontend fingerprints (window.posthog,
+  // Agent loop with the real-HTML fetch_tech tool - frontend fingerprints (window.posthog,
   // cdn.segment.com, response headers) are only visible this way; web_search alone can't see them.
   const prompt =
     `Identify the web + data/AI technology stack of ${url}.\n` +
@@ -586,7 +586,7 @@ async function analyzeTechStack(domain) {
     `- sok site search: algolia, coveo, klevu, loop54.\n` +
     `- baas: supabase, firebase.\n` +
     `- genai_ui browser GenAI: vercel-ai-sdk (x-vercel-ai-data-stream), copilotkit, streamlit, gradio, chainlit, huggingface (*.hf.space).\n` +
-    `The fetch_tech "globals" list names the detected fingerprint directly — trust it. Report a tool ONLY if a fingerprint shows it; never guess from the brand or industry. Do not report bare programming languages.\n\n` +
+    `The fetch_tech "globals" list names the detected fingerprint directly - trust it. Report a tool ONLY if a fingerprint shows it; never guess from the brand or industry. Do not report bare programming languages.\n\n` +
     `Respond ONLY with JSON in exactly this shape:\n` +
     `{"items":[{"category":"<one of: ramverk|cms|datadriven|sok|baas|genai_ui|analys|widgets|cdn|hosting|dns|epost|server|typsnitt>","name":"<technology name>"}],` +
     `"behind_proxy":<true if Cloudflare/WAF hides the stack, else false>,` +
@@ -608,8 +608,8 @@ async function analyzeTechStackLegacy(domain) {
     `Cloudflare), hosting (S3, Vercel, Azure), DNS (Route 53, One.com), email ` +
     `(Google Workspace, Microsoft 365 via MX), server (Apache, Nginx, PHP), ` +
     `fonts (Google Fonts, Tailwind).\n\n` +
-    `ALSO look specifically for these data/AI maturity signals (match by the EXACT fingerprint, not the brand name alone — a wrong hit is worse than a miss):\n` +
-    `- datadriven (customer data platforms & product analytics): Segment (window.analytics + cdn.segment.com), RudderStack (window.rudderanalytics + cdn.rudderlabs.com — distinguish from Segment by the CDN host), Snowplow (collector path /com.snowplowanalytics.snowplow/tp2 or sp.js), Amplitude (window.amplitude / *.amplitude.com incl. api.eu.amplitude.com), Mixpanel (window.mixpanel / api*.mixpanel.com / cdn.mxpnl.com), Heap (window.heap / cdn.heapanalytics.com), PostHog (window.posthog / *.posthog.com incl. eu.i.posthog.com). Put plain GA4/Matomo/Hotjar in 'analys', NOT here.\n` +
+    `ALSO look specifically for these data/AI maturity signals (match by the EXACT fingerprint, not the brand name alone - a wrong hit is worse than a miss):\n` +
+    `- datadriven (customer data platforms & product analytics): Segment (window.analytics + cdn.segment.com), RudderStack (window.rudderanalytics + cdn.rudderlabs.com - distinguish from Segment by the CDN host), Snowplow (collector path /com.snowplowanalytics.snowplow/tp2 or sp.js), Amplitude (window.amplitude / *.amplitude.com incl. api.eu.amplitude.com), Mixpanel (window.mixpanel / api*.mixpanel.com / cdn.mxpnl.com), Heap (window.heap / cdn.heapanalytics.com), PostHog (window.posthog / *.posthog.com incl. eu.i.posthog.com). Put plain GA4/Matomo/Hotjar in 'analys', NOT here.\n` +
     `- sok (site search / discovery): Algolia (*.algolia.net XHR or window.algoliasearch), Coveo, Constructor.io, Klevu, Loop54 (Nordic).\n` +
     `- baas (backend-as-a-service): Supabase (*.supabase.co requests / supabase-js), Firebase (window.firebase / *.firebaseio.com / firebaseapp.com).\n` +
     `- genai_ui (browser-visible GenAI artifacts): Vercel AI SDK (response header x-vercel-ai-data-stream or a data-stream body to /api/chat), CopilotKit (copilotkit bundle/DOM or /copilotkit endpoint), Streamlit (/_stcore/stream, .stApp), Gradio (window.gradio_config, gradio-app), Chainlit (__chainlit), Hugging Face Spaces (*.hf.space iframe). A live LLM chat/demo here is a strong 'ships GenAI' signal.\n` +
@@ -630,7 +630,7 @@ async function analyzeTechStackLegacy(domain) {
 }
 
 /* ============================================================================
-   DATA & AI INNOVATION PROFILE  —  reads a company's digitalization maturity
+   DATA & AI INNOVATION PROFILE  -  reads a company's digitalization maturity
    from its data/AI/automation tooling. Backend tools (Snowflake, LangChain,
    Bedrock, dbt, vector DBs…) have NO frontend fingerprint, so this is an
    LLM research pass over job ads / eng blog / public GitHub (+ the site for
@@ -670,7 +670,7 @@ const BAND4_CATEGORIES = ["genai_build", "vector_db", "mlops", "genai_app"];
 function scoreMaturity(signals) {
   const named = (signals || []).filter((s) => s && s.tool && s.category && s.category !== "ai_intent");
   // GenAI-native (Band 4) requires CORROBORATION: ≥2 distinct band-4 signals. A single
-  // genai/vector/mlops/genai_app hit is real but uncorroborated, so it caps at Band 3 —
+  // genai/vector/mlops/genai_app hit is real but uncorroborated, so it caps at Band 3 -
   // avoids one stray ML library (e.g. pymc3) declaring a company "GenAI-native".
   const genai = named.filter((s) => BAND4_CATEGORIES.includes(s.category));
   const ai_native = genai.length >= 2;
@@ -699,19 +699,19 @@ async function analyzeInnovation(company) {
 `Research the DATA, AI and AUTOMATION tooling of this company to read its digitalization maturity.
 COMPANY: ${name}${domain ? " (" + domain + ")" : ""}
 
-Use web search across these channels (most data/AI tools are backend — look here, not just the site):
-- Job ads / careers page / LinkedIn (the strongest source: "Data Engineer — Snowflake, dbt, Airflow", "ML Engineer — LangChain, vector DB")
+Use web search across these channels (most data/AI tools are backend - look here, not just the site):
+- Job ads / careers page / LinkedIn (the strongest source: "Data Engineer - Snowflake, dbt, Airflow", "ML Engineer - LangChain, vector DB")
 - Engineering blog, conference talks, public GitHub (requirements.txt, package.json, pyproject.toml, docker-compose, terraform)
 - The company website itself (for browser-visible tools: Segment, Amplitude, Algolia, Streamlit/Gradio demos, etc.)
 
-For EVERY tool you report you MUST have actually seen it named in a fetched page or search snippet, and you MUST give the verbatim quote + the source URL. If you can't cite it, leave it out. Do NOT infer tools from the industry or from peers. Generic words like "AI"/"GenAI"/"LLM"/"RAG" are NOT tools — put them in ai_intent. Do NOT report bare programming languages (Python, Java, Go, etc.) or generic skills as tools — only named products/platforms/frameworks.
+For EVERY tool you report you MUST have actually seen it named in a fetched page or search snippet, and you MUST give the verbatim quote + the source URL. If you can't cite it, leave it out. Do NOT infer tools from the industry or from peers. Generic words like "AI"/"GenAI"/"LLM"/"RAG" are NOT tools - put them in ai_intent. Do NOT report bare programming languages (Python, Java, Go, etc.) or generic skills as tools - only named products/platforms/frameworks.
 
-Classify each tool's category as one of: ${cats}. Be STRICT — category drives a maturity score, so do not inflate:
-- genai_build = LLM/agent frameworks ONLY (LangChain, LlamaIndex, Semantic Kernel, Bedrock Agents, Haystack, CrewAI). vector_db = Pinecone/Weaviate/Qdrant/pgvector/Chroma/Milvus. genai_app = a shipped LLM app (Streamlit/Gradio/Chainlit/Vercel AI SDK/CopilotKit). mlops = REAL ML/MLOps ONLY (SageMaker, Vertex AI, Azure ML, MLflow, Kubeflow, W&B, Hugging Face, Databricks ML). These are Band 4 — never put generic cloud/infra/DevOps here.
+Classify each tool's category as one of: ${cats}. Be STRICT - category drives a maturity score, so do not inflate:
+- genai_build = LLM/agent frameworks ONLY (LangChain, LlamaIndex, Semantic Kernel, Bedrock Agents, Haystack, CrewAI). vector_db = Pinecone/Weaviate/Qdrant/pgvector/Chroma/Milvus. genai_app = a shipped LLM app (Streamlit/Gradio/Chainlit/Vercel AI SDK/CopilotKit). mlops = REAL ML/MLOps ONLY (SageMaker, Vertex AI, Azure ML, MLflow, Kubeflow, W&B, Hugging Face, Databricks ML). These are Band 4 - never put generic cloud/infra/DevOps here.
 - warehouse = Snowflake/BigQuery/Redshift/Databricks/Synapse/ClickHouse. elt_streaming = dbt/Fivetran/Airbyte/Kafka/Flink. orchestration = Airflow/Dagster/Prefect/Temporal. enterprise_bi = Power BI/Tableau/Looker/Qlik. (Band 3.)
 - cdp = Segment/RudderStack/Snowplow; product_analytics = Amplitude/Mixpanel/Heap/PostHog; baas = Supabase/Firebase. (Band 2.)
 - database = Postgres/MySQL/Mongo/DynamoDB/Redis/Yardi etc; identity = Okta/Entra/BankID/e-ID; nocode_automation = Zapier/Make/Power Automate; web_analytics = GA4/Matomo/Hotjar/SendGrid/WordPress/CMS/web frameworks. (Band 1.)
-- IMPORTANT exclusions — do NOT report these as data/AI signals at all (omit them): bare cloud/hosting (AWS, Azure, GCP, Vercel as hosting), IaC/DevOps (Terraform, Docker, Kubernetes, CloudFormation, Ansible), observability/APM (New Relic, Datadog, Grafana, Sentry), and generic dev tools. They are infra, not data/AI maturity. (A cloud name only matters for aws_alignment, which is derived separately — you don't need to report it.)
+- IMPORTANT exclusions - do NOT report these as data/AI signals at all (omit them): bare cloud/hosting (AWS, Azure, GCP, Vercel as hosting), IaC/DevOps (Terraform, Docker, Kubernetes, CloudFormation, Ansible), observability/APM (New Relic, Datadog, Grafana, Sentry), and generic dev tools. They are infra, not data/AI maturity. (A cloud name only matters for aws_alignment, which is derived separately - you don't need to report it.)
 Set channel to where you found it: job_ad | blog | github | frontend.
 
 Respond ONLY with JSON in exactly this shape:
@@ -721,7 +721,7 @@ Respond ONLY with JSON in exactly this shape:
   const tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }];
   const text = await callClaude({ user, tools, maxTokens: 1800, task: "innovation" });
   const json = extractJSON(text);
-  // keep only signals that carry a real source URL (drop ungrounded ones — receipts or it didn't happen)
+  // keep only signals that carry a real source URL (drop ungrounded ones - receipts or it didn't happen)
   const signals = (Array.isArray(json.signals) ? json.signals : []).filter(
     (s) => s && s.tool && s.category && /^https?:\/\//i.test(String(s.source_url || ""))
   );
@@ -732,7 +732,7 @@ Respond ONLY with JSON in exactly this shape:
 // ---- BUILTWITH-BRYGGA (Väg A) ----
 // Översätter BuiltWith Domain API (v22) JSON till appens techstack-form, så att
 // resultatet flödar in i lead-prompten och AWS-pillarna precis som web-analysen.
-// Ren funktion — samma logik flyttas senare in i Väg B:s Supabase Edge Function.
+// Ren funktion - samma logik flyttas senare in i Väg B:s Supabase Edge Function.
 const BW_TAG_TO_CAT = {
   framework: "ramverk", "javascript-frameworks": "ramverk", javascript: "ramverk",
   "web-frameworks": "ramverk", js: "ramverk",
@@ -754,15 +754,15 @@ function parseBuiltWithToTechstack(raw) {
   if (!raw || !raw.trim()) throw new Error("Paste the BuiltWith Domain API JSON first.");
   let parsed;
   try { parsed = JSON.parse(raw); }
-  catch (e) { throw new Error("Ogiltig JSON — använd Domain API (v22/api.json)."); }
+  catch (e) { throw new Error("Invalid JSON - use the Domain API (v22/api.json)."); }
   const results = Array.isArray(parsed?.Results) && parsed.Results.length
     ? parsed.Results
     : parsed?.Result ? [parsed] : null;
   if (!results) {
     const errs = parsed?.Errors;
     if (Array.isArray(errs) && errs.length)
-      throw new Error("BuiltWith: " + (errs[0].Message || errs[0].message || "fel i svaret"));
-    throw new Error("Hittade inga Results — använd Domain API-länken, inte Free/Lists.");
+      throw new Error("BuiltWith: " + (errs[0].Message || errs[0].message || "error in response"));
+    throw new Error("Found no Results - use the Domain API link, not Free/Lists.");
   }
   const r = results[0];
   const lookup = r.Lookup || r.Result?.Paths?.[0]?.Domain || "";
@@ -774,14 +774,14 @@ function parseBuiltWithToTechstack(raw) {
     if (!seen.has(key)) seen.set(key, { category: bwCat(t.Tag), name: t.Name });
   }));
   const items = [...seen.values()];
-  if (!items.length) throw new Error("Inga tekniker hittades (kan ligga bakom Cloudflare/WAF).");
+  if (!items.length) throw new Error("No technologies found (may be behind Cloudflare/WAF).");
   const behind_proxy = items.some((i) => /cloudflare/i.test(i.name));
   const lastRaw = r.LastIndexed;
   const last = lastRaw != null ? new Date(typeof lastRaw === "number" ? lastRaw : Number(lastRaw)) : null;
   const lastStr = last && !isNaN(last.getTime()) ? last.toISOString().slice(0, 10) : null;
-  const note = "Importerad från BuiltWith Domain API" + (lookup ? " (" + lookup + ")" : "") +
-    (lastStr ? " — senast indexerad " + lastStr : "") +
-    (behind_proxy ? ". Cloudflare upptäckt — delar kan vara dolda." : ".");
+  const note = "Imported from BuiltWith Domain API" + (lookup ? " (" + lookup + ")" : "") +
+    (lastStr ? " - last indexed " + lastStr : "") +
+    (behind_proxy ? ". Cloudflare detected - parts may be hidden." : ".");
   return { items, behind_proxy, note };
 }
 
@@ -806,10 +806,10 @@ function techSignal(company) {
   const lines = [];
   lines.push(
     aws.length
-      ? `AWS SIGNAL: YES — ${aws.join(", ")}`
-      : "AWS SIGNAL: none in visible stack (absence ≠ absence of AWS — may be hidden by a proxy)"
+      ? `AWS SIGNAL: YES - ${aws.join(", ")}`
+      : "AWS SIGNAL: none in visible stack (absence ≠ absence of AWS - may be hidden by a proxy)"
   );
-  if (cf) lines.push("PROXY: Cloudflare/WAF detected — parts of the stack may be hidden.");
+  if (cf) lines.push("PROXY: Cloudflare/WAF detected - parts of the stack may be hidden.");
   lines.push("STACK:\n" + (grouped || "  (no categorized technology)"));
   if (ts.note) lines.push("SOURCE: " + ts.note);
   return lines.join("\n");
@@ -860,7 +860,7 @@ function buildLeadPrompt(partner, company, contacts) {
   const tech = techSignal(company);
   return (
 `You are a sales engineer prospecting on behalf of an AWS partner. Build a sharp, grounded
-angle to test on a sales call — not a research report. Reason through the partner's offer and
+angle to test on a sales call - not a research report. Reason through the partner's offer and
 the prospect's situation, then output ONLY the few things a rep needs before dialing. Be terse.
 
 === PARTNER (who we sell for) ===
@@ -888,13 +888,13 @@ in the verdict and score it low.
 Respond ONLY with JSON, nothing else, in exactly this shape. Respect every word limit:
 {
  "score": <0-100 ICP fit>,
- "verdict": "<max 6 words, e.g. 'Hot – strong match' / 'Lukewarm' / 'Weak match'>",
- "angle": "<max 25 words: the single best reason to call — tie ONE prospect signal to ONE partner capability>",
+ "verdict": "<max 6 words, e.g. 'Hot, strong match' / 'Lukewarm' / 'Weak match'>",
+ "angle": "<max 25 words: the single best reason to call - tie ONE prospect signal to ONE partner capability>",
  "opener": "<2-3 sentences you could say when they pick up, in their language, no pitch>",
  "ask": ["<max 3 short questions to test on the call>"],
  "avoid": "<max 12 words: the one thing NOT to pitch, or empty string>",
  "contact": "<who to reach + a few words why, or empty string>",
- "confidence": "<low | medium | high — how solid this read is>"
+ "confidence": "<low | medium | high - how solid this read is>"
 }`
   );
 }
@@ -912,7 +912,7 @@ async function analyzeLead(partner, company, contacts) {
 }
 
 /* ============================================================================
-   AI AGENTS  (inlined — single-file build; previously alloy-agents.js)
+   AI AGENTS  (inlined - single-file build; previously alloy-agents.js)
    research → outreach → triage. Portable: only claudeRaw() changes for Bedrock.
    Every call carries a `task` so the hardened claude-proxy owns the system prompt.
    ============================================================================ */
@@ -920,12 +920,12 @@ const AGENT_MODEL = MODEL_API;
 const MAX_AGENT_STEPS = 5;
 
 // Full-message Claude call (returns the whole message: content blocks + stop_reason).
-// SWAP THIS for Bedrock on AWS — the agents above it stay untouched.
+// SWAP THIS for Bedrock on AWS - the agents above it stay untouched.
 async function claudeRaw({ messages, tools, maxTokens = 1500, task }) {
   const sbUrl = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__?.url) || "";
   const explicitProxy = (typeof window !== "undefined" && window.__ALLOY_CLAUDE_PROXY__) || "";
   const proxy = explicitProxy || (sbUrl ? `${sbUrl}/functions/v1/claude-proxy` : "");
-  if (!proxy) throw new Error("Alloy requires its backend — claude-proxy is not configured.");
+  if (!proxy) throw new Error("Alloy requires its backend - claude-proxy is not configured.");
   const body = { model: AGENT_MODEL, max_tokens: maxTokens, messages };
   if (tools) body.tools = tools;
   if (task) body.task = task;
@@ -945,7 +945,7 @@ async function claudeRaw({ messages, tools, maxTokens = 1500, task }) {
       await new Promise((r) => setTimeout(r, ra ? Math.min(Number(ra) * 1000 + 500, 60000) : DELAYS[attempt]));
       continue;
     }
-    throw new Error(`Claude ${res.status}${detail ? " — " + detail.slice(0, 200) : ""}`);
+    throw new Error(`Claude ${res.status}${detail ? " - " + detail.slice(0, 200) : ""}`);
   }
 }
 
@@ -959,7 +959,7 @@ async function agentEdge(path, payload) {
   if (cfg.anonKey) { headers["Authorization"] = "Bearer " + cfg.anonKey; headers["apikey"] = cfg.anonKey; }
   const res = await fetch(`${base}/functions/v1/${path}`, { method: "POST", headers, body: JSON.stringify(payload || {}) });
   const txt = await res.text();
-  if (!res.ok) throw new Error(`${path} ${res.status} — ${txt.slice(0, 160)}`);
+  if (!res.ok) throw new Error(`${path} ${res.status} - ${txt.slice(0, 160)}`);
   const data = JSON.parse(txt);
   if (data && data.error) throw new Error(data.error);
   return data;
@@ -977,7 +977,7 @@ const TOOL_IMPLS = {
   company_registry: (input) => registrySearch(input),
   fetch_page: (input) => agentEdge("web-fetch", { url: input.url }),
   fetch_tech: (input) => agentEdge("web-fetch", { url: input.url, mode: "tech" }),
-  // web_search runs server-side at Anthropic — no client impl.
+  // web_search runs server-side at Anthropic - no client impl.
 };
 
 // Generic tool-use loop: runs the model until it stops requesting custom tools.
@@ -1003,14 +1003,14 @@ async function runAgent({ prompt, task, tools = AGENT_TOOLS, impls = TOOL_IMPLS,
   return { text: agentTextOf(fin), steps: maxSteps, toolTrace };
 }
 
-// AGENT 1 — researchLead: true tool-use agent; returns the analyzeLead JSON shape (drop-in).
+// AGENT 1 - researchLead: true tool-use agent; returns the analyzeLead JSON shape (drop-in).
 function researchPrompt(partner, company, contacts) {
   const contactLines = (contacts && contacts.length)
     ? contacts.map((c) => `- ${[c.first_name, c.last_name].filter(Boolean).join(" ")}${c.title ? " (" + c.title + ")" : ""}${c.email ? " · " + c.email : ""}`).join("\n")
     : "(no known contacts)";
   return (
 `You are a sales engineer prospecting on behalf of an AWS partner. Build a sharp, grounded
-angle to test on a sales call — not a research report. Be terse. An honest "unknown" beats a
+angle to test on a sales call - not a research report. Be terse. An honest "unknown" beats a
 slick guess; if it's a weak match, say so and score it low.
 
 You have tools. Use them to GROUND your read before you answer:
@@ -1018,7 +1018,7 @@ You have tools. Use them to GROUND your read before you answer:
 - company_registry({name, orgnr, country}): confirm entity, size, location.
 - web_search: find ONE or TWO real recent signals (growth, hiring, funding, expansion, leadership, regulatory drivers). Quote their own words where you can.
 - fetch_page(url): read a specific page (article/about/careers) found via web_search.
-Call tools only when they sharpen the angle. Don't over-research; 1–3 tool calls is plenty.
+Call tools only when they sharpen the angle. Don't over-research; 1-3 tool calls is plenty.
 
 === PARTNER (who we sell for) ===
 PARTNER: ${partner.name}
@@ -1054,16 +1054,16 @@ async function researchLead(partner, company, contacts = []) {
   return { ...json, analyzed_at: now(), _toolTrace: toolTrace };
 }
 
-// AGENT 2 — draftOutreach: grounded first-touch. analysis = researchLead/analyzeLead output.
+// AGENT 2 - draftOutreach: grounded first-touch. analysis = researchLead/analyzeLead output.
 async function draftOutreach(partner, company, analysis, contact) {
   const who = contact
     ? `${[contact.first_name, contact.last_name].filter(Boolean).join(" ")}${contact.title ? ", " + contact.title : ""}`
     : (analysis?.contact || "the most relevant decision-maker");
   const prompt =
 `Write a first-touch message on behalf of an AWS partner. It must read like a senior person who
-did their homework — short, specific, one clear reason to talk, one soft ask. No pitch dump.
+did their homework - short, specific, one clear reason to talk, one soft ask. No pitch dump.
 
-PARTNER: ${partner.name} — ${partner.brief || ""}
+PARTNER: ${partner.name} - ${partner.brief || ""}
 PROSPECT: ${company.name} (${company.industry || ""}, ${company.city || company.postort || ""})
 RECIPIENT: ${who}
 CALL ANGLE: ${analysis?.angle || ""}
@@ -1073,7 +1073,7 @@ DO NOT PITCH: ${analysis?.avoid || ""}
 Respond ONLY with JSON:
 {
  "channel": "email | linkedin",
- "subject": "<max 8 words, no clickbait — empty for linkedin>",
+ "subject": "<max 8 words, no clickbait - empty for linkedin>",
  "body": "<90-130 words. Specific opening tied to the angle. One ask: a short call. Plain sign-off.>",
  "alt_body": "<a shorter, punchier variant, 40-60 words>",
  "notes": "<max 15 words: why this angle, or what to verify before sending>"
@@ -1082,13 +1082,13 @@ Respond ONLY with JSON:
   return { ...extractJSON(agentTextOf(msg)), drafted_at: now() };
 }
 
-// AGENT 3 — triagePipeline: rank an already-scored shortlist into "call today, for this reason".
+// AGENT 3 - triagePipeline: rank an already-scored shortlist into "call today, for this reason".
 async function triagePipeline(partner, candidates, limit = 8) {
   const list = (candidates || []).slice(0, 25).map((c, i) =>
     `${i + 1}. id=${c.id} | ${c.name} | score ${c.score ?? "?"} | stage ${c.stage || "lead"} | ${c.industry || ""} | ${c.city || ""} | ${c.aws ? "on AWS" : "not AWS"} | last touch ${c.last_touch || "never"}`
   ).join("\n");
   const prompt =
-`Partner we sell for: ${partner.name} — ${partner.brief || ""}
+`Partner we sell for: ${partner.name} - ${partner.brief || ""}
 
 Here is today's candidate shortlist (already scored). Pick the ${limit} worth calling TODAY and
 order them. Favour: strong ICP fit, AWS-aligned, warm but not yet contacted, and momentum
@@ -1104,7 +1104,7 @@ Respond ONLY with JSON:
 }
 
 /* ============================================================================
-   PROJEKT  —  varje partner-engagemang är ett projekt (G-FLOW: Alto)
+   PROJEKT  -  varje partner-engagemang är ett projekt (G-FLOW: Alto)
    ============================================================================ */
 const DEFAULT_PROJECTS = [
   {
@@ -1115,11 +1115,11 @@ const DEFAULT_PROJECTS = [
       name: "Alto",
       domain: "alto.se",
       brief:
-        "Svensk AWS Advanced Tier-partner med AI Competency. Bygger Quattro — en " +
-        "MCP-baserad integrationsplattform som kopplar AI-agenter till affärssystem " +
-        "(Visma, Fortnox, Dynamics, Salesforce) via Outlook/Teams/Slack. Spets: " +
-        "backoffice-automation för fastighets- och förvaltningsbolag, t.ex. " +
-        "ärendesortering. Säljs INTE som hyresgäst-/frontend-plattform.",
+        "Swedish AWS Advanced Tier partner with AI Competency. Builds Quattro - an " +
+        "MCP-based integration platform that connects AI agents to business systems " +
+        "(Visma, Fortnox, Microsoft Dynamics, Salesforce) through Outlook, Teams, and Slack. " +
+        "The integration is universal across sectors. Sold as an embedded backoffice " +
+        "automation layer, NOT as a tenant-facing or frontend platform.",
     },
     goal_week: 1,
     goal_month: 5,
@@ -1132,27 +1132,25 @@ const DEFAULT_PROJECTS = [
       name: "Novalo Technologies",
       domain: "novalo.se",
       brief:
-        "Nordisk AWS Advanced Tier-partner med Service Delivery-designeringar för " +
-        "Lambda, API Gateway, DynamoDB och CloudFormation. Spets: hands-on " +
-        "implementation och kontinuerlig optimering — hjälper produktteam ta idéer " +
-        "till produktionsklara system. Erbjuder två Fast Tracks: AI Fast Track (14 " +
-        "dagar, idé till AI-lösning i produktion) och Migration Jump Start (21 dagar, " +
-        "exekverbar migrationsplan). Stark på kostnadsoptimering som ingång. Säljer " +
-        "seniora specialister utan leveransoverhead, delat ägarskap, långsiktig " +
-        "optimering — INTE engångsrekommendationer eller ren rådgivning. " +
-        "AWS-status (maj 2026): CloudOps Competency inskickad, Automotive Competency " +
-        "inskickad — frigör ~20 000 USD i AWS-funding inom kort samt hävstång för AWS Originated " +
-        "opportunities (öppnar för AWS-co-sell och samfinansiering). CloudOps täcker nu " +
-        "underkategorierna Observability & Monitoring, FinOps och Operations. " +
-        "Lösningskatalog (AWS Partner Solutions, Professional Service): Novalo GenAI Journey " +
-        "(GenAI idé→produktion) och Novalo Migrate (migrering). Säljvinkel: AWS-finansierade " +
-        "engagemang, FinOps/kostnadskontroll som ingång, GenAI för AI-mogna prospekt. " +
-        "UPPDATERING (28 maj 2026): båda Competency-ansökningarna nu inskickade — CloudOps " +
-        "(Observability & Monitoring, FinOps, Operations) och Automotive. Nästa milstolpe: " +
-        "1–2 kundcase krävs för AI-Competency, vilket sammanlagt frigör ~70 000 USD i AWS-funding. " +
-        "Därefter öppnar BOX-programmet för att bygga en egen SaaS-tjänst med 290 000 USD " +
-        "funding. Sammantaget en snabbt växande funding-runway in i " +
-        "hösten 2026 — stark ingång för AWS-samfinansierade kundengagemang och co-sell.",
+        "Nordic AWS Advanced Tier partner with Service Delivery designations for " +
+        "Lambda, API Gateway, DynamoDB and CloudFormation. Edge: hands-on " +
+        "implementation and continuous optimization - helps product teams take ideas " +
+        "to production-ready systems. Offers two Fast Tracks: AI Fast Track (14 " +
+        "days, idea to production AI solution) and Migration Jump Start (21 days, " +
+        "executable migration plan). Strong on cost optimization as an entry point. Sells " +
+        "senior specialists without delivery overhead, shared ownership, long-term " +
+        "tuning - NOT one-off recommendations or pure advisory. " +
+        "AWS status (May 2026): both CloudOps and Automotive Competency applications " +
+        "submitted - unlocking ~$20,000 in AWS funding soon plus leverage for AWS Originated " +
+        "opportunities (opens AWS co-sell and co-funding). CloudOps now covers " +
+        "the Observability & Monitoring, FinOps and Operations subcategories. " +
+        "Solution catalog (AWS Partner Solutions, Professional Service): Novalo GenAI Journey " +
+        "(GenAI idea to production) and Novalo Migrate (migration). Sales angle: AWS-funded " +
+        "engagements, FinOps/cost control as entry, GenAI for AI-mature prospects. " +
+        "Next milestone: 1-2 customer references required for AI Competency, which together unlock " +
+        "~$70,000 in AWS funding. After that the BOX program opens to build an own SaaS " +
+        "service with $290,000 funding - a fast-growing funding runway into " +
+        "autumn 2026 and a strong entry for AWS co-funded engagements and co-sell.",
     },
     goal_week: 1,
     goal_month: 5,
@@ -1160,10 +1158,10 @@ const DEFAULT_PROJECTS = [
 ];
 
 
-/* FORGE_SEED removed — initial data lives in Supabase; any re-seed is a one-time SQL migration, not shipped to the client. */
+/* FORGE_SEED removed - initial data lives in Supabase; any re-seed is a one-time SQL migration, not shipped to the client. */
 
 /* ============================================================================
-   DB  —  window.storage idag, Supabase imorgon (byt bara denna modul)
+   DB  -  window.storage idag, Supabase imorgon (byt bara denna modul)
    ============================================================================ */
 const KEYS = {
   companies: "forjg:companies",
@@ -1256,7 +1254,7 @@ const localDb = {
 };
 
 /* ----------------------------------------------------------------------------
-   SUPABASE BACKEND (Väg B) — ACTIVE. The anon key below is a PUBLIC client key
+   SUPABASE BACKEND (Väg B) - ACTIVE. The anon key below is a PUBLIC client key
    (safe to ship in the client; data is guarded by RLS). The service_role key must
    NEVER go here. A runtime window.__ALLOY_SUPABASE__ override still wins if set.
    To go back to local storage: comment out the block below (DB_BACKEND="auto"
@@ -1273,7 +1271,7 @@ const DB_BACKEND = "auto"; // "auto" | "local" | "supabase"  (auto = supabase if
 
 function sbConf() {
   const c = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || null;
-  if (!c?.url || !c?.anonKey) throw new Error("Supabase not configured — set window.__ALLOY_SUPABASE__ = { url, anonKey }");
+  if (!c?.url || !c?.anonKey) throw new Error("Supabase not configured - set window.__ALLOY_SUPABASE__ = { url, anonKey }");
   return c;
 }
 // The signed-in user's access token. Set by the app whenever the session changes.
@@ -1312,7 +1310,7 @@ async function sbRpc(fn, args) {
 }
 
 /* ----------------------------------------------------------------------------
-   AUTH (Supabase GoTrue) — password + magic link. The DATA layer stays on the
+   AUTH (Supabase GoTrue) - password + magic link. The DATA layer stays on the
    public anon key (RLS unchanged), so a login problem can never lock anyone out
    of the data. Session is kept in window.storage and restored on load. Magic-link
    clicks land back here with tokens in the URL hash, which we parse and wipe.
@@ -1438,7 +1436,7 @@ function activeDb() {
 const db = new Proxy({}, { get: (_t, prop) => (...args) => activeDb()[prop](...args) });
 
 /* ============================================================================
-   STIL  —  exakt forj.se-designspråk (varmt papper, editorial, rost-accent)
+   STIL  -  exakt forj.se-designspråk (varmt papper, editorial, rost-accent)
    ============================================================================ */
 const C = {
   bg: "#F3F0EA",        // --bg, varmt papper
@@ -1498,10 +1496,10 @@ function Dot({ color }) {
 }
 // Cloud infrastructure provider → label + colour. Central to AWS-specific targeting.
 const CLOUD = {
-  aws: { label: "AWS", color: "#B83D0C", note: "On AWS — partner-aligned, warm." },
-  gcp: { label: "GCP", color: "#2F6FAE", note: "On Google Cloud — competitive displacement play." },
-  azure: { label: "Azure", color: "#6A3FA0", note: "On Microsoft Azure — competitive displacement play." },
-  cloudflare: { label: "Cloudflare", color: "#C77D11", note: "Behind Cloudflare — origin cloud hidden." },
+  aws: { label: "AWS", color: "#B83D0C", note: "On AWS - partner-aligned, warm." },
+  gcp: { label: "GCP", color: "#2F6FAE", note: "On Google Cloud - competitive displacement play." },
+  azure: { label: "Azure", color: "#6A3FA0", note: "On Microsoft Azure - competitive displacement play." },
+  cloudflare: { label: "Cloudflare", color: "#C77D11", note: "Behind Cloudflare - origin cloud hidden." },
   other: { label: "Other host", color: "#827E76", note: "Hosted elsewhere / no major cloud detected." },
   unknown: { label: "", color: "#827E76", note: "Not checked yet." },
 };
@@ -1513,7 +1511,7 @@ const EMAIL_LABEL = { google: "Google Workspace", microsoft: "Microsoft 365", ot
 function CloudChip({ company, size = "sm" }) {
   const m = cloudMeta(company);
   if (!m) return null;
-  return <Pill color={m.color}><span title={m.note + (company.aws_signals ? " — " + company.aws_signals : "")}>{m.label}</span></Pill>;
+  return <Pill color={m.color}><span title={m.note + (company.aws_signals ? " - " + company.aws_signals : "")}>{m.label}</span></Pill>;
 }
 
 function Metric({ label, value, accent = C.accent, icon }) {
@@ -1581,7 +1579,7 @@ function Btn({ children, onClick, variant = "ghost", disabled, size = "md", full
     </button>
   );
 }
-// Forj wordmark — letter paths from the brand SVG (no background plate, inherits color).
+// Forj wordmark - letter paths from the brand SVG (no background plate, inherits color).
 function ForjLogo({ height = 28, color = "currentColor", title = "Forj", style }) {
   const s = "scale(0.2857142857142857, -0.2857142857142857)";
   return (
@@ -1594,7 +1592,7 @@ function ForjLogo({ height = 28, color = "currentColor", title = "Forj", style }
     </svg>
   );
 }
-// Forj-style icons — thin monoline, geometric, inherit color (matches the wordmark).
+// Forj-style icons - thin monoline, geometric, inherit color (matches the wordmark).
 const ICON_PATHS = {
   globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.6 2.8 2.6 15.2 0 18M12 3c-2.6 2.8-2.6 15.2 0 18" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
@@ -1647,7 +1645,7 @@ function Confidence({ level }) {
 /* ============================================================================
    WEBBTEKNIK-ANALYS-PANEL
    ============================================================================ */
-// Data & AI maturity panel — runs analyzeInnovation and shows the grounded result.
+// Data & AI maturity panel - runs analyzeInnovation and shows the grounded result.
 const BAND_COLOR = (b) => (b >= 4 ? C.green : b === 3 ? C.blue : b === 2 ? C.amber : C.dim2);
 function InnovationPanel({ company, onSave, flash }) {
   const [busy, setBusy] = useState(false);
@@ -1713,7 +1711,7 @@ function InnovationPanel({ company, onSave, flash }) {
           </div>
 
           {Object.keys(grouped).length === 0 ? (
-            <div style={{ fontSize: 12.5, color: C.dim2, fontStyle: "italic", marginBottom: 10 }}>No grounded data/AI signals found (absence is weak — most live in job ads).</div>
+            <div style={{ fontSize: 12.5, color: C.dim2, fontStyle: "italic", marginBottom: 10 }}>No grounded data/AI signals found (absence is weak - most live in job ads).</div>
           ) : (
             Object.entries(grouped).sort((a, b) => (INNOVATION_CATEGORIES[b[0]]?.band || 0) - (INNOVATION_CATEGORIES[a[0]]?.band || 0)).map(([cat, sigs]) => (
               <div key={cat} style={{ marginBottom: 10 }}>
@@ -1803,7 +1801,7 @@ function TechStackPanel({ company, onSave, flash }) {
         body: JSON.stringify({ domain: d }),
       });
       const text = await res.text();
-      if (!res.ok) throw new Error("backend " + res.status + " — " + text.slice(0, 140));
+      if (!res.ok) throw new Error("backend " + res.status + " - " + text.slice(0, 140));
       const parsed = parseBuiltWithToTechstack(text);
       await onSave(company.id, {
         techstack: { ...parsed, analyzed_at: now(), url: d },
@@ -1824,7 +1822,7 @@ function TechStackPanel({ company, onSave, flash }) {
         await onSave(company.id, { domain: r.domain, enrichment: { ...(company.enrichment || {}), domain_confidence: r.confidence, domain_evidence: r.evidence } });
         flash("Found website: " + r.domain + (r.confidence ? " (" + r.confidence + " confidence)" : ""));
       } else {
-        flash("No website found — add it manually if you know it");
+        flash("No website found - add it manually if you know it");
       }
     } catch (e) { flash("Find website failed: " + e.message); }
     finally { setFindBusy(false); }
@@ -1864,8 +1862,8 @@ function TechStackPanel({ company, onSave, flash }) {
     if (!bwLookupDomain()) { flash("Enter a domain first"); return; }
     try {
       await navigator.clipboard.writeText(bwApiUrl());
-      flash(bwKey.trim() ? "BuiltWith API URL copied" : "URL copied — add your key first");
-    } catch { flash("Copy failed — select the URL below and copy manually"); }
+      flash(bwKey.trim() ? "BuiltWith API URL copied" : "URL copied - add your key first");
+    } catch { flash("Copy failed - select the URL below and copy manually"); }
   }
 
   async function run() {
@@ -1932,7 +1930,7 @@ function TechStackPanel({ company, onSave, flash }) {
           <Btn variant="dark" size="sm" onClick={runFindDomain} disabled={findBusy}>
             {findBusy ? <Spinner /> : <Icon name="globe" size={13} color={C.cream} />} {findBusy ? "Searching the web…" : "Find website"}
           </Btn>
-          <span style={{ fontSize: 11.5, color: C.dim2, lineHeight: 1.45, flex: 1 }}>No website yet. Looks it up from name + city — then AWS check & tech analysis unlock.</span>
+          <span style={{ fontSize: 11.5, color: C.dim2, lineHeight: 1.45, flex: 1 }}>No website yet. Looks it up from name + city - then AWS check & tech analysis unlock.</span>
         </div>
       )}
       {domain.trim() && company.enrichment?.domain_evidence && (
@@ -1950,17 +1948,17 @@ function TechStackPanel({ company, onSave, flash }) {
       {cloudMeta(company) && <div style={{ fontSize: 11.5, color: C.dim2, marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>{cloudMeta(company).note}</div>}
 
       <div style={{ fontSize: 11.5, color: C.dim2, marginTop: -4, marginBottom: grouped.length || data?.behind_proxy ? 14 : 0, lineHeight: 1.5 }}>
-        AI-powered via web search — detects the stack and cloud from the live site.
+        AI-powered via web search - detects the stack and cloud from the live site.
       </div>
 
       {/* BuiltWith "exact stack" UI removed from the card to declutter (2026-05).
           Backend stays intact: the builtwith-lookup edge function,
           parseBuiltWithToTechstack(), and the CSV aws_value/import path are all
-          still present — re-add a toggle here to bring the manual lookup back. */}
+          still present - re-add a toggle here to bring the manual lookup back. */}
 
       {data?.behind_proxy && (
         <div style={{ background: C.amber + "18", border: `1px solid ${C.amber}40`, borderRadius: 2, padding: "10px 13px", marginBottom: 12, fontSize: 12.5, color: C.amber }}>
-          This site is behind a proxy/WAF — parts of the stack can't be verified.
+          This site is behind a proxy/WAF - parts of the stack can't be verified.
         </div>
       )}
 
@@ -1990,7 +1988,7 @@ function TechStackPanel({ company, onSave, flash }) {
       )}
       {!data && !busy && (
         <div style={{ fontSize: 12.5, color: C.dim2, marginTop: 12 }}>
-          Run the analysis to see what tech this company uses — on top of and beyond the CDN.
+          Run the analysis to see what tech this company uses - on top of and beyond the CDN.
         </div>
       )}
     </div>
@@ -1998,7 +1996,7 @@ function TechStackPanel({ company, onSave, flash }) {
 }
 
 /* ============================================================================
-   LEAD-ANALYS-PANEL  (samtalshypotesen — "magin")
+   LEAD-ANALYS-PANEL  (samtalshypotesen - "magin")
    ============================================================================ */
 function LeadAnalysisPanel({ project, company, contacts, onSave, onAddContact, flash }) {
   const [busy, setBusy] = useState(false);
@@ -2048,7 +2046,7 @@ function LeadAnalysisPanel({ project, company, contacts, onSave, onAddContact, f
       {!data && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Btn variant="dark" onClick={() => run(false)} disabled={busy} full>
-            {busy ? <Spinner /> : <Icon name="spark" size={14} color={C.cream} />} {busy ? "Working…" : "Analyze lead — build call hypothesis"}
+            {busy ? <Spinner /> : <Icon name="spark" size={14} color={C.cream} />} {busy ? "Working…" : "Analyze lead - build call hypothesis"}
           </Btn>
           {/* "Deep research" (researchLead agent) button removed to declutter (2026-05):
               it overlapped "Analyze lead" (same output shape) and is token-heavy /
@@ -2069,7 +2067,7 @@ function LeadAnalysisPanel({ project, company, contacts, onSave, onAddContact, f
             </div>
           </div>
 
-          {/* call opener — the deliverable */}
+          {/* call opener - the deliverable */}
           {data.opener && (
             <div style={{ background: C.dark, borderRadius: 2, padding: "20px 22px", marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.accent, marginBottom: 12 }}>Call opener</div>
@@ -2097,7 +2095,7 @@ function LeadAnalysisPanel({ project, company, contacts, onSave, onAddContact, f
             </div>
           )}
 
-          {/* outreach draft (agent) — on-demand only; phone-first workflow */}
+          {/* outreach draft (agent) - on-demand only; phone-first workflow */}
           {draft && (
             <div style={{ marginTop: 14, borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
               <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 2, padding: 14 }}>
@@ -2142,7 +2140,7 @@ function AnalysisBlock({ title, children }) {
 }
 
 /* ============================================================================
-   COMPANY INTELLIGENCE  —  merged cloud + web-tech + data/AI maturity (one box).
+   COMPANY INTELLIGENCE  -  merged cloud + web-tech + data/AI maturity (one box).
    Smart default: "Analyze" runs the free cloud detect + live web-tech scan;
    "+ Data & AI deep scan" runs the heavier job-ad/blog/GitHub innovation agent
    only when a lead is worth the dig (Tier-1 token budget). Replaces the separate
@@ -2166,7 +2164,7 @@ function CompanyIntelPanel({ company, onSave, flash }) {
         setDomain(r.domain);
         await onSave(company.id, { domain: r.domain, enrichment: { ...(company.enrichment || {}), domain_confidence: r.confidence, domain_evidence: r.evidence } });
         flash("Found website: " + r.domain + (r.confidence ? " (" + r.confidence + " confidence)" : ""));
-      } else flash("No website found — add it manually if you know it");
+      } else flash("No website found - add it manually if you know it");
     } catch (e) { flash("Find website failed: " + e.message); }
     finally { setFindBusy(false); }
   }
@@ -2246,12 +2244,12 @@ function CompanyIntelPanel({ company, onSave, flash }) {
           <Btn variant="dark" size="sm" onClick={runFindDomain} disabled={findBusy}>
             {findBusy ? <Spinner /> : <Icon name="globe" size={13} color={C.cream} />} {findBusy ? "Searching…" : "Find website"}
           </Btn>
-          <span style={{ fontSize: 11.5, color: C.dim2, lineHeight: 1.45, flex: 1 }}>No website yet. Looks it up from name + city — then cloud + tech analysis unlock.</span>
+          <span style={{ fontSize: 11.5, color: C.dim2, lineHeight: 1.45, flex: 1 }}>No website yet. Looks it up from name + city - then cloud + tech analysis unlock.</span>
         </div>
       )}
 
       <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 14, lineHeight: 1.5 }}>
-        “Analyze” runs a free cloud-provider check + live web-tech scan. The data &amp; AI deep scan reads job ads, eng blogs &amp; GitHub — slower, run it on leads worth the dig.
+        “Analyze” runs a free cloud-provider check + live web-tech scan. The data &amp; AI deep scan reads job ads, eng blogs &amp; GitHub - slower, run it on leads worth the dig.
       </div>
 
       {(cloudMeta(company) || company.aws_signals || company.email_provider) && (
@@ -2268,7 +2266,7 @@ function CompanyIntelPanel({ company, onSave, flash }) {
 
       {tech?.behind_proxy && (
         <div style={{ background: C.amber + "18", border: `1px solid ${C.amber}40`, borderRadius: 2, padding: "10px 13px", marginBottom: 12, fontSize: 12.5, color: C.amber }}>
-          This site is behind a proxy/WAF — parts of the stack can't be verified.
+          This site is behind a proxy/WAF - parts of the stack can't be verified.
         </div>
       )}
       {techGrouped.length > 0 && (
@@ -2313,7 +2311,7 @@ function CompanyIntelPanel({ company, onSave, flash }) {
         {innov && (
           <>
             {Object.keys(innovGrouped).length === 0 ? (
-              <div style={{ fontSize: 12.5, color: C.dim2, fontStyle: "italic", marginBottom: 8 }}>No grounded data/AI signals found (absence is weak — most live in job ads).</div>
+              <div style={{ fontSize: 12.5, color: C.dim2, fontStyle: "italic", marginBottom: 8 }}>No grounded data/AI signals found (absence is weak - most live in job ads).</div>
             ) : (
               Object.entries(innovGrouped).sort((a, b) => (INNOVATION_CATEGORIES[b[0]]?.band || 0) - (INNOVATION_CATEGORIES[a[0]]?.band || 0)).map(([cat, sigs]) => (
                 <div key={cat} style={{ marginBottom: 9 }}>
@@ -2339,20 +2337,20 @@ function CompanyIntelPanel({ company, onSave, flash }) {
   );
 }
 
-/* AWS funding-fit — deterministic track + score, UPSTREAM of Partner Central.
+/* AWS funding-fit - deterministic track + score, UPSTREAM of Partner Central.
    Reads the persisted funding_eligibility row; "Re-score" recomputes ($0, no LLM). */
 const FUND_TRACK_META = {
-  MAP:            { label: "MAP — Migrate to AWS",     blurb: "Competitor-cloud / on-prem takeout" },
-  MAP_MODERNIZE:  { label: "MAP — Modernize",          blurb: "GenAI/agentic on existing AWS workloads" },
+  MAP:            { label: "MAP - Migrate to AWS",     blurb: "Competitor-cloud / on-prem takeout" },
+  MAP_MODERNIZE:  { label: "MAP - Modernize",          blurb: "GenAI/agentic on existing AWS workloads" },
   POC:            { label: "POC",                       blurb: "Net-new GenAI proof-of-concept" },
   ISV_WMP:        { label: "ISV · Marketplace (WMP)",   blurb: "List SaaS on AWS Marketplace" },
-  GREENFIELD_PGP: { label: "Greenfield (PGP)",          blurb: "No current cloud — net-new build" },
+  GREENFIELD_PGP: { label: "Greenfield (PGP)",          blurb: "No current cloud - net-new build" },
   NONE:           { label: "No funding signal",         blurb: "Pure AWS or no migration signal" },
 };
 
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
-// services a typical migration uses — so there is never a second, contradictory number.
+// services a typical migration uses - so there is never a second, contradictory number.
 // $0, no AWS creds. The exact figure is refined in the AWS Pricing Calculator (link below);
 // a future MCP sidecar can mint a real shareable calculator.aws estimate URL post-AWS-move.
 const CALC = {
@@ -2427,7 +2425,7 @@ function FundingFitPanel({ company, flash }) {
         <div style={{ fontSize: 12.5, color: C.dim2 }}><Spinner size={12} /> Loading…</div>
       ) : !fit ? (
         <div>
-          <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 12, lineHeight: 1.5 }}>No funding fit scored yet. Deterministic — reads cloud + maturity + size + sector. No AI, instant.</div>
+          <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 12, lineHeight: 1.5 }}>No funding fit scored yet. Deterministic - reads cloud + maturity + size + sector. No AI, instant.</div>
           <Btn variant="dark" size="sm" onClick={rescore} disabled={busy}>{busy ? <Spinner /> : <Icon name="tag" size={13} color={C.cream} />} {busy ? "Scoring…" : "Score funding fit"}</Btn>
         </div>
       ) : (
@@ -2500,7 +2498,7 @@ function FundingFitPanel({ company, flash }) {
                 <div style={{ fontSize: 11.5, color: C.text, background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "6px 9px" }}>
                   Est. MAP funding offset (~{CALC.mapOffsetPct}%): <strong style={{ color: C.accent }}>{fmtMoney(est.mapYr, "USD")}/yr</strong>
                 </div>
-                <div style={{ fontSize: 10, color: C.dim2, marginTop: 6, lineHeight: 1.5 }}>Rough estimate from the spend band — refine the exact figure in the AWS Pricing Calculator. Offset is a partner heuristic; AWS sets the final amount.</div>
+                <div style={{ fontSize: 10, color: C.dim2, marginTop: 6, lineHeight: 1.5 }}>Rough estimate from the spend band - refine the exact figure in the AWS Pricing Calculator. Offset is a partner heuristic; AWS sets the final amount.</div>
               </div>
             );
           })()}
@@ -2527,10 +2525,10 @@ function StageSelect({ stage, onChange }) {
         fontSize: 12.5, fontWeight: 600, fontFamily: FONT_BODY, cursor: "pointer", outline: "none",
       }}
     >
-      <optgroup label="— Commercial Readiness —">
+      <optgroup label="- Commercial Readiness -">
         {PHASES.readiness.stages.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
       </optgroup>
-      <optgroup label="— Pipeline —">
+      <optgroup label="- Pipeline -">
         {PHASES.pipeline.stages.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
       </optgroup>
     </select>
@@ -2558,7 +2556,7 @@ function FindContacts({ company, existing, onAddContact, flash }) {
     try {
       const ppl = await findDecisionMakers(company);
       setResults(ppl);
-      if (!ppl.length) flash("No decision-makers found" + (company.domain ? "" : " — try after finding the website"));
+      if (!ppl.length) flash("No decision-makers found" + (company.domain ? "" : " - try after finding the website"));
     } catch (e) { flash("Find decision-makers failed: " + e.message); }
     finally { setBusy(false); }
   }
@@ -2568,7 +2566,7 @@ function FindContacts({ company, existing, onAddContact, flash }) {
       <Btn variant="dark" size="sm" onClick={run} disabled={busy}>
         {busy ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {busy ? "Searching the web…" : "Find decision-makers"}
       </Btn>
-      {results && fresh.length === 0 && <span style={{ fontSize: 11.5, color: C.dim2, marginLeft: 10 }}>{results.length ? "Everyone found is already added." : "Nobody found — add manually or retry."}</span>}
+      {results && fresh.length === 0 && <span style={{ fontSize: 11.5, color: C.dim2, marginLeft: 10 }}>{results.length ? "Everyone found is already added." : "Nobody found - add manually or retry."}</span>}
       {fresh.length > 0 && (
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
           {fresh.map((p, i) => (
@@ -2576,7 +2574,7 @@ function FindContacts({ company, existing, onAddContact, flash }) {
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{p.name}{p.title ? <span style={{ color: C.dim, fontWeight: 400 }}> · {p.title}</span> : null}</div>
                 <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 2 }}>
-                  {p.email ? <span>{p.email}{p.email_is_guess ? " (guess — verify)" : ""}</span> : null}
+                  {p.email ? <span>{p.email}{p.email_is_guess ? " (guess - verify)" : ""}</span> : null}
                   {p.email && p.linkedin ? " · " : null}
                   {p.linkedin ? <a href={p.linkedin} target="_blank" rel="noreferrer" style={{ color: C.blue, textDecoration: "none" }}>LinkedIn</a> : null}
                   {p.why ? <div style={{ color: C.dim2, marginTop: 2 }}>{p.why}</div> : null}
@@ -2624,10 +2622,10 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
   const qbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "7px 11px", fontSize: 12, cursor: "pointer", fontFamily: FONT_BODY };
 
   // Remove a lead/company card: soft-archive (list_tag = "archived_shell"), which hides
-  // it from every list, dashboard and count in the app. Reversible — the row is kept and
+  // it from every list, dashboard and count in the app. Reversible - the row is kept and
   // an admin can restore it. This is the only in-app way to "erase" a card.
   async function removeLead() {
-    if (!confirm(`Remove "${company.name}" from the list?\n\nThis hides the card from every view in ${BRAND}. Nothing is permanently deleted — an admin can restore it later.`)) return;
+    if (!confirm(`Remove "${company.name}" from the list?\n\nThis hides the card from every view in ${BRAND}. Nothing is permanently deleted - an admin can restore it later.`)) return;
     try {
       await onUpdate(company.id, { list_tag: "archived_shell" });
       flash("Lead removed");
@@ -2655,7 +2653,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <StageSelect stage={company.stage} onChange={(s) => onStage(company.id, s)} />
-          <button onClick={removeLead} title="Archive this lead — hides the card from every list (recoverable by an admin)"
+          <button onClick={removeLead} title="Archive this lead - hides the card from every list (recoverable by an admin)"
             style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim2, borderRadius: 2, padding: "8px 11px", fontSize: 12, cursor: "pointer", fontFamily: FONT_BODY }}>Remove</button>
         </div>
       </div>
@@ -2663,7 +2661,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
       {/* info + finansiellt */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 10 }}>Company information</div>
-        <InfoRow icon="#" label="Org.nr" value={company.orgnr} mono />
+        <InfoRow icon="#" label="Org. no." value={company.orgnr} mono />
         <InfoRow icon="tag" label="Industry" value={company.industry} />
         <InfoRow icon="users" label="Employees" value={company.employees} />
         <InfoRow icon="user" label="CEO" value={company.ceo} />
@@ -2687,14 +2685,14 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             {company.enrichment.description}
           </div>
         )}
-        {/* "AWS value" chip hidden (2026-05): this field is NOT app-generated per company —
+        {/* "AWS value" chip hidden (2026-05): this field is NOT app-generated per company -
             it's templated boilerplate that came in the Fastighetslista CSV import (the same
             ~7 strings repeat across all 144 property companies), so it read as a per-company
             insight when it isn't. Data is untouched in enrichment.aws_value and still feeds
             funding matching + the partner-portal export; re-surface once it's grounded. */}
       </div>
 
-      {/* Decision-makers & contacts — who to call, kept high for a calling CRM */}
+      {/* Decision-makers & contacts - who to call, kept high for a calling CRM */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2 }}>Decision-makers & contacts{myContacts.length ? " · " + myContacts.length : ""}</div>
@@ -2725,13 +2723,13 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
       {/* company intelligence (merged cloud + web tech + data/AI) */}
       <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
 
-      {/* AWS funding fit — deterministic pre-score (track + fundability), upstream of Partner Central */}
+      {/* AWS funding fit - deterministic pre-score (track + fundability), upstream of Partner Central */}
       <FundingFitPanel company={company} flash={flash} />
 
       {/* lead analysis & call hypothesis */}
       <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
 
-      {/* follow-up + activity — the next step lives with the call log so it's never empty dead-space */}
+      {/* follow-up + activity - the next step lives with the call log so it's never empty dead-space */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Next step &amp; activity</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -2742,7 +2740,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           <button onClick={() => { const d = dayStr(7); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>+7 days</button>
           {naDate && <button onClick={() => { setNaDate(""); onUpdate(company.id, { next_action_at: null }); }} style={{ ...qbtn, color: C.red }}>Clear</button>}
         </div>
-        <input value={naText} onChange={(e) => setNaText(e.target.value)} onBlur={() => onUpdate(company.id, { next_action: naText.trim() })} placeholder="Next step — what needs to happen?"
+        <input value={naText} onChange={(e) => setNaText(e.target.value)} onBlur={() => onUpdate(company.id, { next_action: naText.trim() })} placeholder="Next step - what needs to happen?"
           style={{ width: "100%", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box", marginBottom: 14 }} />
         <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -2778,7 +2776,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>{/* /activity sub-section (border-top divider) */}
       </div>
 
-      {/* opportunity & owner — deal admin, kept low on the card */}
+      {/* opportunity & owner - deal admin, kept low on the card */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Opportunity &amp; owner</div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -2860,7 +2858,7 @@ function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze,
               {c.leadanalysis?.score != null && <Pill color={c.leadanalysis.score >= 70 ? C.green : c.leadanalysis.score >= 45 ? C.amber : C.dim2}>{c.leadanalysis.score}%</Pill>}
             </div>
             <div style={{ fontSize: 12, color: C.dim, marginTop: 4 }}>
-              {primary ? [primary.first_name, primary.last_name].filter(Boolean).join(" ") + (primary.title ? " · " + primary.title : "") : "No contact yet — find decision-makers on the card"}
+              {primary ? [primary.first_name, primary.last_name].filter(Boolean).join(" ") + (primary.title ? " · " + primary.title : "") : "No contact yet - find decision-makers on the card"}
               {phone ? " · " + phone : ""}
             </div>
             {c.next_action ? <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 3 }}>→ {c.next_action}</div> : null}
@@ -2897,10 +2895,10 @@ function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze,
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <Icon name="phone" size={20} color={C.accent} />
-          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Today — {project.name}</h2>
+          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Today - {project.name}</h2>
         </div>
         <div style={{ fontSize: 12.5, color: C.dim, marginTop: 5 }}>
-          {total > 0 ? `${total} ${total === 1 ? "call" : "calls"} to make. Log each outcome with one tap — it sets the next action automatically.` : "No calls scheduled. Pick from the ready leads below, or schedule follow-ups from a company card."}
+          {total > 0 ? `${total} ${total === 1 ? "call" : "calls"} to make. Log each outcome with one tap - it sets the next action automatically.` : "No calls scheduled. Pick from the ready leads below, or schedule follow-ups from a company card."}
         </div>
         <button onClick={runTriage} disabled={triBusy} style={{ marginTop: 12, background: C.dark, color: C.cream, border: "none", borderRadius: 2, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
           {triBusy ? <Spinner size={13} /> : <Icon name="spark" size={13} color={C.accent} />} {triBusy ? "Prioritising…" : "Prioritise today (agent)"}
@@ -2927,11 +2925,11 @@ function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze,
         </div>
       )}
       {triage && triage.length === 0 && !triBusy && (
-        <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 18 }}>Nothing to prioritise — no due or ready leads.</div>
+        <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 18 }}>Nothing to prioritise - no due or ready leads.</div>
       )}
       <Group title="Overdue" color={C.red} items={overdue} badge={(c) => { const d = Math.round((new Date(today) - new Date(c.next_action_at)) / 864e5); return d === 1 ? "1 day late" : d + " days late"; }} />
       <Group title="Due today" color={C.accent} items={dueToday} />
-      <Group title="Ready to call — no date set" color={C.dim2} items={ready} />
+      <Group title="Ready to call - no date set" color={C.dim2} items={ready} />
       {total === 0 && ready.length === 0 && (
         <div style={{ textAlign: "center", padding: 48, color: C.dim2, fontSize: 13 }}>Nothing in the queue. Schedule a next action on a company to see it here.</div>
       )}
@@ -2974,7 +2972,7 @@ function HotLeads({ projects, companies, onOpen, flash }) {
           <Icon name="spark" size={20} color={C.accent} />
           <h2 style={{ margin: 0, fontSize: 23, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Hot Leads</h2>
         </div>
-        <div style={{ fontSize: 12.5, color: C.dim, marginTop: 5 }}>Companies confirmed to run on AWS — warmest at the top. {totalHot} total.</div>
+        <div style={{ fontSize: 12.5, color: C.dim, marginTop: 5 }}>Companies confirmed to run on AWS - warmest at the top. {totalHot} total.</div>
       </div>
       {groups.map(({ project, list }) => {
         const byId = Object.fromEntries(list.map((c) => [c.id, c]));
@@ -3006,7 +3004,7 @@ function HotLeads({ projects, companies, onOpen, flash }) {
             </div>
           )}
           {list.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: C.dim2, padding: "8px 0 4px" }}>No AWS-confirmed companies yet — run the AWS check on the project from the Dashboard.</div>
+            <div style={{ fontSize: 12.5, color: C.dim2, padding: "8px 0 4px" }}>No AWS-confirmed companies yet - run the AWS check on the project from the Dashboard.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {list.map((c) => (
@@ -3046,7 +3044,7 @@ function FundingPanel({ company, fundings, onAddFunding, onUpdateFunding }) {
   const sel = { background: C.panel2, border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "4px 7px", fontSize: 11, cursor: "pointer", fontFamily: FONT_BODY, outline: "none" };
   const addFromRec = (key) => {
     const p = FUNDING_PROGRAMS[key];
-    onAddFunding({ project_id: company.project_id, company_id: company.id, program: key, audience: "customer", funding_type: p.type, amount: estimateFunding(key, company.opp_value) || null, currency: "USD", stage: "Created", status: "Draft", phase: key === "MAP" ? "Assess" : null, title: company.name + " — " + key });
+    onAddFunding({ project_id: company.project_id, company_id: company.id, program: key, audience: "customer", funding_type: p.type, amount: estimateFunding(key, company.opp_value) || null, currency: "USD", stage: "Created", status: "Draft", phase: key === "MAP" ? "Assess" : null, title: company.name + " - " + key });
   };
   return (
     <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
@@ -3079,7 +3077,7 @@ function FundingPanel({ company, fundings, onAddFunding, onUpdateFunding }) {
             {mine.map((f) => (
               <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <Pill color={C.accent}>{f.program}</Pill>
-                <span style={{ fontSize: 12, color: C.text, fontFamily: FONT_MONO }}>{f.amount ? fmtMoney(f.amount, f.currency) : "—"}</span>
+                <span style={{ fontSize: 12, color: C.text, fontFamily: FONT_MONO }}>{f.amount ? fmtMoney(f.amount, f.currency) : "-"}</span>
                 <span style={{ fontSize: 11, color: C.dim2 }}>{f.funding_type}</span>
                 {f.program === "MAP" && (
                   <select value={f.phase || "Assess"} onChange={(e) => onUpdateFunding(f.id, { phase: e.target.value })} style={{ ...sel, color: C.green }} title="MAP phase">
@@ -3098,7 +3096,7 @@ function FundingPanel({ company, fundings, onAddFunding, onUpdateFunding }) {
           </div>
         </div>
       )}
-      <div style={{ fontSize: 11, color: C.dim2, marginTop: 12, lineHeight: 1.5 }}>Estimates are rough planning figures — AWS sets real eligibility &amp; amounts. These are funding options the customer can use along their AWS journey (assess → build → migrate); lead with them as value, not price.</div>
+      <div style={{ fontSize: 11, color: C.dim2, marginTop: 12, lineHeight: 1.5 }}>Estimates are rough planning figures - AWS sets real eligibility &amp; amounts. These are funding options the customer can use along their AWS journey (assess → build → migrate); lead with them as value, not price.</div>
     </div>
   );
 }
@@ -3114,10 +3112,10 @@ function FundingView({ project, companies, fundings, onAddFunding, onUpdateFundi
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${jc}`, borderRadius: 2, padding: "11px 13px", display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
         <Pill color={jc}>{f.program}</Pill>
         <div style={{ flex: 1, minWidth: 120 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{nameById[f.company_id] || f.title || "—"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{nameById[f.company_id] || f.title || "-"}</div>
           <div style={{ fontSize: 11, color: C.dim2 }}>{FUNDING_PROGRAMS[f.program]?.name || f.program} · {f.funding_type}</div>
         </div>
-        <span style={{ fontSize: 13, color: C.text, fontFamily: FONT_MONO, whiteSpace: "nowrap" }}>{f.amount ? fmtMoney(f.amount, f.currency) : "—"}</span>
+        <span style={{ fontSize: 13, color: C.text, fontFamily: FONT_MONO, whiteSpace: "nowrap" }}>{f.amount ? fmtMoney(f.amount, f.currency) : "-"}</span>
         {f.program === "MAP" && (
           <select value={f.phase || "Assess"} onChange={(e) => onUpdateFunding(f.id, { phase: e.target.value })} style={{ ...sel, color: C.green }} title="MAP phase">
             {MAP_PHASES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -3137,7 +3135,7 @@ function FundingView({ project, companies, fundings, onAddFunding, onUpdateFundi
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <Icon name="tag" size={20} color={C.accent} />
-          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Customer Funding — {project.name}</h2>
+          <h2 style={{ margin: 0, fontSize: 23, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Customer Funding - {project.name}</h2>
         </div>
         <div style={{ fontSize: 12.5, color: C.dim, marginTop: 5 }}>Every funding option your customers can tap, mapped to their AWS journey: assess → build &amp; prove → migrate &amp; modernize. Track on a company card, then drive each request through the AWS workflow here.</div>
       </div>
@@ -3205,7 +3203,7 @@ function ConversionInsights({ companies }) {
   const BOOKEDPLUS = new Set(["mote_bokat", "kvalificerad", "forslag", "vunnen"]);
   const groupBy = (key) => {
     const m = {};
-    companies.forEach((c) => { const k = (c[key] || "").trim() || "—"; (m[k] = m[k] || []).push(c); });
+    companies.forEach((c) => { const k = (c[key] || "").trim() || "-"; (m[k] = m[k] || []).push(c); });
     return Object.entries(m).map(([label, list]) => ({
       label, n: list.length,
       reached: list.filter((c) => PIPE.has(c.stage)).length,
@@ -3235,9 +3233,9 @@ function ConversionInsights({ companies }) {
     </div>
   );
   return (
-    <Section title="Conversion — targets → booked → won" icon="percent">
+    <Section title="Conversion - targets → booked → won" icon="percent">
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "16px 18px" }}>
-        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 14, lineHeight: 1.5 }}>Booked-rate per segment — counts read targets → booked → won. Double down on what converts. (Add SNI tagging on import to also break this down by industry code.)</div>
+        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 14, lineHeight: 1.5 }}>Booked-rate per segment - counts read targets → booked → won. Double down on what converts. (Add SNI tagging on import to also break this down by industry code.)</div>
         <Table rows={groupBy("source")} head="By source" />
         <Table rows={groupBy("tier")} head="By tier" />
       </div>
@@ -3270,12 +3268,12 @@ function PipelineValuePanel({ companies, fundings }) {
       </div>
       {fr.length > 0 && (
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <Card label={"Customer funding — cash"} value={fmtMoney(cash, "USD")} color={C.accent} />
-          <Card label={"Customer funding — credits"} value={fmtMoney(credits, "USD")} color={C.blue} />
+          <Card label={"Customer funding - cash"} value={fmtMoney(cash, "USD")} color={C.accent} />
+          <Card label={"Customer funding - credits"} value={fmtMoney(credits, "USD")} color={C.blue} />
           <div style={{ flex: 1, minWidth: 140 }} />
         </div>
       )}
-      <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 10, lineHeight: 1.5 }}>Deal value is your SEK pipeline; AWS funding (cash + credits, in USD) is the leverage stacked on top — active fund requests only. Set deal values and track funding on company cards.</div>
+      <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 10, lineHeight: 1.5 }}>Deal value is your SEK pipeline; AWS funding (cash + credits, in USD) is the leverage stacked on top - active fund requests only. Set deal values and track funding on company cards.</div>
     </Section>
   );
 }
@@ -3301,7 +3299,7 @@ function ActivityFeed({ companies, activities }) {
           <div key={a.id} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "10px 16px", borderBottom: i < feed.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <Pill color={typeColor[a.type] || C.dim}>{a.type}</Pill>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>{nameById[a.company_id] || "—"}</span>
+              <span style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>{nameById[a.company_id] || "-"}</span>
               <span style={{ fontSize: 12, color: C.dim }}> · {a.body}</span>
             </div>
             <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO, whiteSpace: "nowrap" }}>{rel(a.created_at)}</span>
@@ -3326,9 +3324,9 @@ function OrgSearchBar({ onLookup }) {
     setBusy(true); setMsg("");
     try {
       const r = await onLookup(q);
-      if (r?.status === "existing") setMsg(`Opening existing card — ${r.name}`);
+      if (r?.status === "existing") setMsg(`Opening existing card: ${r.name}`);
       else if (r?.status === "created") setMsg(`Added ${r.name} from SCB`);
-      else if (r?.status === "notfound") setMsg("No company found for that org number in the SCB registry.");
+      else if (r?.status === "notfound") setMsg("No company found for that organisation number in the SCB registry.");
     } catch (e) { setMsg("Lookup failed: " + (e?.message || e)); }
     finally { setBusy(false); }
   }
@@ -3341,7 +3339,7 @@ function OrgSearchBar({ onLookup }) {
           value={q}
           onChange={(e) => { setQ(e.target.value); setMsg(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") go(); }}
-          placeholder="Open a company by org number — e.g. 556012-5790"
+          placeholder="Open a company by organisation number, e.g. 556012-5790"
           inputMode="numeric"
           style={{ flex: 1, minWidth: 200, background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_MONO, outline: "none" }}
         />
@@ -3380,13 +3378,13 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const bookedThisMonth = activities.filter((a) => a.type === "Meeting" && isThisMonth(a.created_at)).length;
   const conv = calls.length ? Math.round((bookedNow.length / calls.length) * 100) : 0;
 
-  // --- AWS funding signals (the platform's edge) — computed from the loaded company set ---
+  // --- AWS funding signals (the platform's edge) - computed from the loaded company set ---
   const onAws = projCompanies.filter((c) => c.aws_detected || c.cloud_provider === "aws").length;
   const mapReady = projCompanies.filter((c) => ["azure", "gcp"].includes(String(c.cloud_provider || "").toLowerCase())).length;
   const band34 = projCompanies.filter((c) => Number(c.maturity_band) >= 3).length;
   const aiNative = projCompanies.filter((c) => c.ai_native).length;
   const hour = new Date().getHours();
-  const greeting = hour < 5 ? "Working late" : hour < 11 ? "God morgon" : hour < 17 ? "Good afternoon" : "God kväll";
+  const greeting = hour < 5 ? "Working late" : hour < 11 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   // samtal senaste 14 dagar
   const days = [];
@@ -3414,7 +3412,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 
   return (
     <div>
-      {/* welcome hero — greeting + the AWS signals that make this project worth working */}
+      {/* welcome hero - greeting + the AWS signals that make this project worth working */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
           {greeting}.
@@ -3422,11 +3420,11 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
         <div style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>
           {project.name} · {projCompanies.length} companies · {worklist.length > 0
             ? <><strong style={{ color: C.accent }}>{worklist.length}</strong> need follow-up today</>
-            : "no follow-ups due — pick a signal below"}
+            : "no follow-ups due. Pick a signal below"}
         </div>
       </div>
 
-      {/* SIGNALS IN FOCUS — the platform's edge, up top */}
+      {/* SIGNALS IN FOCUS - the platform's edge, up top */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
         <Metric label="On AWS" value={onAws} icon="spark" accent={C.accent} />
         <Metric label="MAP-ready" value={mapReady} icon="trend" accent={C.blue} />
@@ -3502,7 +3500,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
         </div>
       </Section>
 
-      <Section title={`Dashboard — ${project.name}`} icon="chart">
+      <Section title={`Dashboard - ${project.name}`} icon="chart">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Metric label="Leads" value={leads.length} icon="target" accent={C.blue} />
           <Metric label="Calls today" value={callsToday} icon="phone" accent={C.accent} />
@@ -3524,7 +3522,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
         </div>
       </Section>
 
-      <Section title="Calls per day — last 14 days" icon="trend">
+      <Section title="Calls per day - last 14 days" icon="trend">
         <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "18px 16px" }}>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 110 }}>
             {days.map((d, i) => (
@@ -3547,7 +3545,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 }
 
 /* ============================================================================
-   PIPELINE  —  två faser sida vid sida
+   PIPELINE  -  två faser sida vid sida
    ============================================================================ */
 function PipelineView({ project, companies, onOpen, onStage }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
@@ -3570,7 +3568,7 @@ function PipelineView({ project, companies, onOpen, onStage }) {
               </div>
             </div>
           ))}
-          {items.length === 0 && <div style={{ fontSize: 11.5, color: C.dim2, padding: "6px 2px" }}>—</div>}
+          {items.length === 0 && <div style={{ fontSize: 11.5, color: C.dim2, padding: "6px 2px" }}>-</div>}
         </div>
       </div>
     );
@@ -3581,7 +3579,7 @@ function PipelineView({ project, companies, onOpen, onStage }) {
         <div key={ph} style={{ marginBottom: 26 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
             <span style={{ width: 9, height: 9, borderRadius: 2, background: PHASES[ph].color }} />
-            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 400, letterSpacing: 0.5, color: C.text, fontFamily: FONT_DISPLAY }}>Phase {ph === "readiness" ? "1" : "2"} — {PHASES[ph].label}</h3>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 400, letterSpacing: 0.5, color: C.text, fontFamily: FONT_DISPLAY }}>Phase {ph === "readiness" ? "1" : "2"} - {PHASES[ph].label}</h3>
           </div>
           <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
             {PHASES[ph].stages.map((s) => <Column key={s.key} stage={s} />)}
@@ -3735,9 +3733,9 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
                   {c.tier && <Pill color={C.dim}>{c.tier}</Pill>}
                   {c.leadanalysis?.score != null && <Pill color={c.leadanalysis.score >= 70 ? C.green : c.leadanalysis.score >= 45 ? C.amber : C.dim2}>{c.leadanalysis.score}% fit</Pill>}
                   <CloudChip company={c} />
-                  {c.email_provider === "microsoft" && <Pill color={C.dim2}><span title="Microsoft 365 email — Microsoft-leaning stack">M365</span></Pill>}
+                  {c.email_provider === "microsoft" && <Pill color={C.dim2}><span title="Microsoft 365 email - Microsoft-leaning stack">M365</span></Pill>}
                   {c.email_provider === "google" && <Pill color={C.dim2}><span title="Google Workspace email">Google</span></Pill>}
-                  {c.enrichment?.domain_confidence === "low" && <Pill color={C.amber}><span title={"Auto-found website (low confidence)" + (c.enrichment.domain_evidence ? " — " + c.enrichment.domain_evidence : "") + ". Verify before relying on it."}>domain?</span></Pill>}
+                  {c.enrichment?.domain_confidence === "low" && <Pill color={C.amber}><span title={"Auto-found website (low confidence)" + (c.enrichment.domain_evidence ? " - " + c.enrichment.domain_evidence : "") + ". Verify before relying on it."}>domain?</span></Pill>}
                 </div>
                 <div style={{ fontSize: 12, color: C.dim }}>
                   {[c.industry, c.employees ? c.employees + " empl." : "", cc.length ? cc.length + " contacts" : "", c.opp_value ? fmtSEK(c.opp_value) : "", c.owner ? "@" + c.owner.split("@")[0] : ""].filter(Boolean).join(" · ")}
@@ -3802,7 +3800,7 @@ function companyToAceRow(c, contacts, partnerName) {
   const e = c.enrichment || {};
   let problem = (e.opportunity || e.aws_value || e.description || "").trim();
   if (problem.length < 20) {
-    problem = (problem + " — AWS modernization & cloud opportunity identified by " +
+    problem = (problem + " - AWS modernization & cloud opportunity identified by " +
       (partnerName || "partner") + ".").trim();
   }
   const aws = (c.techstack?.items || [])
@@ -3813,17 +3811,17 @@ function companyToAceRow(c, contacts, partnerName) {
     "Customer website": web,
     "Country": c.country || "Sweden",
     "Postal code": "",
-    "Industry vertical": "",   // pick-list — set in official ACE template
+    "Industry vertical": "",   // pick-list - set in official ACE template
     "Partner primary need from AWS": "Co-Sell",
     "Sales activities": c.next_action || "",
-    "Partner project title": (c.name ? c.name + " — " : "") + "AWS opportunity",
+    "Partner project title": (c.name ? c.name + " - " : "") + "AWS opportunity",
     "Customer business problem": problem,
     "Solution offered": "Other",
-    "Use case": "",            // pick-list — set in official ACE template
+    "Use case": "",            // pick-list - set in official ACE template
     "Estimated AWS monthly recurring revenue": "",
     "Target close date": aceTargetDate(),
     "Opportunity type": "Net New Business",
-    "Delivery model": "",      // pick-list — set in official ACE template
+    "Delivery model": "",      // pick-list - set in official ACE template
     "Is opportunity from marketing activity?": "No",
     "Primary contact first name": ct.first_name || "",
     "Primary contact last name": ct.last_name || "",
@@ -3884,22 +3882,22 @@ function SeSyncPanel() {
     const ort = ortFilter.split(",").map((s) => s.trim()).filter(Boolean);
     setBusy(true); stopRef.current = false;
     try {
-      // Phase 1 — stage the file to storage (one pass, no parsing)
-      setMsg("Staging — downloading and decompressing to storage (this is the slow part, ~1–2 min)…");
+      // Phase 1 - stage the file to storage (one pass, no parsing)
+      setMsg("Staging - downloading and decompressing to storage (this is the slow part, ~1-2 min)…");
       const staged = await seStage({ url: u });
       await poll();
-      if (!staged.done) { setMsg(`Staging stopped early at ${staged.parts} parts (compute limit). Tell me this number — we may need a plan bump for the full file.`); setBusy(false); return; }
+      if (!staged.done) { setMsg(`Staging stopped early at ${staged.parts} parts (compute limit). Tell me this number - we may need a plan bump for the full file.`); setBusy(false); return; }
       const parts = staged.parts || 0;
-      // Phase 2 — process each staged part (parse + filter + insert)
+      // Phase 2 - process each staged part (parse + filter + insert)
       const scope = (sni.length || ort.length) ? ` (filter: ${[sni.length ? "SNI " + sni.join("/") : "", ort.length ? ort.join("/") : ""].filter(Boolean).join(", ")})` : "";
       for (let p = 0; p < parts && !stopRef.current; p++) {
         const res = await seProcess({ part: p, truncate: p === 0, sni, ort });
-        setMsg(`Processing part ${p + 1}/${parts}${scope} — ${Number(res.total || 0).toLocaleString()} companies loaded${res.done ? " — done." : "…"}`);
+        setMsg(`Processing part ${p + 1}/${parts}${scope} - ${Number(res.total || 0).toLocaleString()} companies loaded${res.done ? " - done." : "…"}`);
         await poll();
         if (res.done) break;
         await new Promise((r) => setTimeout(r, 150));
       }
-      setMsg((m) => stopRef.current ? "Paused — processed parts are saved." : m);
+      setMsg((m) => stopRef.current ? "Paused - processed parts are saved." : m);
     } catch (e) { setMsg("Error: " + (e?.message || e)); }
     finally { setBusy(false); }
   }
@@ -3925,7 +3923,7 @@ function SeSyncPanel() {
           <input style={input} value={ortFilter} onChange={(e) => setOrtFilter(e.target.value)} placeholder="e.g. göteborg, stockholm" />
         </div>
       </div>
-      <div style={{ fontSize: 11, color: C.dim2, marginBottom: 8, lineHeight: 1.5 }}>Leave filters empty to load every real company (aktiebolag, bank/insurance, public sector). Fill them to load just a target slice — e.g. SNI <strong>68, 69</strong> for Alto or <strong>62, 58, 63, 29</strong> for Novalo.</div>
+      <div style={{ fontSize: 11, color: C.dim2, marginBottom: 8, lineHeight: 1.5 }}>Leave filters empty to load every real company (aktiebolag, bank/insurance, public sector). Fill them to load just a target slice - e.g. SNI <strong>68, 69</strong> for Alto or <strong>62, 58, 63, 29</strong> for Novalo.</div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Btn variant="dark" size="sm" onClick={runPeek} disabled={testing || busy}>{testing ? "Testing…" : "Test file"}</Btn>
         <Btn variant="primary" size="sm" onClick={runFull} disabled={busy || testing || !verified}>{busy ? "Loading…" : (loaded ? "Reload full registry" : "Load full registry")}</Btn>
@@ -3935,7 +3933,7 @@ function SeSyncPanel() {
           {st.status === "done" ? `✓ ${Number(loaded).toLocaleString()} companies loaded` : (st.status === "error" || st.status === "stage_error") ? `Error: ${st.message}` : (st.message ? st.message : (loaded ? `${Number(loaded).toLocaleString()} loaded` : "Not loaded yet"))}
         </span>}
       </div>
-      {!verified && !peekRes && <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 6 }}>Run "Test file" first — the load unlocks once the format is verified.</div>}
+      {!verified && !peekRes && <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 6 }}>Run "Test file" first - the load unlocks once the format is verified.</div>}
       {peekRes && (
         <div style={{ marginTop: 12, background: C.panel, border: `1px solid ${verified ? C.green : C.amber}55`, borderRadius: 3, padding: "11px 13px" }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: verified ? C.green : C.amber, marginBottom: 6 }}>
@@ -3974,7 +3972,7 @@ function SeSyncPanel() {
 }
 
 function RegistrySearch({ project, onImportRows, isAdmin }) {
-  const [country, setCountry] = useState("NO");
+  const [country, setCountry] = useState("SE");
   const [navn, setNavn] = useState("");
   const [nace, setNace] = useState("");
   const [komm, setKomm] = useState("");
@@ -4022,47 +4020,18 @@ function RegistrySearch({ project, onImportRows, isAdmin }) {
   const selCount = sel.size;
 
   return (
-    <Section title="Find companies — official registries (free)" icon="globe">
+    <Section title="Find companies in official registries" icon="globe">
       <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.55, marginBottom: 14 }}>
-        Pull prospects straight from official company registries — no account, no key, no cost. Norway (Brønnøysund) is live. Sweden is powered by SCB open data loaded into Alloy{isAdmin ? "" : " by an admin"}.
+        Pull prospects straight from the Swedish company registry, powered by SCB open data loaded into Alloy{isAdmin ? "" : " by an admin"}.
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
-        {[["NO", "🇳🇴 Norway"], ["SE", "🇸🇪 Sweden"]].map(([k, l]) => (
-          <button key={k} onClick={() => { setCountry(k); setRows(null); setErr(""); }} style={{
-            background: country === k ? C.ink : "transparent", color: country === k ? C.cream : C.dim,
-            border: `1px solid ${country === k ? C.ink : C.line2}`, borderRadius: 2, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY,
-          }}>{l}</button>
-        ))}
-      </div>
-
-      {isSE && isAdmin && <SeSyncPanel />}
+      {isAdmin && <SeSyncPanel />}
 
 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-        <div><label style={lbl}>Name contains</label><input style={{ ...input, width: "100%" }} value={navn} onChange={(e) => setNavn(e.target.value)} placeholder={isSE ? "e.g. logistik" : "e.g. logistikk"} /></div>
-        <div><label style={lbl}>{isSE ? "SNI industry code" : "NACE industry code"}</label><input style={{ ...input, width: "100%" }} value={nace} onChange={(e) => setNace(e.target.value)} placeholder={isSE ? "e.g. 62 (IT)" : "e.g. 62 (IT services)"} /></div>
-        <div><label style={lbl}>{isSE ? "City / municipality" : "Municipality no."}</label><input style={{ ...input, width: "100%" }} value={komm} onChange={(e) => setKomm(e.target.value)} placeholder={isSE ? "e.g. Göteborg" : "e.g. 0301 (Oslo)"} /></div>
-        {isSE && (
-          <div><label style={lbl}>County / Län</label><input style={{ ...input, width: "100%" }} value={lan} onChange={(e) => setLan(e.target.value)} placeholder="e.g. Västra Götaland" /></div>
-        )}
-        {!isSE && (
-          <div><label style={lbl}>Min employees</label><input type="number" min="0" style={{ ...input, width: "100%" }} value={minAns} onChange={(e) => setMinAns(e.target.value)} placeholder="e.g. 10" /></div>
-        )}
-        {!isSE && (
-          <div><label style={lbl}>Max employees</label><input type="number" min="0" style={{ ...input, width: "100%" }} value={maxAns} onChange={(e) => setMaxAns(e.target.value)} placeholder="e.g. 200" /></div>
-        )}
-        {!isSE && (
-          <div><label style={lbl}>Company type</label><select style={{ ...input, width: "100%" }} value={orgform} onChange={(e) => setOrgform(e.target.value)}>
-            <option value="">Any type</option>
-            <option value="AS">AS — Aksjeselskap</option>
-            <option value="ASA">ASA — Allmennaksjeselskap</option>
-            <option value="ENK">ENK — Enkeltpersonforetak</option>
-            <option value="ANS">ANS — Ansvarlig selskap</option>
-            <option value="DA">DA — Delt ansvar</option>
-            <option value="NUF">NUF — Utenlandsk foretak</option>
-            <option value="SA">SA — Samvirkeforetak</option>
-          </select></div>
-        )}
+        <div><label style={lbl}>Name contains</label><input style={{ ...input, width: "100%" }} value={navn} onChange={(e) => setNavn(e.target.value)} placeholder="e.g. logistik" /></div>
+        <div><label style={lbl}>SNI industry code</label><input style={{ ...input, width: "100%" }} value={nace} onChange={(e) => setNace(e.target.value)} placeholder="e.g. 62 (IT)" /></div>
+        <div><label style={lbl}>City / municipality</label><input style={{ ...input, width: "100%" }} value={komm} onChange={(e) => setKomm(e.target.value)} placeholder="e.g. Göteborg" /></div>
+        <div><label style={lbl}>County</label><input style={{ ...input, width: "100%" }} value={lan} onChange={(e) => setLan(e.target.value)} placeholder="e.g. Västra Götaland" /></div>
       </div>
       <Btn variant="primary" onClick={() => run(0)} disabled={busy}>{busy && page === 0 ? "Searching…" : "Search registry"}</Btn>
 
@@ -4122,7 +4091,7 @@ function RegistrySearch({ project, onImportRows, isAdmin }) {
   );
 }
 
-// AWS Discovery — runs the discovery agent and reviews its candidate queue.
+// AWS Discovery - runs the discovery agent and reviews its candidate queue.
 // Agent finds Swedish companies on AWS (edge fn) -> candidates land in a review
 // queue -> approve here inserts real companies; reject discards. Approve/list/reject
 // go through the aws-discovery-approve edge fn; running an angle hits aws-discovery.
@@ -4149,7 +4118,7 @@ function cloudBadge(c) {
     return { col, txt: (CLOUD_LABEL[det] || det) + " · " + conf };
   }
   if (det && det !== "unverified" && det !== "none") {
-    // verifier found a DIFFERENT cloud than searched — still a real cloud signal
+    // verifier found a DIFFERENT cloud than searched - still a real cloud signal
     return { col: C.amber, txt: (CLOUD_LABEL[det] || det) + " (detected)" };
   }
   return { col: C.dim2, txt: (CLOUD_LABEL[target] || target) + " · asserted" };
@@ -4197,7 +4166,7 @@ function AwsDiscoveryView({ projectId, flash, onAfterApprove }) {
     setActing(true);
     try {
       const r = await agentEdge("aws-discovery-approve", { action, ids, project_id: projectId });
-      if (action === "approve") flash(`Approved ${r.approved || 0} — added to Companies`);
+      if (action === "approve") flash(`Approved ${r.approved || 0} - added to Companies`);
       else flash(`Rejected ${r.rejected || ids.length}`);
       setSel(new Set());
       await loadPending();
@@ -4212,7 +4181,7 @@ function AwsDiscoveryView({ projectId, flash, onAfterApprove }) {
   return (
     <div>
       <div style={cardSt}>
-        <div style={lbl}>Run discovery — find Swedish companies on a cloud</div>
+        <div style={lbl}>Run discovery - find Swedish companies on a cloud</div>
         <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 14, lineHeight: 1.5, maxWidth: 660 }}>
           Pick a cloud and an angle. The agent web-searches for Swedish users of that cloud, verifies each domain
           (ASN + IP ranges), dedups against your CRM, and queues fresh finds below. GCP/Azure finds are migration
@@ -4270,13 +4239,13 @@ function AwsDiscoveryView({ projectId, flash, onAfterApprove }) {
                       {c.name}{c.city ? <span style={{ color: C.dim2, fontWeight: 400 }}> · {c.city}</span> : ""}
                       {c.industry ? <div style={{ color: C.dim2, fontWeight: 400, fontSize: 11 }}>{c.industry}</div> : null}
                     </td>
-                    <td style={{ padding: "8px", color: C.dim }}>{c.domain || "—"}</td>
+                    <td style={{ padding: "8px", color: C.dim }}>{c.domain || "-"}</td>
                     <td style={{ padding: "8px" }}>
                       <span style={{ color: b.col, fontWeight: 600, fontSize: 11 }}>{b.txt}</span>
                       {Array.isArray(c.aws_services) && c.aws_services.length ? <div style={{ color: C.dim2, fontSize: 10 }}>{c.aws_services.join(", ")}</div> : null}
                     </td>
                     <td style={{ padding: "8px", color: C.dim, maxWidth: 320 }}>
-                      <div style={{ lineHeight: 1.4 }}>{c.discovery_evidence || "—"}</div>
+                      <div style={{ lineHeight: 1.4 }}>{c.discovery_evidence || "-"}</div>
                       {Array.isArray(c.source_urls) && c.source_urls.length ? (
                         <a href={c.source_urls[0]} target="_blank" rel="noreferrer" style={{ color: C.accent, fontSize: 11 }}>source ↗</a>
                       ) : null}
@@ -4299,7 +4268,7 @@ function ImportView({ project, companies, contacts, onImport, onImportRows, flas
     if (!list.length) return;
     const csv = buildAceCsv(list, contacts, project.partner?.name);
     downloadCsv("ace-" + project.id + "-" + tag + ".csv", csv);
-    flash && flash("ACE CSV exported — " + list.length + " opportunities");
+    flash && flash("ACE CSV exported - " + list.length + " opportunities");
   }
   return ImportViewBody({ project, onImport, onImportRows, aceReady, acePipe, exportAce, isAdmin });
 }
@@ -4370,13 +4339,13 @@ function LoginScreen({ onAuthed }) {
     try {
       const s = signup ? await Auth.signUpPassword(email.trim(), password) : await Auth.signInPassword(email.trim(), password);
       if (s) { await Auth.store(s); onAuthed(s); }
-      else setInfo("Account created — check your email to confirm, then sign in.");
+      else setInfo("Account created - check your email to confirm, then sign in.");
     } catch (e) { setErr(e.message || "Sign-in failed."); }
     finally { setBusy(false); }
   }
   async function doMagic() {
     setErr(""); setInfo(""); setBusy(true);
-    try { await Auth.sendMagicLink(email.trim()); setInfo("Link sent — check your email and click to sign in."); }
+    try { await Auth.sendMagicLink(email.trim()); setInfo("Link sent - check your email and click to sign in."); }
     catch (e) { setErr(e.message || "Couldn't send link."); }
     finally { setBusy(false); }
   }
@@ -4445,7 +4414,7 @@ function PasswordModal({ session, onClose, flash }) {
     setBusy(true);
     try {
       await Auth.updatePassword(session.access_token, pw);
-      flash("Password updated — use it next time you sign in");
+      flash("Password updated - use it next time you sign in");
       onClose();
     } catch (e) { setErr(e?.message || "Couldn't update password."); }
     finally { setBusy(false); }
@@ -4458,7 +4427,7 @@ function PasswordModal({ session, onClose, flash }) {
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Set a new password</h2>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
         </div>
-        <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 18 }}>Signed in as {session.email || "your account"}. Choose a new password — it replaces the old one immediately.</div>
+        <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 18 }}>Signed in as {session.email || "your account"}. Choose a new password - it replaces the old one immediately.</div>
         <input style={field} type="password" placeholder="New password (min 8 chars)" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
         <input style={field} type="password" placeholder="Repeat new password" value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") save(); }} />
         {err && <div style={{ fontSize: 12.5, color: C.red, marginBottom: 10 }}>{err}</div>}
@@ -4495,12 +4464,12 @@ function PartnerEditor({ project, onClose, onSave }) {
           "DOMAIN/LINKS: " + (domain || "") + "\n\n" +
           "CURRENT BRIEF:\n" + (brief || "(empty)") + "\n\n" +
           "NEW RAW NOTES / NEWS (Slack, email, scribbles):\n" + (rawNotes || "(none)") + "\n\n" +
-          "Task: merge the current brief with the new notes into ONE updated, tight brief in English. Keep still-valid facts, weave in the new info, remove duplicates and fluff. Cover: what the partner sells & delivers, packages/Fast Tracks, AWS tier & competencies/status, funding, edge/ICP, sales angle, and what they should NOT pitch. Max ~180 words. Respond with ONLY the brief text — no heading, no explanation.",
+          "Task: merge the current brief with the new notes into ONE updated, tight brief in English. Keep still-valid facts, weave in the new info, remove duplicates and fluff. Cover: what the partner sells & delivers, packages/Fast Tracks, AWS tier & competencies/status, funding, edge/ICP, sales angle, and what they should NOT pitch. Max ~180 words. Respond with ONLY the brief text - no heading, no explanation.",
         maxTokens: 1200,
       });
       const clean = (text || "").trim();
       if (clean) { setBrief(clean); setRawNotes(""); }
-      else setAiErr("Empty response — try again.");
+      else setAiErr("Empty response - try again.");
     } catch (e) { setAiErr(e?.message || "AI request failed."); }
     finally { setAiBusy(false); }
   }
@@ -4510,10 +4479,10 @@ function PartnerEditor({ project, onClose, onSave }) {
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(20,19,16,0.55)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "6vh 20px", overflowY: "auto" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 600, background: C.cream, border: `1px solid ${C.line}`, borderRadius: 4, padding: 24, fontFamily: FONT_BODY }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Partner context — {project.name}</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Partner context - {project.name}</h2>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
         </div>
-        <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 18, lineHeight: 1.5 }}>Fed into the lead analysis as "PARTNER (who we sell for)". Describe what the partner sells, AWS status, edge/ICP, sales angle — and what they should NOT be positioned on. The AI also web-searches the domain/links.</div>
+        <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 18, lineHeight: 1.5 }}>Fed into the lead analysis as "PARTNER (who we sell for)". Describe what the partner sells, AWS status, edge/ICP, sales angle - and what they should NOT be positioned on. The AI also web-searches the domain/links.</div>
 
         <label style={label}>Partner name</label>
         <input style={{ ...field, marginBottom: 14 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Alto" />
@@ -4522,14 +4491,14 @@ function PartnerEditor({ project, onClose, onSave }) {
         <input style={{ ...field, marginBottom: 14 }} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="e.g. alto.se, quattro-by-alto.netlify.app" />
 
         <label style={label}>Raw notes / news (optional)</label>
-        <textarea style={{ ...field, minHeight: 90, resize: "vertical", lineHeight: 1.5, marginBottom: 8 }} value={rawNotes} onChange={(e) => setRawNotes(e.target.value)} placeholder="Paste a Slack thread, an email or rough notes — Claude distills it into the brief below." />
+        <textarea style={{ ...field, minHeight: 90, resize: "vertical", lineHeight: 1.5, marginBottom: 8 }} value={rawNotes} onChange={(e) => setRawNotes(e.target.value)} placeholder="Paste a Slack thread, an email or rough notes - Claude distills it into the brief below." />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <Btn variant="ghost" size="sm" onClick={aiRefine} disabled={aiBusy || (!rawNotes.trim() && !brief.trim())}>{aiBusy ? "Structuring…" : "Structure into brief with AI"}</Btn>
           {aiBusy && <Spinner size={14} />}
           {aiErr && <span style={{ fontSize: 12, color: C.red }}>{aiErr}</span>}
         </div>
 
-        <label style={label}>Brief — what the partner sells & delivers</label>
+        <label style={label}>Brief - what the partner sells & delivers</label>
         <textarea style={{ ...field, minHeight: 220, resize: "vertical", lineHeight: 1.55 }} value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="What they do, packages/Fast Tracks, AWS tier & competencies, edge/ICP, sales angle, and what they should NOT pitch…" />
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>
@@ -4570,7 +4539,7 @@ function AccessPanel({ projects, onClose, flash }) {
     const em = email.trim(); if (!em) return; setBusy(true);
     try {
       const uid = await db.userIdByEmail(em);
-      if (!uid) { flash("No account with that email yet — send them an invite link instead."); return; }
+      if (!uid) { flash("No account with that email yet - send them an invite link instead."); return; }
       await db.addMember(pid, uid, em, role); setEmail(""); await load(); flash("Added " + em + " to " + projName(pid) + " as " + role);
     } catch (e) { flash("Couldn't assign: " + (e?.message || e)); } finally { setBusy(false); }
   }
@@ -4600,10 +4569,10 @@ function AccessPanel({ projects, onClose, flash }) {
 
         <label style={lbl}>Role</label>
         <select value={role} onChange={(e) => { setRole(e.target.value); setLink(""); }} style={{ ...field, marginBottom: 6 }}>
-          <option value="member">Member — full operator access (your team)</option>
-          <option value="stakeholder">Stakeholder — read-only curated portal (Novalo / Alto)</option>
+          <option value="member">Member - full operator access (your team)</option>
+          <option value="stakeholder">Stakeholder - read-only curated portal (Novalo / Alto)</option>
         </select>
-        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 18 }}>{role === "stakeholder" ? "Stakeholders see only qualified opportunities, meetings and funding — contacts and notes are hidden." : "Members work the full CRM for this project."}</div>
+        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 18 }}>{role === "stakeholder" ? "Stakeholders see only qualified opportunities, meetings and funding - contacts and notes are hidden." : "Members work the full CRM for this project."}</div>
 
         <label style={lbl}>Members</label>
         <div style={{ marginBottom: 8 }}>
@@ -4667,7 +4636,7 @@ function PartnerPortal({ project, onSignOut }) {
   const partnerName = project.partner?.name || project.name;
   const sectionH = { margin: "0 0 12px", fontSize: 12, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: C.dim, fontFamily: FONT_BODY };
   const fundingByCompany = {};
-  funding.forEach((f) => { const k = f.company || "—"; (fundingByCompany[k] = fundingByCompany[k] || []).push(f); });
+  funding.forEach((f) => { const k = f.company || "-"; (fundingByCompany[k] = fundingByCompany[k] || []).push(f); });
   const list = opps || [];
   const isAws = (o) => o.aws_detected || o.cloud_provider === "aws";
   const awsList = list.filter(isAws);
@@ -4679,11 +4648,11 @@ function PartnerPortal({ project, onSignOut }) {
   const won = list.filter((o) => o.stage === "vunnen").length;
   const actions = [];
   list.forEach((o) => {
-    if (o.stage === "mote_bokat") actions.push({ co: o.name, tag: "Meeting", detail: o.meeting_date ? `Meeting booked for ${o.meeting_date} — join to support the technical conversation.` : "Meeting booked — join to support the technical conversation." });
-    else if (o.stage === "forslag") actions.push({ co: o.name, tag: "Proposal", detail: "Proposal out — your technical sign-off or a customer quote may be needed." });
+    if (o.stage === "mote_bokat") actions.push({ co: o.name, tag: "Meeting", detail: o.meeting_date ? `Meeting booked for ${o.meeting_date} - join to support the technical conversation.` : "Meeting booked - join to support the technical conversation." });
+    else if (o.stage === "forslag") actions.push({ co: o.name, tag: "Proposal", detail: "Proposal out - your technical sign-off or a customer quote may be needed." });
   });
   funding.forEach((f) => {
-    actions.push({ co: f.company || partnerName, tag: f.program + (f.program === "MAP" && f.phase ? " · " + f.phase : ""), detail: `AWS funding ${f.stage || "in progress"}${f.status ? " · " + f.status : ""} — confirm eligibility / paperwork on your side.` });
+    actions.push({ co: f.company || partnerName, tag: f.program + (f.program === "MAP" && f.phase ? " · " + f.phase : ""), detail: `AWS funding ${f.stage || "in progress"}${f.status ? " · " + f.status : ""} - confirm eligibility / paperwork on your side.` });
   });
   const topActions = actions.slice(0, 8);
 
@@ -4726,7 +4695,7 @@ function PartnerPortal({ project, onSignOut }) {
         {cs.length > 0 && (
           <div style={{ fontSize: 12, color: C.dim, marginBottom: 10 }}>
             <span style={{ fontWeight: 600 }}>Decision-makers: </span>
-            {cs.slice(0, 6).map((c, i) => <span key={i}>{c.name}{c.title ? ` — ${c.title}` : ""}{i < Math.min(cs.length, 6) - 1 ? " · " : ""}</span>)}
+            {cs.slice(0, 6).map((c, i) => <span key={i}>{c.name}{c.title ? ` - ${c.title}` : ""}{i < Math.min(cs.length, 6) - 1 ? " · " : ""}</span>)}
             {cs.length > 6 ? ` +${cs.length - 6}` : ""}
           </div>
         )}
@@ -4749,7 +4718,7 @@ function PartnerPortal({ project, onSignOut }) {
           <div style={{ width: 1, height: 22, background: C.line }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{partnerName}</div>
-            <div style={{ fontSize: 11, color: C.dim2 }}>AWS pipeline — engineered by Forj</div>
+            <div style={{ fontSize: 11, color: C.dim2 }}>AWS pipeline - engineered by Forj</div>
           </div>
           <button onClick={onSignOut} style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "7px 13px", fontSize: 12, cursor: "pointer", fontFamily: FONT_BODY }}>Sign out</button>
         </div>
@@ -4761,7 +4730,7 @@ function PartnerPortal({ project, onSignOut }) {
         ) : (
           <>
             <h1 style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>Your AWS pipeline</h1>
-            <div style={{ fontSize: 13.5, color: C.dim, marginBottom: 24, lineHeight: 1.5, maxWidth: 620 }}>A live, curated view of the accounts, booked meetings and AWS funding Forj is building for {partnerName} — refreshed continuously as the work moves.</div>
+            <div style={{ fontSize: 13.5, color: C.dim, marginBottom: 24, lineHeight: 1.5, maxWidth: 620 }}>A live, curated view of the accounts, booked meetings and AWS funding Forj is building for {partnerName} - refreshed continuously as the work moves.</div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
               <Kpi label="On AWS" value={awsList.length} color={C.accent} />
@@ -4771,8 +4740,8 @@ function PartnerPortal({ project, onSignOut }) {
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 30 }}>
               <Kpi label="Pipeline value" value={fmtSEK(dealValue)} color={C.text} />
-              <Kpi label="AWS funding — cash" value={fmtMoney(cash, "USD")} color={C.accent} />
-              <Kpi label="AWS funding — credits" value={fmtMoney(credits, "USD")} color={C.blue} />
+              <Kpi label="AWS funding - cash" value={fmtMoney(cash, "USD")} color={C.accent} />
+              <Kpi label="AWS funding - credits" value={fmtMoney(credits, "USD")} color={C.blue} />
             </div>
 
             {topActions.length > 0 && (
@@ -4794,10 +4763,10 @@ function PartnerPortal({ project, onSignOut }) {
             <div style={{ marginBottom: 30 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
                 <h2 style={{ ...sectionH, margin: 0, color: C.accent }}>AWS Hit-list</h2>
-                <span style={{ fontSize: 12, color: C.dim2 }}>{awsList.length} AWS account{awsList.length === 1 ? "" : "s"} — your low-hanging fruit</span>
+                <span style={{ fontSize: 12, color: C.dim2 }}>{awsList.length} AWS account{awsList.length === 1 ? "" : "s"} - your low-hanging fruit</span>
               </div>
               {awsList.length === 0 ? (
-                <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 22, fontSize: 13, color: C.dim2 }}>No AWS-confirmed accounts yet. Forj is verifying infrastructure across the target list — accounts confirmed on AWS will surface here with their AWS marking.</div>
+                <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 22, fontSize: 13, color: C.dim2 }}>No AWS-confirmed accounts yet. Forj is verifying infrastructure across the target list - accounts confirmed on AWS will surface here with their AWS marking.</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {awsList.map((o) => <OppCard key={o.id} o={o} />)}
@@ -4809,7 +4778,7 @@ function PartnerPortal({ project, onSignOut }) {
               <div style={{ marginBottom: 30 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
                   <h2 style={{ ...sectionH, margin: 0 }}>Wider pipeline</h2>
-                  <span style={{ fontSize: 12, color: C.dim2 }}>GCP / Azure / other — migration & displacement targets</span>
+                  <span style={{ fontSize: 12, color: C.dim2 }}>GCP / Azure / other - migration & displacement targets</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {otherList.map((o) => <OppCard key={o.id} o={o} />)}
@@ -4835,7 +4804,7 @@ function PartnerPortal({ project, onSignOut }) {
               </div>
             )}
 
-            <div style={{ fontSize: 11, color: C.dim2, marginTop: 26, lineHeight: 1.5 }}>Curated view, prepared by Forj. Contact phone and email are managed privately by Forj. Funding figures are planning estimates — AWS determines final eligibility and amounts.</div>
+            <div style={{ fontSize: 11, color: C.dim2, marginTop: 26, lineHeight: 1.5 }}>Curated view, prepared by Forj. Contact phone and email are managed privately by Forj. Funding figures are planning estimates - AWS determines final eligibility and amounts.</div>
           </>
         )}
       </div>
@@ -5010,7 +4979,7 @@ export default function Forge() {
   // SCB registry, create a lead, open it, and auto-run cloud + funding scoring ($0, deterministic).
   const handleOrgLookup = useCallback(async (raw) => {
     const orgnr = normOrgnr(raw);
-    if (orgnr.length < 10) { flash("Enter a 10-digit Swedish org number"); return { status: "notfound" }; }
+    if (orgnr.length < 10) { flash("Enter a 10-digit Swedish organisation number"); return { status: "notfound" }; }
     // 1) Already in the platform? (match on normalized orgnr, any project, skip archived)
     const hit = companies.find((c) => c.list_tag !== "archived_shell" && normOrgnr(c.orgnr) === orgnr);
     if (hit) { setNav("dashboard"); setSelected(hit.id); return { status: "existing", name: hit.name, id: hit.id }; }
@@ -5027,7 +4996,7 @@ export default function Forge() {
       employees: null, revenue_ksek: null, ceo: "", company_type: r.company_type || "",
       source: "SCB lookup", list_tag: "", stage: "lead", score: null, tier: "",
       aws_detected: false, aws_signals: "", next_action: "", notes: "",
-      // industry_code is NOT a companies column — stash the SNI code in enrichment (jsonb) instead.
+      // industry_code is NOT a companies column - stash the SNI code in enrichment (jsonb) instead.
       enrichment: { description: "", lead_source: "Org-number search", opportunity: "", industry_code: r.industry_code || "" },
       techstack: null, techstack_at: null, leadanalysis: null, leadanalysis_at: null,
       created_at: ts, updated_at: ts, project_id: activeProject,
@@ -5035,7 +5004,7 @@ export default function Forge() {
     await db.bulkAddCompanies([rec]);
     setCompanies((p) => [rec, ...p]);
     setNav("dashboard"); setSelected(rec.id);
-    flash(`Added ${rec.name} from SCB — finding website + scoring…`);
+    flash(`Added ${rec.name} from SCB - finding website + scoring…`);
     // 4) Best-effort enrich in the background (find domain -> cloud -> funding). Never blocks the open.
     (async () => {
       try {
@@ -5046,7 +5015,7 @@ export default function Forge() {
       } catch {}
     })();
     return { status: "created", name: rec.name, id: rec.id };
-    // NOTE: updateCompany is intentionally NOT in deps — it's defined later in this component,
+    // NOTE: updateCompany is intentionally NOT in deps - it's defined later in this component,
     // and a dep-array reference would hit its temporal-dead-zone at render (white-screen crash).
     // It's only called inside the deferred IIFE above (runs on click, long after init) and is a
     // stable useCallback, so omitting it is safe.
@@ -5054,7 +5023,7 @@ export default function Forge() {
 
   const handleImport = useCallback(async (text) => {
     const { companies: newC, contacts: newCt } = parseToRecords(text, "import");
-    if (!newC.length) { flash("No companies found — check the CSV format"); return; }
+    if (!newC.length) { flash("No companies found - check the CSV format"); return; }
     newC.forEach((c) => (c.project_id = activeProject));
     const existing = new Set(companies.filter((c) => c.project_id === activeProject).map((c) => lc(c.name) + "|" + lc(c.orgnr)));
     const toAdd = newC.filter((c) => !existing.has(lc(c.name) + "|" + lc(c.orgnr)));
@@ -5123,7 +5092,7 @@ export default function Forge() {
   }, []);
   const runAwsBatch = useCallback(async () => {
     const targets = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell" && c.domain && !c.cloud_provider);
-    if (!targets.length) { flash("No companies to check — all already classified or lack a domain"); return; }
+    if (!targets.length) { flash("No companies to check - all already classified or lack a domain"); return; }
     setAwsBatch({ running: true, done: 0, total: targets.length, errors: 0, found: 0 });
     let done = 0, errors = 0, found = 0;
     for (const c of targets) {
@@ -5141,7 +5110,7 @@ export default function Forge() {
   }, [companies, activeProject, updateCompany, flash]);
   const runDomainBatch = useCallback(async () => {
     const targets = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell" && !c.domain);
-    if (!targets.length) { flash("No companies need a domain — all in this project already have one"); return; }
+    if (!targets.length) { flash("No companies need a domain - all in this project already have one"); return; }
     setDomainBatch({ running: true, done: 0, total: targets.length, found: 0, errors: 0 });
     let done = 0, found = 0, errors = 0;
     for (const c of targets) {
@@ -5186,7 +5155,7 @@ export default function Forge() {
   }, []);
   const logOutcome = useCallback(async (companyId, key, note) => {
     const o = OUTCOMES[key]; if (!o) return;
-    const act = { id: uid(), company_id: companyId, type: o.type || "Call", body: o.act + (note ? " — " + note : ""), created_at: now() };
+    const act = { id: uid(), company_id: companyId, type: o.type || "Call", body: o.act + (note ? " - " + note : ""), created_at: now() };
     await db.addActivity(act);
     setActivities((p) => [act, ...p]);
     const co = companies.find((c) => c.id === companyId);
@@ -5266,7 +5235,7 @@ export default function Forge() {
     );
   }
 
-  // Role still resolving for a non-admin — avoid flashing the operator UI
+  // Role still resolving for a non-admin - avoid flashing the operator UI
   if (!isAdmin && myRole === null) {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
@@ -5284,7 +5253,7 @@ export default function Forge() {
       </div>
     );
   }
-  // Stakeholders (Novalo / Alto) get a curated, read-only portal — no operator chrome
+  // Stakeholders (Novalo / Alto) get a curated, read-only portal - no operator chrome
   if (myRole === "stakeholder" && project) {
     return <PartnerPortal project={project} onSignOut={signOut} />;
   }
@@ -5327,7 +5296,7 @@ export default function Forge() {
             })}
           </div>
 
-          {/* nav — the ONLY scrollable zone; foot stays pinned + clickable on any screen height */}
+          {/* nav - the ONLY scrollable zone; foot stays pinned + clickable on any screen height */}
           <nav style={{ marginTop: 26, display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}>
             {NAV.map((n, i) => {
               const on = nav === n.key && !selectedCompany;
@@ -5339,7 +5308,7 @@ export default function Forge() {
             })}
           </nav>
 
-          {/* account (foot) — pinned, never scrolls off screen */}
+          {/* account (foot) - pinned, never scrolls off screen */}
           <div className="rail-foot" style={{ flexShrink: 0, marginTop: 14, paddingTop: 16, borderTop: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".16em", textTransform: "uppercase", color: C.darkLabel, wordBreak: "break-word" }}>{session?.email || "Signed in"}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
@@ -5361,7 +5330,7 @@ export default function Forge() {
             </div>
           </div>
 
-          {/* stat strip — lead-centric view */}
+          {/* stat strip - lead-centric view */}
           {!selectedCompany && nav === "list" && (
             <div style={{ background: C.dark, display: "flex", flexWrap: "wrap" }}>
               {(() => {
@@ -5421,7 +5390,7 @@ export default function Forge() {
             <label style={{ display: "flex", alignItems: "center", gap: 9, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "11px 14px", marginBottom: 14, cursor: "pointer" }}>
               <input type="checkbox" checked={autoEnrich} onChange={(e) => setAutoEnrich(e.target.checked)} style={{ width: 15, height: 15, accentColor: C.accent, cursor: "pointer" }} />
               <span style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>Auto-enrich new imports</span>
-              <span style={{ fontSize: 11.5, color: C.dim2 }}>— find website + AWS check in the background (first 25)</span>
+              <span style={{ fontSize: 11.5, color: C.dim2 }}>- find website + AWS check in the background (first 25)</span>
             </label>
             <ImportView project={project} companies={companies} contacts={contacts} onImport={handleImport} onImportRows={handleImportRows} flash={flash} isAdmin={isAdmin} />
           </>
