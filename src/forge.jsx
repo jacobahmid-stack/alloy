@@ -5017,7 +5017,11 @@ export default function Forge() {
       } catch {}
     })();
     return { status: "created", name: rec.name, id: rec.id };
-  }, [companies, activeProject, flash, updateCompany]);
+    // NOTE: updateCompany is intentionally NOT in deps — it's defined later in this component,
+    // and a dep-array reference would hit its temporal-dead-zone at render (white-screen crash).
+    // It's only called inside the deferred IIFE above (runs on click, long after init) and is a
+    // stable useCallback, so omitting it is safe.
+  }, [companies, activeProject, flash]);
 
   const handleImport = useCallback(async (text) => {
     const { companies: newC, contacts: newCt } = parseToRecords(text, "import");
