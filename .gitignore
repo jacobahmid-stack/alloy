@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# nested duplicate build snapshot of the whole app
+public/alloy/
+
+# logs & scratch dumps
+*.log
+nv_enrich.txt
+claude_code_read*
+cpfix.txt
+cpprobe2.txt
+task4_*.txt
+valresult_*.txt
+verify_deploys.txt
+
+# local env / secrets
+.env
+.env.*
+
+# OS / editor / tooling
+.DS_Store
+.claude/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# temp scan drivers / scratch
+_*.cjs
+_*.json
+par_innov*.txt
