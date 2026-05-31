@@ -3334,23 +3334,23 @@ function OrgSearchBar({ onLookup }) {
   }
 
   return (
-    <div style={{ background: C.dark, border: `1px solid ${C.darkRule}`, borderRadius: 3, padding: "16px 18px", marginBottom: 22 }}>
-      <div style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase", color: C.darkLabel, marginBottom: 9 }}>Open a company by org number</div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 3, padding: "12px 14px", marginBottom: 22 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <Icon name="search" size={15} color={C.dim2} />
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); setMsg(""); }}
           onKeyDown={(e) => { if (e.key === "Enter") go(); }}
-          placeholder="t.ex. 556012-5790"
+          placeholder="Open a company by org number — e.g. 556012-5790"
           inputMode="numeric"
-          style={{ flex: 1, minWidth: 200, background: "#1E1C18", border: `1px solid ${C.darkRule}`, borderRadius: 2, padding: "11px 13px", color: "#F1ECE3", fontSize: 14, fontFamily: FONT_MONO, outline: "none" }}
+          style={{ flex: 1, minWidth: 200, background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_MONO, outline: "none" }}
         />
         <Btn variant="dark" onClick={go} disabled={!valid || busy}>
-          {busy ? <Spinner color="#F1ECE3" /> : <Icon name="search" size={14} color="#F1ECE3" />} {busy ? "Looking up…" : "Open / create"}
+          {busy ? <Spinner color={C.cream} /> : <Icon name="search" size={14} color={C.cream} />} {busy ? "Looking up…" : "Open / create"}
         </Btn>
       </div>
-      <div style={{ fontSize: 11.5, color: msg.startsWith("Lookup failed") || msg.startsWith("No company") ? C.amber : C.darkMuted, marginTop: 8, minHeight: 16, lineHeight: 1.4 }}>
-        {msg || "Paste any Swedish org number — opens the existing customer card, or creates a new one from official SCB data and runs cloud + funding scoring."}
+      <div style={{ fontSize: 11.5, color: msg.startsWith("Lookup failed") || msg.startsWith("No company") ? C.red : C.dim2, marginTop: msg ? 7 : 0, maxHeight: msg ? 30 : 0, overflow: "hidden", transition: "all .15s", lineHeight: 1.4 }}>
+        {msg}
       </div>
     </div>
   );
@@ -3380,6 +3380,14 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const bookedThisMonth = activities.filter((a) => a.type === "Meeting" && isThisMonth(a.created_at)).length;
   const conv = calls.length ? Math.round((bookedNow.length / calls.length) * 100) : 0;
 
+  // --- AWS funding signals (the platform's edge) — computed from the loaded company set ---
+  const onAws = projCompanies.filter((c) => c.aws_detected || c.cloud_provider === "aws").length;
+  const mapReady = projCompanies.filter((c) => ["azure", "gcp"].includes(String(c.cloud_provider || "").toLowerCase())).length;
+  const band34 = projCompanies.filter((c) => Number(c.maturity_band) >= 3).length;
+  const aiNative = projCompanies.filter((c) => c.ai_native).length;
+  const hour = new Date().getHours();
+  const greeting = hour < 5 ? "Working late" : hour < 11 ? "God morgon" : hour < 17 ? "Good afternoon" : "God kväll";
+
   // samtal senaste 14 dagar
   const days = [];
   for (let i = 13; i >= 0; i--) {
@@ -3406,6 +3414,26 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 
   return (
     <div>
+      {/* welcome hero — greeting + the AWS signals that make this project worth working */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
+          {greeting}.
+        </div>
+        <div style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>
+          {project.name} · {projCompanies.length} companies · {worklist.length > 0
+            ? <><strong style={{ color: C.accent }}>{worklist.length}</strong> need follow-up today</>
+            : "no follow-ups due — pick a signal below"}
+        </div>
+      </div>
+
+      {/* SIGNALS IN FOCUS — the platform's edge, up top */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
+        <Metric label="On AWS" value={onAws} icon="spark" accent={C.accent} />
+        <Metric label="MAP-ready" value={mapReady} icon="trend" accent={C.blue} />
+        <Metric label="Modern data (Band 3-4)" value={band34} icon="chart" accent={C.teal} />
+        <Metric label="GenAI-native" value={aiNative} icon="spark" accent={C.violet} />
+      </div>
+
       {onOrgLookup && <OrgSearchBar onLookup={onOrgLookup} />}
       {worklist.length > 0 && (
         <Section title="Today & overdue" icon="target">
