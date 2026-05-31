@@ -3910,7 +3910,7 @@ function SeSyncPanel() {
     <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 4, padding: "14px 16px", marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: C.dim2, marginBottom: 8 }}>Admin · Sync Sweden registry</div>
       <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.55, marginBottom: 10 }}>
-        Loads the full SCB open-data company file (~1.8M orgs) into Alloy so Swedish search works like Norway. Open Bolagsverket's "Nedladdningsbara filer", copy the <strong>scb_bulkfil.zip</strong> link, paste it here. <strong>Test the file first</strong>, then load. Weekly refresh keeps it current.
+        Loads the full SCB open-data company file (~1.8M orgs) into Alloy so the full Swedish registry is searchable. Open Bolagsverket's "Nedladdningsbara filer", copy the <strong>scb_bulkfil.zip</strong> link, paste it here. <strong>Test the file first</strong>, then load. Weekly refresh keeps it current.
       </div>
       <input style={{ ...input, marginBottom: 8 }} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/scb_bulkfil.zip" />
       <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
