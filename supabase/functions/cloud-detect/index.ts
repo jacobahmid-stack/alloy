@@ -4,12 +4,19 @@
 //   HTML asset fingerprints. Returns a per-provider verdict so the discovery agent
 //   can surface AWS *and* GCP/Azure (migration prospects).
 //
-// Body: { domains: ["example.com", ...] }  (adhoc only — no DB writes here)
-// Returns: { report: [{ domain, provider, confidence, providers:{aws,gcp,azure,cloudflare,other},
-//                        asns:[...], services:[...], assets:[...], checked_hosts, ct_count }] }
+// Modes:
+//   { domains: ["example.com", ...] }   adhoc classify — read-only, no DB writes
+//   { run_batch:true, limit?, dry_run? } TIER-2 ESCALATION — pulls aws-detect's residue
+//       (cloud 'other'/'unknown'/'cloudflare', not yet deep-scanned), deep-scans, writes
+//       the upgrade, stamps enrichment.cloud_deep_at (idempotent). Driven by a slow cron.
+// Returns (adhoc): { report: [{ domain, provider, confidence, providers{}, asns, services, ... }] }
 //
 // provider = the single best guess (compute clouds win over CDN/proxy); 'cloudflare'
 // only when nothing else shows, since CF commonly fronts another origin.
+//
+// THE LADDER: aws-detect (fast, apex+IP-ranges, 5-min cron) sweeps all → catches the easy
+// majority. cloud-detect (deep: CT subdomains + ASN-over-DoH, slow) retries only what tier 1
+// couldn't crack. Two tiers, one self-healing pipeline.
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -217,12 +224,60 @@ async function probe(domain: string) {
   };
 }
 
+// --- Escalation batch: pull aws-detect's residue, deep-scan, write the upgrade. ---
+// Tier 2 of the cloud-detection ladder. Tier 1 = aws-detect (fast cron, apex+IP-ranges)
+// sweeps everything; this retries ONLY rows still 'other'/'unknown'/'cloudflare' and not
+// yet deep-scanned (enrichment.cloud_deep_at). Idempotent: every row is stamped, so a
+// genuinely hidden origin is scanned once then skipped. Small slices stay under the wall limit.
+async function runEscalationBatch(limit: number, dryRun: boolean) {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!url || !key) return { error: "service env not available" };
+  const H = { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" };
+  const n = Math.max(1, Math.min(limit || 3, 8)); // deep scans are slow; keep slices tiny
+
+  const cr = await fetch(`${url}/rest/v1/rpc/cloud_escalation_candidates`, {
+    method: "POST", headers: H, body: JSON.stringify({ p_limit: n }),
+  });
+  if (!cr.ok) return { error: "candidates rpc " + cr.status + ": " + (await cr.text()).slice(0, 160) };
+  const cands = (await cr.json()) as Array<{ id: string; domain: string }>;
+  if (dryRun) return { status: "dry_run", candidates: cands.length, sample: cands.slice(0, 8) };
+  if (!Array.isArray(cands) || !cands.length) return { status: "batch_done", processed: 0, upgraded: 0, note: "no residue left to escalate" };
+
+  await loadAws();
+  const results: any[] = [];
+  let upgraded = 0;
+  for (const c of cands) {
+    const domain = String(c.domain || "").toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    let provider = "unknown", confidence = "none";
+    try { const rep = await probe(domain); provider = rep.provider; confidence = rep.confidence; }
+    catch (e) { provider = "error"; confidence = String((e as Error).message || e).slice(0, 60); }
+    // ALWAYS apply (stamps the marker even on no-upgrade, so it isn't retried forever).
+    const ar = await fetch(`${url}/rest/v1/rpc/cloud_escalation_apply`, {
+      method: "POST", headers: H,
+      body: JSON.stringify({ p_id: c.id, p_provider: provider, p_confidence: confidence }),
+    });
+    const ok = ar.ok; if (!ok) await ar.text();
+    if (["aws", "azure", "gcp"].includes(provider)) upgraded++;
+    results.push({ id: c.id, domain, provider, confidence, written: ok });
+  }
+  return { status: "batch_done", processed: results.length, upgraded, results };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty ok */ }
+
+  // Tier-2 escalation batch (cron-driven). { run_batch:true, limit?, dry_run? }
+  if (body.run_batch === true) {
+    try { return json(await runEscalationBatch(Number(body.limit) || 3, body.dry_run === true)); }
+    catch (e) { return json({ error: String((e as Error).message || e) }, 500); }
+  }
+
+  // Adhoc classify (unchanged): { domains:[...] } — read-only, no DB writes.
   const domains: string[] = Array.isArray(body.domains)
     ? body.domains.map((d: any) => String(d).toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "")).filter(Boolean).slice(0, 20)
     : [];
