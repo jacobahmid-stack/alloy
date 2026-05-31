@@ -33,6 +33,18 @@ select cron.schedule('aws-discovery-morning', '13 6 * * *', $job$ select public.
 -- jobid 4 — Origin re-scan -> cloud-migration time-series, weekly Mon 03:00 UTC (report-only)
 select cron.schedule('origin-rescan-weekly', '0 3 * * 1', $job$ select schedule_origin_rescan(false, 20); $job$);
 
+-- jobid 5 — Funding-fit auto-score: keeps every active card scored as discovery adds companies.
+-- FREE (deterministic, no LLM). unscored_only selects only companies lacking a funding row.
+-- every 30 min
+select cron.schedule('funding-score-batch', '*/30 * * * *', $job$
+  select net.http_post(
+    url := 'https://nvjizahtcqgmfhiodtej.supabase.co/functions/v1/funding-eligibility',
+    body := jsonb_build_object('unscored_only', true, 'limit', 200),
+    headers := jsonb_build_object('Content-Type','application/json',
+      'Authorization','Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52aml6YWh0Y3FnbWZoaW9kdGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk0NDMsImV4cCI6MjA5NTU2NTQ0M30.G0gf0z0wg9RQqsyZcEBXPYJ1YVeTe_NOULtDAEI2xEA'),
+    timeout_milliseconds := 150000);
+$job$);
+
 -- NOTE: builtwith-enrich-batch + cloudcheck-batch run continuously every 5 min. If you are
 -- pausing enrichment (e.g. to control BuiltWith spend), unschedule jobid 1:
 --   select cron.unschedule('builtwith-enrich-batch');

@@ -1,12 +1,12 @@
 // funding-eligibility — deterministic AWS funding-program fit scoring, UPSTREAM of
 // Partner Central. Mirrors aws-origin-detect's contract:
 //   report-only by default; {apply:true} writes to funding_eligibility;
-//   modes {limit,offset} (DB rows) or {company_ids:[...]}.
+//   modes {limit,offset} (DB rows) or {company_ids:[...]} or {unscored_only:true}.
 //
 // DETERMINISTIC CORE: the rules below decide the track + score — never an LLM. An LLM
 // hallucinating a funding rule is a credibility-killer the first time an AE checks it.
 // claude-proxy is reserved for {render:true} to phrase ace_draft prose ONLY (not wired
-// yet — default render:false => $0 / no LLM call). It must never change track or number.
+// yet — default => $0 / no LLM call). It must never change track or number.
 //
 // Confidence inheritance: funding_confidence = min(detection_confidence, rule_confidence).
 // Reads companies + latest_origin_scan (P1 view) + funding_config (tunable heuristics).
@@ -66,13 +66,11 @@ function classify(company: any, scan: any, cfg: any) {
   let ruleConf = "low";
   let detConf = "med";
 
-  // --- detection confidence (how sure are we of the CURRENT cloud state) ---
   if (scan && scan.verdict === "aws") detConf = scan.confidence || "med";
-  else if (["azure", "gcp", "aws"].includes(cp)) detConf = "high"; // ASN-derived
+  else if (["azure", "gcp", "aws"].includes(cp)) detConf = "high";
   else if (["none", "other"].includes(cp)) detConf = "med";
-  else detConf = "low"; // cloudflare-unscanned / unknown / null
+  else detConf = "low";
 
-  // --- migration source + track (the deterministic decision) ---
   if (COMPETITOR_CLOUDS.includes(cp)) {
     migration_source = cp; primary = "MAP"; ruleConf = "high";
     rationale.push(`${cp.toUpperCase()} origin → AWS takeout = MAP`);
@@ -111,15 +109,12 @@ function classify(company: any, scan: any, cfg: any) {
     rationale.push(`${cp || "unknown"} cloud → possible on-prem/colo/other, MAP candidate (low conf)`);
   }
 
-  // --- spend band (size heuristic; config-driven) ---
   const empMap: [number | null, string][] = cfg.employee_band_map ||
     [[10, "<50k"], [50, "50-250k"], [250, "250k-1m"], [1000, "1m-10m"], [null, ">10m"]];
   const est_spend_band = spendBand(company.employees, empMap);
   if (est_spend_band) rationale.push(`~${company.employees ?? "?"} employees → est. spend ${est_spend_band}`);
 
-  // --- P4: sector AI-maturity (keyword-match industry → tier 0..3; from Strand reports). ---
-  // tier 1 (basic, e.g. retail/real-estate) = greenfield digitalization headroom;
-  // tier 3 (advanced, e.g. info/comms/finance) = sophisticated buyers. Both lift fit.
+  // P4: sector AI-maturity (keyword-match industry -> tier 0..3; from Strand reports).
   let sector_tier = 0; let sector_label: string | null = null;
   const indL = String(company.industry || "").toLowerCase();
   const sectorCfg = (cfg.sector_maturity && typeof cfg.sector_maturity === "object") ? cfg.sector_maturity : {};
@@ -133,26 +128,22 @@ function classify(company: any, scan: any, cfg: any) {
   }
   if (sector_label) rationale.push(`Sector: ${sector_label}`);
 
-  // MAP floor gate: below the ~$250K floor, POC is better-sized.
   if (primary === "MAP" && (est_spend_band === "<50k" || est_spend_band === "50-250k")) {
     if (!secondary.includes("POC")) secondary.unshift("POC");
-    rationale.push(`Below ~$${(cfg.map_floor_usd ?? 250000).toLocaleString?.() || cfg.map_floor_usd || 250000} MAP floor → POC better-sized (secondary)`);
+    rationale.push(`Below ~$${cfg.map_floor_usd || 250000} MAP floor → POC better-sized (secondary)`);
   }
   if (band !== null) rationale.push(`Maturity band ${band}${aiNative ? " (AI-native)" : ""}`);
 
-  // --- score (deterministic blend) ---
   const confidence = minConf(detConf, ruleConf);
   let score = (TRACK_STRENGTH[primary] || 0)
     + (BAND_SCORE[est_spend_band || ""] || 0)
     + (band !== null ? band * 4 : 0)
-    + (sector_tier * 2)            // P4 sector AI-maturity modifier
+    + (sector_tier * 2)
     + (CONF_PTS[confidence] || 0);
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   const needs_human_review = confidence === "low" || migration_source === "unknown" || primary === "NONE";
 
-  // ace_draft carries exactly what AWS's Funding Recommendation agent keys off:
-  // opportunity stage, expected revenue, customer use case (Appendix E).
   const ace_draft = {
     stage: "Qualified",
     expected_revenue_usd: BAND_MID[est_spend_band || ""] ?? null,
@@ -175,27 +166,44 @@ Deno.serve(async (req) => {
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   let body: any = {};
   try { body = await req.json(); } catch { /* empty ok */ }
-  const limit = Math.min(Math.max(Number(body.limit) || 30, 1), 100);
+  const limit = Math.min(Math.max(Number(body.limit) || 30, 1), 200);
   const offset = Number(body.offset) || 0;
-  const apply = body.apply === true;             // opt-in write to funding_eligibility
-  const render = body.render === true;            // reserved for LLM prose (not wired; $0)
+  const apply = body.apply === true;
+  const render = body.render === true;
   const ids = Array.isArray(body.company_ids) ? body.company_ids.filter((x: any) => typeof x === "string") : null;
+  // unscored_only: select ONLY active companies that have NO funding_eligibility row yet.
+  // Lets a cron keep every card scored as discovery adds new companies. Implies apply.
+  const unscoredOnly = body.unscored_only === true;
 
-  // config (tunable heuristics)
   const cfg: Record<string, any> = {};
   const { data: cfgRows } = await sb.from("funding_config").select("key, value");
   for (const r of (cfgRows || [])) cfg[r.key] = r.value;
 
-  // company selection
-  let q = sb.from("companies")
-    .select("id, name, domain, cloud_provider, aws_detected, maturity_band, ai_native, employees, revenue_ksek, industry")
-    .or("list_tag.is.null,list_tag.neq.archived_shell");
-  if (ids && ids.length) q = q.in("id", ids);
-  else q = q.not("domain", "is", null).order("id", { ascending: true }).range(offset, offset + limit - 1);
-  const { data: rows, error } = await q;
+  let rows: any[] | null = null;
+  let error: any = null;
+  if (unscoredOnly) {
+    // Fetch already-scored ids, then pick active+domain companies not in that set.
+    const scored = new Set<string>();
+    const { data: feRows } = await sb.from("funding_eligibility").select("company_id");
+    for (const r of (feRows || [])) scored.add(r.company_id);
+    const { data: comp, error: cErr } = await sb.from("companies")
+      .select("id, name, domain, cloud_provider, aws_detected, maturity_band, ai_native, employees, revenue_ksek, industry")
+      .or("list_tag.is.null,list_tag.neq.archived_shell")
+      .not("domain", "is", null).order("id", { ascending: true });
+    error = cErr;
+    rows = (comp || []).filter((c: any) => !scored.has(c.id)).slice(0, limit);
+  } else {
+    let q = sb.from("companies")
+      .select("id, name, domain, cloud_provider, aws_detected, maturity_band, ai_native, employees, revenue_ksek, industry")
+      .or("list_tag.is.null,list_tag.neq.archived_shell");
+    if (ids && ids.length) q = q.in("id", ids);
+    else q = q.not("domain", "is", null).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    const res = await q;
+    rows = res.data; error = res.error;
+  }
   if (error) return json({ error: error.message }, 500);
+  const writeRows = unscoredOnly || apply;  // unscored_only always persists
 
-  // latest origin scan per company (P1 view)
   const idList = (rows || []).map((r: any) => r.id);
   const scanMap = new Map<string, any>();
   if (idList.length) {
@@ -217,7 +225,7 @@ Deno.serve(async (req) => {
       migration_source: r.migration_source, est_spend_band: r.est_spend_band,
       rationale: r.rationale, ace_draft: r.ace_draft, needs_human_review: r.needs_human_review,
     };
-    if (apply) {
+    if (writeRows) {
       const { error: upErr } = await sb.from("funding_eligibility").upsert({
         company_id: row.id, primary_track: r.primary, secondary_tracks: r.secondary,
         fundability_score: r.score, confidence: r.confidence, migration_source: r.migration_source,
@@ -231,8 +239,8 @@ Deno.serve(async (req) => {
 
   return json({
     summary: {
-      mode: ids ? "company_ids" : "range", batch: (rows || []).length, offset,
-      apply, wrote, render_requested: render, render_note: render ? "LLM rendering not wired yet — deterministic rationale only ($0)" : undefined,
+      mode: unscoredOnly ? "unscored_only" : (ids ? "company_ids" : "range"), batch: (rows || []).length, offset,
+      apply: writeRows, wrote, render_requested: render,
       tracks,
     },
     report,

@@ -16,7 +16,7 @@ S3+CloudFront — **the Supabase backend stays put.** Do A first; it's the docum
 | Track | What | Effort | Why |
 |---|---|---|---|
 | **A. IAM + Partner Central** | Provision a dedicated IAM identity, set 3 secrets, migrate the Partner Central account to the AWS console | ~hours | Unblocks `pc-mcp` / the AWS funding agent. The whole "hand pre-qualified opportunities to AWS" thesis depends on this. |
-| **B. Re-host on AWS** | Move backend off Supabase → Aurora/RDS + Lambda + Cognito + S3/CloudFront | ~weeks | Own the stack end-to-end. Optional / later. Nothing is broken today. |
+| **B. Host frontend on AWS** | Deploy the static Alloy app (and **www.forj.se**) to **S3 + CloudFront**. **Backend stays on Supabase** — no DB/function migration. | ~days | Own the public web tier on AWS; the app still talks to the existing Supabase backend. |
 
 **Do NOT zip the working folder.** Use the GitHub repo (Jacob will add you as a collaborator).
 A naïve zip of the folder is **107 MB** of `node_modules` + a duplicate copy; the actual source is
@@ -109,6 +109,7 @@ are NOT in the repo. Earlier exposed AWS credentials are **BURNED** — never re
 | `cloudcheck-batch` | every 5 min | `aws-detect` (40/run) | free |
 | `aws-discovery-morning` | daily 06:13 UTC | `run_aws_discovery_daily()` | 💰 |
 | `origin-rescan-weekly` | Mon 03:00 UTC | `schedule_origin_rescan(false,20)` | free |
+| `funding-score-batch` | every 30 min | `funding-eligibility` (unscored_only) | free |
 
 ⚠️ **`builtwith-enrich-batch` spends BuiltWith credits every 5 minutes.** If you want to pause spend:
 `select cron.unschedule('builtwith-enrich-batch');`
@@ -150,38 +151,51 @@ permission sets — that is Anders's / Jacob's task. The repo only contains the 
 
 ---
 
-## 7. TRACK B — Re-host on AWS (the migration plan)
+## 7. TRACK B — Host the frontend on AWS (backend stays on Supabase)
 
-Map each Supabase piece to its AWS-native equivalent. Suggested target architecture:
+**Scope:** only the **static web tier** moves to AWS. The whole backend — Postgres, all 15 edge
+functions, pg_cron, storage — **stays on Supabase, unchanged.** The built app is self-contained: it
+has the Supabase URL + anon key baked in (`src/forge.jsx`, the `window.__ALLOY_SUPABASE__` fallback)
+and calls Supabase directly over HTTPS. So there is **no DB migration, no function porting, no auth
+migration.** Two separate sites move:
 
-| Today (Supabase) | AWS target | Migration notes |
+1. **Alloy app** (this repo, `npm run build` → `dist/`) → S3 + CloudFront.
+2. **www.forj.se** (the company marketing site — *separate codebase, not in this repo*) → its own
+   S3 + CloudFront.
+
+### 7.1 Alloy app → S3 + CloudFront
+| Piece | AWS service | Notes |
 |---|---|---|
-| Postgres | **Aurora PostgreSQL** (or RDS Postgres) | `pg_dump`/`pg_restore`. Keep `companies.id` as **text**. Needs `pg_net` replacement — see cron below. |
-| Edge Functions (Deno) | **Lambda** (Node 20 or Deno runtime via container) | Functions are portable Deno; biggest change is `Deno.env.get` → `process.env` and the `jsr:`/`npm:`/`https://` imports → bundled deps. `aws-origin-detect` was written to port cleanly to Lambda. |
-| Function gateway (`verify_jwt`) | **API Gateway** + Lambda authorizer, or **Cognito** | Replaces Supabase's anon-JWT gateway. |
-| Auth (Supabase Auth) | **Cognito** | App uses magic-link + password today (see `src/forge.jsx` LoginScreen). |
-| `pg_cron` + `pg_net` | **EventBridge Scheduler → Lambda** | The 4 jobs in §5 become 4 scheduled Lambdas. `pg_net.http_post` → direct fetch inside the Lambda. |
-| Supabase Storage (`registry` bucket) | **S3** | Used by `se-stage`/`se-process` for SCB part files. |
-| Static frontend | **S3 + CloudFront** | `npm run build` → upload `dist/`. Set `window.__ALLOY_*` to the new API base. |
-| Secrets | **Secrets Manager / SSM Parameter Store** | See `.env.example` for the full list. |
+| Static files | **S3** (private bucket) | `npm run build` → upload `dist/`. Keep the bucket private. |
+| CDN / TLS | **CloudFront** + **OAC** (Origin Access Control) | Serves the private S3 bucket; HTTPS + caching. |
+| Certificate | **ACM** in **us-east-1** (CloudFront requirement) | For the app domain (e.g. `app.forj.se`). |
+| DNS | **Route 53** (or current registrar) | Alias the subdomain to the CloudFront distribution. |
+| SPA fallback | CloudFront custom error responses | Map 403/404 → `/index.html` (200) so deep links / refresh work. |
 
-### Migration sequence (suggested, low-risk)
-1. **Stand up Aurora**, `pg_dump` the Supabase DB, restore. Verify row counts (§8). Recreate the
-   migrations in `supabase/migrations/` (they're idempotent) — or rely on the restore.
-2. **Port functions to Lambda** one at a time, starting with the free/independent ones
-   (`aws-detect`, `aws-origin-detect`, `cloud-detect`, `web-fetch`), then `claude-proxy`, then the
-   batch/agent functions. Keep the Supabase deployment live in parallel until each is verified.
-3. **Move the 4 cron jobs** to EventBridge Scheduler (one Lambda each).
-4. **Cut over auth** to Cognito and **frontend** to S3+CloudFront last.
-5. Decommission Supabase once parity is confirmed.
+### 7.2 www.forj.se → S3 + CloudFront
+Same pattern, separate bucket + distribution + ACM cert for `forj.se` + `www.forj.se`. Source isn't
+in this repo — get it from wherever the marketing site currently lives.
 
-### Gotchas the migration must respect
-- `companies.id` / all FKs are **TEXT**, not bigint.
-- The `se-*` functions and `registry-search` use a **direct Postgres connection** (`SUPABASE_DB_URL`),
-  not the REST API — they need the Aurora connection string.
-- `claude-proxy` is the single Anthropic egress point — keep it that way (cost control + the
-  task-bound system-prompt hardening live there).
-- BuiltWith and Anthropic are **external paid APIs** — budget and rate-limit them.
+### Deploy sequence (Alloy app)
+1. `npm install && npm run build` → produces `dist/`.
+2. Create a **private S3 bucket**; `aws s3 sync dist/ s3://<bucket>/ --delete`.
+3. Create a **CloudFront** distribution, S3 origin via **OAC**, default root object `index.html`,
+   add the 403/404 → `/index.html` error responses.
+4. Request an **ACM cert in us-east-1** for the app subdomain; attach to the distribution.
+5. Point **Route 53** at the distribution. Done — app loads from AWS, talks to Supabase.
+
+### Two cutover checks (both quick)
+- **Supabase Auth redirect URLs:** add the new AWS domain in Supabase → Authentication → URL
+  Configuration (**Site URL** + **Redirect URLs**), or magic-link / password-reset emails bounce to
+  the old origin. *This is the only Supabase-side change in the entire move.*
+- **CORS:** none needed — the edge functions already return `Access-Control-Allow-Origin: *`.
+
+### Out of scope (optional, much later)
+A full backend re-host (Postgres→Aurora, functions→Lambda, Auth→Cognito, cron→EventBridge) is a
+separate future project, **not part of this move** — the backend stays on Supabase. If it's ever
+revisited, the hard invariants to carry over: **`companies.id` and all FKs are TEXT, not bigint**;
+the `se-*` / `registry-search` functions use a direct Postgres connection (`SUPABASE_DB_URL`), not
+the REST API; and `claude-proxy` must stay the single Anthropic egress point.
 
 ---
 
