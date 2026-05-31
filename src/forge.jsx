@@ -3280,8 +3280,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           raw <cite> markup. researchLead/draftOutreach agents remain in code for reuse. */}
 
       {/* follow-up + activity - the next step lives with the call log so it's never empty dead-space */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Next step &amp; activity</div>
+      <Collapsible title="Next step &amp; activity" sectionKey="activity">
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           <input type="date" value={naDate} onChange={(e) => { setNaDate(e.target.value); onUpdate(company.id, { next_action_at: e.target.value || null }); }}
             style={{ background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "8px 10px", color: C.text, fontSize: 13, fontFamily: FONT_BODY, outline: "none" }} />
@@ -3324,11 +3323,10 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           </div>
         )}
         </div>{/* /activity sub-section (border-top divider) */}
-      </div>
+      </Collapsible>
 
       {/* opportunity & owner - deal admin, kept low on the card */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Opportunity &amp; owner</div>
+      <Collapsible title="Opportunity &amp; owner" sectionKey="opp">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px" }}>
             <label style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: C.dim2, marginBottom: 4, display: "block" }}>Est. value (SEK / year)</label>
@@ -3347,7 +3345,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>
         <input value={oppNote} onChange={(e) => setOppNote(e.target.value)} onBlur={() => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), opportunity: oppNote.trim() } })} placeholder="What's the deal? (AWS spend, migration scope, workloads, services…)"
           style={{ width: "100%", marginTop: 12, background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" }} />
-      </div>
+      </Collapsible>
 
       <FundingPanel company={company} fundings={fundings || []} onAddFunding={onAddFunding} onUpdateFunding={onUpdateFunding} />
     </div>
