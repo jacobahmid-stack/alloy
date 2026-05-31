@@ -2694,31 +2694,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             funding matching + the partner-portal export; re-surface once it's grounded. */}
       </div>
 
-      {/* uppföljning */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Follow-up</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-          <input type="date" value={naDate} onChange={(e) => { setNaDate(e.target.value); onUpdate(company.id, { next_action_at: e.target.value || null }); }}
-            style={{ background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "8px 10px", color: C.text, fontSize: 13, fontFamily: FONT_BODY, outline: "none" }} />
-          <button onClick={() => { const d = dayStr(0); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>Today</button>
-          <button onClick={() => { const d = dayStr(1); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>+1 day</button>
-          <button onClick={() => { const d = dayStr(7); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>+7 days</button>
-          {naDate && <button onClick={() => { setNaDate(""); onUpdate(company.id, { next_action_at: null }); }} style={{ ...qbtn, color: C.red }}>Clear</button>}
-        </div>
-        <input value={naText} onChange={(e) => setNaText(e.target.value)} onBlur={() => onUpdate(company.id, { next_action: naText.trim() })} placeholder="Next step — what needs to happen?"
-          style={{ width: "100%", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" }} />
-      </div>
-
-      {/* company intelligence (merged cloud + web tech + data/AI) — above contacts */}
-      <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
-
-      {/* AWS funding fit — deterministic pre-score (track + fundability), upstream of Partner Central */}
-      <FundingFitPanel company={company} flash={flash} />
-
-      {/* lead analysis & call hypothesis */}
-      <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
-
-      {/* contacts */}
+      {/* Decision-makers & contacts — who to call, kept high for a calling CRM */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2 }}>Decision-makers & contacts{myContacts.length ? " · " + myContacts.length : ""}</div>
@@ -2746,9 +2722,29 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         <FindContacts company={company} existing={myContacts} onAddContact={onAddContact} flash={flash} />
       </div>
 
-      {/* logga aktivitet */}
+      {/* company intelligence (merged cloud + web tech + data/AI) */}
+      <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
+
+      {/* AWS funding fit — deterministic pre-score (track + fundability), upstream of Partner Central */}
+      <FundingFitPanel company={company} flash={flash} />
+
+      {/* lead analysis & call hypothesis */}
+      <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
+
+      {/* follow-up + activity — the next step lives with the call log so it's never empty dead-space */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Log activity</div>
+        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 12 }}>Next step &amp; activity</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <input type="date" value={naDate} onChange={(e) => { setNaDate(e.target.value); onUpdate(company.id, { next_action_at: e.target.value || null }); }}
+            style={{ background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "8px 10px", color: C.text, fontSize: 13, fontFamily: FONT_BODY, outline: "none" }} />
+          <button onClick={() => { const d = dayStr(0); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>Today</button>
+          <button onClick={() => { const d = dayStr(1); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>+1 day</button>
+          <button onClick={() => { const d = dayStr(7); setNaDate(d); onUpdate(company.id, { next_action_at: d }); }} style={qbtn}>+7 days</button>
+          {naDate && <button onClick={() => { setNaDate(""); onUpdate(company.id, { next_action_at: null }); }} style={{ ...qbtn, color: C.red }}>Clear</button>}
+        </div>
+        <input value={naText} onChange={(e) => setNaText(e.target.value)} onBlur={() => onUpdate(company.id, { next_action: naText.trim() })} placeholder="Next step — what needs to happen?"
+          style={{ width: "100%", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box", marginBottom: 14 }} />
+        <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <select value={actType} onChange={(e) => setActType(e.target.value)} style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.text, borderRadius: 2, padding: "9px 12px", fontSize: 13, fontFamily: FONT_BODY, outline: "none" }}>
             {["Note", "Call", "Email", "Meeting", "Reminder"].map((t) => <option key={t}>{t}</option>)}
@@ -2779,6 +2775,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             ))}
           </div>
         )}
+        </div>{/* /activity sub-section (border-top divider) */}
       </div>
 
       {/* opportunity & owner — deal admin, kept low on the card */}
