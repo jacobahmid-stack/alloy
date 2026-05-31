@@ -9,8 +9,9 @@
 
 ## 0. TL;DR — what to do first
 
-Two tracks. **Track A unblocks the Partner Central integration and is small. Track B is the full
-re-host and is a project.** Do A first; it's the documented blocker and delivers value immediately.
+Two tracks, both small. **Track A** provisions the AWS IAM identity that unblocks the Partner
+Central integration. **Track B** moves the *frontend only* (the Alloy app + www.forj.se) to AWS
+S3+CloudFront — **the Supabase backend stays put.** Do A first; it's the documented blocker.
 
 | Track | What | Effort | Why |
 |---|---|---|---|
@@ -184,7 +185,7 @@ Map each Supabase piece to its AWS-native equivalent. Suggested target architect
 
 ---
 
-## 8. Data volumes (for migration sizing / verification)
+## 8. Data volumes (reference — data stays on Supabase; no migration in this move)
 
 | Table | Rows | Note |
 |---|---|---|
