@@ -16,6 +16,13 @@ function host(url?: string): string {
   return s;
 }
 
+// Normalize a Swedish org number to 10 digits (strip dash, optional leading 16 prefix).
+function normOrgnr(raw: string): string {
+  const d = String(raw || "").replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("16")) return d.slice(2);
+  return d;
+}
+
 async function searchNorway(p: any) {
   const qs = new URLSearchParams();
   if (p.navn) qs.set("navn", String(p.navn));
@@ -48,9 +55,37 @@ async function searchNorway(p: any) {
   return { results, total: page.totalElements != null ? page.totalElements : results.length, page: page.number != null ? page.number : 0, totalPages: page.totalPages != null ? page.totalPages : 1 };
 }
 
+function mapSeRow(e: any) {
+  return {
+    name: e.name || "",
+    orgnr: e.orgnr || e.peorgnr || "",
+    domain: "",
+    industry: e.sni_text || "",
+    industry_code: e.sni_code || "",
+    employees: null,
+    city: e.postort || "",
+    county: e.kommun || e.lan || "",
+    country: "Sverige",
+    company_type: e.juridisk_form || "",
+    source: "SCB",
+  };
+}
+
 async function searchSweden(p: any) {
   const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { prepare: false, max: 1 });
   try {
+    // Org-number lookup mode: paste an orgnr -> exact match (used by the dashboard search bar).
+    const orgnr = normOrgnr(p.orgnr || (/^[\d\s-]+$/.test(String(p.navn || "")) ? p.navn : ""));
+    if (orgnr && orgnr.length >= 6) {
+      const rows = await sql`
+        select peorgnr, orgnr, name, sni_code, sni_text, postort, kommun, lan, juridisk_form
+        from public.se_registry
+        where orgnr = ${orgnr} or peorgnr = ${orgnr} or peorgnr = ${"16" + orgnr}
+        limit 5`;
+      const results = rows.map(mapSeRow);
+      return { results, total: results.length, page: 0, totalPages: 1, mode: "orgnr", orgnr };
+    }
+
     const size = Math.min(Number(p.size) || 50, 100);
     const page = Math.max(0, Number(p.page) || 0);
     const offset = page * size;
@@ -70,19 +105,7 @@ async function searchSweden(p: any) {
     const rows = await sql`select peorgnr, orgnr, name, sni_code, sni_text, postort, kommun, lan, juridisk_form from public.se_registry ${where} order by name asc limit ${size} offset ${offset}`;
     const cnt = await sql`select count(*)::bigint as n from public.se_registry ${where}`;
     const total = Number(cnt[0]?.n || 0);
-    const results = rows.map((e: any) => ({
-      name: e.name || "",
-      orgnr: e.orgnr || e.peorgnr || "",
-      domain: "",
-      industry: e.sni_text || "",
-      industry_code: e.sni_code || "",
-      employees: null,
-      city: e.postort || "",
-      county: e.kommun || e.lan || "",
-      country: "Sverige",
-      company_type: e.juridisk_form || "",
-      source: "SCB",
-    }));
+    const results = rows.map(mapSeRow);
     return { results, total, page, totalPages: Math.max(1, Math.ceil(total / size)) };
   } finally {
     try { await sql.end({ timeout: 5 }); } catch (_) {}

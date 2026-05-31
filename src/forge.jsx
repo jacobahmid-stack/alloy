@@ -509,6 +509,19 @@ async function registrySearch(params) {
   return data;
 }
 
+// Normalize a Swedish org number to 10 digits (strip dash + optional 16-prefix).
+function normOrgnr(raw) {
+  const d = String(raw || "").replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("16")) return d.slice(2);
+  return d;
+}
+// Look up a Swedish company by org number against the loaded SCB registry (se_registry).
+// $0, instant, no external call beyond our own edge function. Returns a registry row or null.
+async function orgLookup(orgnr) {
+  const data = await registrySearch({ country: "SE", orgnr: normOrgnr(orgnr) });
+  return (data.results || [])[0] || null;
+}
+
 async function seIngest(body) {
   const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
   const base = (cfg.url || "").replace(/\/+$/, "");
@@ -3250,7 +3263,51 @@ function ActivityFeed({ companies, activities }) {
   );
 }
 
-function Dashboard({ project, projects, companies, activities, fundings, onSelectProject, onOpen, onUpdate, onAwsBatch, awsBatch, onDomainBatch, domainBatch }) {
+// Paste a Swedish org number -> open the existing card or create a new lead from the SCB
+// registry. onLookup(orgnr) is provided by Forge (handles existing-match + create + enrich).
+function OrgSearchBar({ onLookup }) {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const digits = q.replace(/\D/g, "");
+  const valid = digits.length === 10 || digits.length === 12;
+
+  async function go() {
+    if (!valid || busy) return;
+    setBusy(true); setMsg("");
+    try {
+      const r = await onLookup(q);
+      if (r?.status === "existing") setMsg(`Opening existing card — ${r.name}`);
+      else if (r?.status === "created") setMsg(`Added ${r.name} from SCB`);
+      else if (r?.status === "notfound") setMsg("No company found for that org number in the SCB registry.");
+    } catch (e) { setMsg("Lookup failed: " + (e?.message || e)); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ background: C.dark, border: `1px solid ${C.darkRule}`, borderRadius: 3, padding: "16px 18px", marginBottom: 22 }}>
+      <div style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".14em", textTransform: "uppercase", color: C.darkLabel, marginBottom: 9 }}>Open a company by org number</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setMsg(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") go(); }}
+          placeholder="t.ex. 556012-5790"
+          inputMode="numeric"
+          style={{ flex: 1, minWidth: 200, background: "#1E1C18", border: `1px solid ${C.darkRule}`, borderRadius: 2, padding: "11px 13px", color: "#F1ECE3", fontSize: 14, fontFamily: FONT_MONO, outline: "none" }}
+        />
+        <Btn variant="dark" onClick={go} disabled={!valid || busy}>
+          {busy ? <Spinner color="#F1ECE3" /> : <Icon name="search" size={14} color="#F1ECE3" />} {busy ? "Looking up…" : "Open / create"}
+        </Btn>
+      </div>
+      <div style={{ fontSize: 11.5, color: msg.startsWith("Lookup failed") || msg.startsWith("No company") ? C.amber : C.darkMuted, marginTop: 8, minHeight: 16, lineHeight: 1.4 }}>
+        {msg || "Paste any Swedish org number — opens the existing customer card, or creates a new one from official SCB data and runs cloud + funding scoring."}
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ project, projects, companies, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
@@ -3300,6 +3357,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 
   return (
     <div>
+      {onOrgLookup && <OrgSearchBar onLookup={onOrgLookup} />}
       {worklist.length > 0 && (
         <Section title="Today & overdue" icon="target">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4871,6 +4929,47 @@ export default function Forge() {
     flash("Auto-enrich done");
   }, [flash]);
 
+  // Org-number search bar (dashboard). Existing customer -> open it. Otherwise pull from the
+  // SCB registry, create a lead, open it, and auto-run cloud + funding scoring ($0, deterministic).
+  const handleOrgLookup = useCallback(async (raw) => {
+    const orgnr = normOrgnr(raw);
+    if (orgnr.length < 10) { flash("Enter a 10-digit Swedish org number"); return { status: "notfound" }; }
+    // 1) Already in the platform? (match on normalized orgnr, any project, skip archived)
+    const hit = companies.find((c) => c.list_tag !== "archived_shell" && normOrgnr(c.orgnr) === orgnr);
+    if (hit) { setNav("dashboard"); setSelected(hit.id); return { status: "existing", name: hit.name, id: hit.id }; }
+    // 2) Pull from SCB registry
+    let r;
+    try { r = await orgLookup(orgnr); } catch (e) { flash("Registry lookup failed: " + (e?.message || e)); throw e; }
+    if (!r) return { status: "notfound" };
+    // 3) Create the lead
+    const ts = now();
+    const rec = {
+      id: uid(), name: (r.name || "").trim(), orgnr: r.orgnr || orgnr, domain: "",
+      city: r.city || "", county: r.county || "", country: r.country || "Sverige",
+      industry: r.industry || "", industry_code: r.industry_code || "",
+      employees: null, revenue_ksek: null, ceo: "", company_type: r.company_type || "",
+      source: "SCB lookup", list_tag: "", stage: "lead", score: null, tier: "",
+      aws_detected: false, aws_signals: "", next_action: "", notes: "",
+      enrichment: { description: "", lead_source: "Org-number search", opportunity: "" },
+      techstack: null, techstack_at: null, leadanalysis: null, leadanalysis_at: null,
+      created_at: ts, updated_at: ts, project_id: activeProject,
+    };
+    await db.bulkAddCompanies([rec]);
+    setCompanies((p) => [rec, ...p]);
+    setNav("dashboard"); setSelected(rec.id);
+    flash(`Added ${rec.name} from SCB — finding website + scoring…`);
+    // 4) Best-effort enrich in the background (find domain -> cloud -> funding). Never blocks the open.
+    (async () => {
+      try {
+        const dom = await resolveDomain(rec).catch(() => null);
+        if (dom?.domain) await updateCompany(rec.id, { domain: dom.domain });
+        try { const cd = await detectAws(dom?.domain || rec.name); if (cd) await updateCompany(rec.id, { aws_detected: !!cd.aws_detected, cloud_provider: cd.provider || "unknown", aws_signals: (cd.signals || []).join(", ") }); } catch {}
+        try { await scoreFundingFit(rec.id, true); } catch {}
+      } catch {}
+    })();
+    return { status: "created", name: rec.name, id: rec.id };
+  }, [companies, activeProject, flash, updateCompany]);
+
   const handleImport = useCallback(async (text) => {
     const { companies: newC, contacts: newCt } = parseToRecords(text, "import");
     if (!newC.length) { flash("No companies found — check the CSV format"); return; }
@@ -5222,7 +5321,7 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} />
+          <Dashboard project={project} projects={projects} companies={companies} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
         ) : nav === "hot" ? (
