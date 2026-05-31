@@ -1251,6 +1251,15 @@ const localDb = {
   async listInvites() { return []; },
   async createInvite() {},
   async revokeInvite() {},
+  async getOutcome(companyId) { const all = await _read("forjg:outcomes", []); return all.find((o) => o.company_id === companyId) || null; },
+  async upsertOutcome(row) {
+    const all = await _read("forjg:outcomes", []);
+    const i = all.findIndex((o) => o.company_id === row.company_id);
+    const merged = i >= 0 ? { ...all[i], ...row, updated_at: new Date().toISOString() } : { ...row, id: uid(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const next = i >= 0 ? all.map((o, j) => (j === i ? merged : o)) : [merged, ...all];
+    await _write("forjg:outcomes", next);
+    return merged;
+  },
 };
 
 /* ----------------------------------------------------------------------------
@@ -1423,6 +1432,9 @@ const supabaseDb = {
   async listInvites() { return (await sb("project_invites", { query: "?select=*&order=created_at.desc" })) || []; },
   async createInvite(row) { await sb("project_invites", { method: "POST", prefer: "return=minimal", body: [row] }); },
   async revokeInvite(token) { await sb("project_invites", { method: "PATCH", query: `?token=eq.${token}`, body: { revoked: true } }); },
+  // --- lead outcomes (predicted vs actual; the closed-loop moat) ---
+  async getOutcome(companyId) { return (await sb("lead_outcomes", { query: `?company_id=eq.${companyId}&select=*`, single: true })) || null; },
+  async upsertOutcome(row) { return await sb("lead_outcomes", { method: "POST", query: "?on_conflict=company_id", prefer: "resolution=merge-duplicates,return=representation", body: [row], single: true }); },
 };
 
 // Single seam the whole app talks to. auto = Supabase when configured, else local.
@@ -2511,6 +2523,197 @@ function FundingFitPanel({ company, flash }) {
   );
 }
 
+/* ----------------------------------------------------------------------------
+   OUTCOME CAPTURE  -  predicted vs actual (the closed-loop moat)
+   Snapshots the funding engine's PREDICTION the first time an outcome is opened,
+   then lets the rep record what ACTUALLY happened. This delta is the only data a
+   competitor can't buy or backfill, and it's what later turns the deterministic
+   scorer into a learning one. $0, no AI.
+   ---------------------------------------------------------------------------- */
+const OUTCOME_META = {
+  pending:      { label: "In progress",  color: "#6E6962" },
+  won:          { label: "Won",          color: "#3F8A2E" },
+  lost:         { label: "Lost",         color: "#C13715" },
+  stalled:      { label: "Stalled",      color: "#C77D11" },
+  disqualified: { label: "Disqualified", color: "#6E6962" },
+  no_decision:  { label: "No decision",  color: "#6E6962" },
+};
+const OUTCOME_TRACKS = ["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP", "NONE"];
+
+function OutcomePanel({ company, flash }) {
+  const [outcome, setOutcome] = useState(null);
+  const [predicted, setPredicted] = useState(null); // snapshot from funding_eligibility
+  const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  // editable fields
+  const [actualOutcome, setActualOutcome] = useState("pending");
+  const [actualTrack, setActualTrack] = useState("");
+  const [actualValue, setActualValue] = useState("");
+  const [fundingSubmitted, setFundingSubmitted] = useState(false);
+  const [fundingApproved, setFundingApproved] = useState("");
+  const [lostReason, setLostReason] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const o = await db.getOutcome(company.id);
+        if (!live) return;
+        if (o) {
+          setOutcome(o);
+          setActualOutcome(o.actual_outcome || "pending");
+          setActualTrack(o.actual_track || "");
+          setActualValue(o.actual_value_sek != null ? String(o.actual_value_sek) : "");
+          setFundingSubmitted(!!o.funding_submitted);
+          setFundingApproved(o.funding_approved_usd != null ? String(o.funding_approved_usd) : "");
+          setLostReason(o.lost_reason || "");
+          setNotes(o.notes || "");
+          setPredicted({ track: o.predicted_track, score: o.predicted_score, confidence: o.predicted_confidence, at: o.predicted_at });
+        }
+        // Always read the current funding prediction so we can snapshot it on first save.
+        try {
+          const rows = await sb("funding_eligibility", { query: `?company_id=eq.${company.id}&select=primary_track,fundability_score,confidence,scored_at` });
+          if (live && rows && rows[0] && !o) {
+            setPredicted({ track: rows[0].primary_track, score: rows[0].fundability_score, confidence: rows[0].confidence, at: rows[0].scored_at });
+          }
+        } catch { /* prediction stays null; outcome still capturable */ }
+      } catch { /* ignore */ }
+      if (live) setLoaded(true);
+    })();
+    return () => { live = false; };
+  }, [company.id]);
+
+  async function save() {
+    setBusy(true);
+    try {
+      const row = {
+        company_id: company.id,
+        // snapshot the prediction the FIRST time only (immutable record of what the engine said)
+        ...(outcome ? {} : {
+          predicted_track: predicted?.track || null,
+          predicted_score: predicted?.score ?? null,
+          predicted_confidence: predicted?.confidence || null,
+          predicted_at: predicted?.at || null,
+        }),
+        actual_outcome: actualOutcome,
+        actual_track: actualTrack || null,
+        actual_value_sek: actualValue ? Number(actualValue) : null,
+        funding_submitted: fundingSubmitted,
+        funding_approved_usd: fundingApproved ? Number(fundingApproved) : null,
+        lost_reason: actualOutcome === "lost" ? (lostReason || null) : null,
+        notes: notes || null,
+      };
+      const saved = await db.upsertOutcome(row);
+      setOutcome(saved || row);
+      if (saved?.predicted_track || row.predicted_track) {
+        setPredicted({ track: (saved || row).predicted_track, score: (saved || row).predicted_score, confidence: (saved || row).predicted_confidence, at: (saved || row).predicted_at });
+      }
+      setEditing(false);
+      flash("Outcome saved");
+    } catch (e) { flash("Save failed: " + (e?.message || e)); }
+    finally { setBusy(false); }
+  }
+
+  const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
+  const subhead = { fontSize: 10, fontWeight: 600, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 8 };
+  const field = { background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "8px 10px", color: C.text, fontSize: 12.5, fontFamily: FONT_BODY, outline: "none", width: "100%", boxSizing: "border-box" };
+  const lbl = { fontSize: 10, fontWeight: 600, letterSpacing: ".08em", textTransform: "uppercase", color: C.dim2, marginBottom: 4, display: "block" };
+
+  const om = OUTCOME_META[outcome?.actual_outcome || "pending"];
+  const predTrack = predicted?.track ? (FUND_TRACK_META[predicted.track]?.label || predicted.track) : "-";
+  const matchKnown = outcome && outcome.actual_track && outcome.predicted_track;
+  const trackMatched = matchKnown && outcome.actual_track === outcome.predicted_track;
+
+  return (
+    <div style={card}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="target" size={16} color={C.accent} />
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>Outcome</span>
+          <span title="Predicted vs actual. Feeds the closed-loop learning that sharpens funding scoring over time." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>closed loop</span>
+        </div>
+        {outcome && <span style={{ fontSize: 11, fontWeight: 700, color: om.color }}>{om.label}</span>}
+      </div>
+
+      {!loaded ? (
+        <div style={{ fontSize: 12.5, color: C.dim2 }}><Spinner size={12} /> Loading…</div>
+      ) : (!outcome && !editing) ? (
+        <div>
+          <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 12, lineHeight: 1.5 }}>
+            No outcome recorded. Capturing what actually happened{predicted?.track ? <> (engine predicted <strong style={{ color: C.dim }}>{predTrack}</strong>)</> : null} is what makes the funding score smarter over time.
+          </div>
+          <Btn variant="dark" size="sm" onClick={() => setEditing(true)}><Icon name="target" size={13} color={C.cream} /> Record outcome</Btn>
+        </div>
+      ) : editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {predicted?.track && (
+            <div style={{ fontSize: 11.5, color: C.dim2, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "7px 10px" }}>
+              Engine predicted <strong style={{ color: C.dim }}>{predTrack}</strong>{predicted.score != null ? <> · score {predicted.score}</> : null}{predicted.confidence ? <> · {predicted.confidence} confidence</> : null}. Snapshotted on first save.
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div><label style={lbl}>Outcome</label>
+              <select style={field} value={actualOutcome} onChange={(e) => setActualOutcome(e.target.value)}>
+                {Object.entries(OUTCOME_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl}>Actual funding track</label>
+              <select style={field} value={actualTrack} onChange={(e) => setActualTrack(e.target.value)}>
+                <option value="">- not known -</option>
+                {OUTCOME_TRACKS.map((t) => <option key={t} value={t}>{FUND_TRACK_META[t]?.label || t}</option>)}
+              </select>
+            </div>
+            <div><label style={lbl}>Deal value (SEK)</label><input style={field} inputMode="numeric" value={actualValue} onChange={(e) => setActualValue(e.target.value.replace(/[^\d]/g, ""))} placeholder="e.g. 250000" /></div>
+            <div><label style={lbl}>AWS funding approved (USD)</label><input style={field} inputMode="numeric" value={fundingApproved} onChange={(e) => setFundingApproved(e.target.value.replace(/[^\d]/g, ""))} placeholder="e.g. 20000" /></div>
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: C.dim, cursor: "pointer" }}>
+            <input type="checkbox" checked={fundingSubmitted} onChange={(e) => setFundingSubmitted(e.target.checked)} /> Funding request submitted to AWS
+          </label>
+          {actualOutcome === "lost" && (
+            <div><label style={lbl}>Lost reason</label><input style={field} value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Why did it not close?" /></div>
+          )}
+          <div><label style={lbl}>Notes</label><textarea style={{ ...field, minHeight: 56, resize: "vertical" }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering for the learning loop." /></div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn variant="primary" size="sm" onClick={save} disabled={busy}>{busy ? <Spinner /> : null} Save outcome</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => { setEditing(false); }}>Cancel</Btn>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={{ flex: "1 1 150px" }}>
+              <div style={subhead}>Predicted</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.dim, fontFamily: FONT_DISPLAY }}>{predTrack}</div>
+              {predicted?.score != null && <div style={{ fontSize: 11, color: C.dim2, marginTop: 2 }}>score {predicted.score} · {predicted.confidence || "-"}</div>}
+            </div>
+            <div style={{ flex: "1 1 150px" }}>
+              <div style={subhead}>Actual</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: om.color, fontFamily: FONT_DISPLAY }}>
+                {outcome.actual_track ? (FUND_TRACK_META[outcome.actual_track]?.label || outcome.actual_track) : om.label}
+              </div>
+              {matchKnown && (
+                <div style={{ fontSize: 11, marginTop: 2, color: trackMatched ? C.green : C.amber }}>
+                  {trackMatched ? "✓ matched prediction" : "✗ differed from prediction"}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {outcome.actual_value_sek != null && <Pill color={C.dim}>{fmtMoney(outcome.actual_value_sek, "SEK")}</Pill>}
+            {outcome.funding_submitted && <Pill color={C.blue}>funding submitted</Pill>}
+            {outcome.funding_approved_usd != null && <Pill color={C.green}>{fmtMoney(outcome.funding_approved_usd, "USD")} approved</Pill>}
+            {outcome.lost_reason && <Pill color={C.red}>{outcome.lost_reason}</Pill>}
+          </div>
+          {outcome.notes && <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.5, marginBottom: 10 }}>{outcome.notes}</div>}
+          <button onClick={() => setEditing(true)} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_HEAD }}>✎ Update outcome</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ============================================================================
    FÖRETAGSKORT  (detaljvy)
    ============================================================================ */
@@ -2725,6 +2928,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* AWS funding fit - deterministic pre-score (track + fundability), upstream of Partner Central */}
       <FundingFitPanel company={company} flash={flash} />
+
+      {/* outcome capture - predicted vs actual (the closed-loop moat) */}
+      <OutcomePanel company={company} flash={flash} />
 
       {/* lead analysis & call hypothesis */}
       <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
