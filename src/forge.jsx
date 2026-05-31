@@ -4908,7 +4908,14 @@ export default function Forge() {
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <link rel="stylesheet" href={fontLink} />
         <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}`}</style>
-        <ForjLogo height={46} color={C.text} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+          <span style={{ fontFamily: FONT_HEAD, fontSize: 28, letterSpacing: ".26em", textTransform: "uppercase", color: C.text, fontWeight: 700, paddingLeft: ".26em" }}>{BRAND}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
+            <ForjLogo height={16} color={C.text} />
+          </div>
+          <div style={{ fontSize: 12.5, color: C.dim, marginTop: 4, letterSpacing: ".02em" }}>{SLOGAN}</div>
+        </div>
         <Spinner size={22} />
       </div>
     );
@@ -4922,7 +4929,14 @@ export default function Forge() {
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <link rel="stylesheet" href={fontLink} />
         <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}`}</style>
-        <ForjLogo height={46} color={C.text} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+          <span style={{ fontFamily: FONT_HEAD, fontSize: 28, letterSpacing: ".26em", textTransform: "uppercase", color: C.text, fontWeight: 700, paddingLeft: ".26em" }}>{BRAND}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
+            <ForjLogo height={16} color={C.text} />
+          </div>
+          <div style={{ fontSize: 12.5, color: C.dim, marginTop: 4, letterSpacing: ".02em" }}>{SLOGAN}</div>
+        </div>
         <Spinner size={22} />
       </div>
     );
@@ -4934,7 +4948,14 @@ export default function Forge() {
       <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <link rel="stylesheet" href={fontLink} />
         <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}`}</style>
-        <ForjLogo height={46} color={C.text} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+          <span style={{ fontFamily: FONT_HEAD, fontSize: 28, letterSpacing: ".26em", textTransform: "uppercase", color: C.text, fontWeight: 700, paddingLeft: ".26em" }}>{BRAND}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
+            <ForjLogo height={16} color={C.text} />
+          </div>
+          <div style={{ fontSize: 12.5, color: C.dim, marginTop: 4, letterSpacing: ".02em" }}>{SLOGAN}</div>
+        </div>
         <Spinner size={22} />
       </div>
     );
