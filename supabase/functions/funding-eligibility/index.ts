@@ -42,15 +42,16 @@ function spendBand(employees: any, empMap: [number | null, string][]): string | 
   return ">10m";
 }
 
+// Industry is intentionally NOT woven into the use-case prose — it dilutes the pitch and
+// is already shown under Company information. Keep this text tight + workload-focused.
 function useCaseText(track: string, c: any): string {
-  const ind = c.industry ? ` (${c.industry})` : "";
   switch (track) {
-    case "MAP": return `Migrate ${c.name}${ind} from its current non-AWS estate to AWS (MAP) — takeout of competitor-cloud / on-prem workloads.`;
-    case "MAP_MODERNIZE": return `Modernize ${c.name}${ind} on AWS with GenAI/agentic capability on existing workloads (MAP modernize).`;
-    case "POC": return `Net-new GenAI/agentic proof-of-concept for ${c.name}${ind}.`;
+    case "MAP": return `Migrate ${c.name} from its current non-AWS estate to AWS (MAP) — takeout of competitor-cloud / on-prem workloads.`;
+    case "MAP_MODERNIZE": return `Modernize ${c.name} on AWS with GenAI/agentic capability on existing workloads (MAP modernize).`;
+    case "POC": return `Net-new GenAI/agentic proof-of-concept for ${c.name}.`;
     case "ISV_WMP": return `List ${c.name}'s SaaS on AWS Marketplace (WMP) — credit routes to the end customer.`;
-    case "GREENFIELD_PGP": return `Greenfield AWS build for ${c.name}${ind} (no current cloud detected).`;
-    default: return `${c.name}${ind}: no current migration/expansion signal — monitor.`;
+    case "GREENFIELD_PGP": return `Greenfield AWS build for ${c.name} (no current cloud detected).`;
+    default: return `${c.name}: no current migration/expansion signal — monitor.`;
   }
 }
 
