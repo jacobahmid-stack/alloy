@@ -3917,7 +3917,7 @@ function OrgSearchBar({ onLookup }) {
   );
 }
 
-function Dashboard({ project, projects, companies, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch }) {
+function Dashboard({ project, projects, companies, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
@@ -4011,8 +4011,9 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
         {PLAYS.map((p) => (
           <div key={p.key}
-            title={p.pitch}
-            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "16px 18px 16px" }}>
+            title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
+            onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
+            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "16px 18px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD }}>{p.label}</span>
               <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em" }}>{p.prog}</span>
@@ -5404,6 +5405,7 @@ export default function Forge() {
   const [activities, setActivities] = useState([]);
   const [fundings, setFundings] = useState([]);
   const [nav, setNav] = useState("dashboard"); // dashboard | today | hot | list | pipeline | import
+  const [playFilter, setPlayFilter] = useState(null); // when a dashboard play tile is clicked -> filter the list
   const [autoEnrich, setAutoEnrich] = useState(false);
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState("");
@@ -5951,13 +5953,13 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} />
+          <Dashboard project={project} projects={projects} companies={companies} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
-          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} />
+          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} playFilter={playFilter} setPlayFilter={setPlayFilter} />
         ) : nav === "pipeline" ? (
           <PipelineView project={project} companies={companies} onOpen={setSelected} onStage={moveStage} />
         ) : nav === "funding" ? (
