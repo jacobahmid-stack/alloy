@@ -2873,12 +2873,14 @@ function OutcomePanel({ company, flash }) {
    (Component kept as CoPilotPanel / enrichment key copilot_qual to avoid orphaning
    saved data; only the user-facing name is "Smith".)
    ---------------------------------------------------------------------------- */
-function CoPilotPanel({ company, contacts, onUpdate, flash }) {
+function CoPilotPanel({ company, contacts, onAddContact, onUpdate, flash }) {
   const [fit, setFit] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false });
   const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
+  const [finding, setFinding] = useState(false);
+  const [findNote, setFindNote] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -2919,6 +2921,41 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
   }
 
   const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
+  // Smith finds the decision-makers (web search) and populates the card automatically.
+  // Auto-adds everyone new; guessed emails are marked so a rep verifies before sending.
+  async function findPeople() {
+    setFinding(true); setFindNote("");
+    try {
+      const ppl = await findDecisionMakers(company);
+      const have = new Set((contacts || []).map((c) => norm([c.first_name, c.last_name].filter(Boolean).join(" ")).toLowerCase()));
+      const fresh = ppl.filter((p) => p.name && !have.has(norm(p.name).toLowerCase()));
+      if (!fresh.length) {
+        setFindNote(ppl.length ? "Everyone Smith found is already on the card." : "No decision-makers found" + (company.domain ? "." : ". Find the website first."));
+      } else {
+        const cleanLi = (li) => {
+          li = (li || "").trim();
+          if (!/^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[^/\s]/i.test(li)) return "";
+          if (/1a2b3c|123456|abcdef|xxxx|example|placeholder|firstname|lastname/i.test(li)) return "";
+          return li;
+        };
+        for (const p of fresh) {
+          await onAddContact(company.id, {
+            name: p.name,
+            title: (p.title || "") + (p.email && p.email_is_guess ? " · email guessed" : ""),
+            email: p.email || "",
+            linkedin: cleanLi(p.linkedin),
+            source: "smith_find",
+          });
+        }
+        setFindNote("Smith added " + fresh.length + " decision-maker" + (fresh.length > 1 ? "s" : "") + " to the card.");
+        flash("Smith added " + fresh.length + " contact" + (fresh.length > 1 ? "s" : ""));
+      }
+    } catch (e) {
+      setFindNote("Find failed: " + (e?.message || e));
+      flash("Find decision-makers failed: " + (e?.message || e));
+    } finally { setFinding(false); }
+  }
+
   const secHead = (key, label, hint) => (
     <button onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
       style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "8px 0", fontFamily: FONT_BODY, textAlign: "left" }}>
@@ -3033,6 +3070,17 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
         </div>
       )}
 
+      {/* WHO TO TALK TO: Smith finds the decision-makers and populates the card */}
+      <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 0 2px" }}>
+        <Btn variant="dark" size="sm" onClick={findPeople} disabled={finding}>
+          {finding ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {finding ? "Searching the web…" : "Find decision-makers"}
+        </Btn>
+        <span style={{ fontSize: 11.5, color: C.dim2, flex: 1, minWidth: 180 }}>
+          {findNote || ((contacts && contacts.length) ? contacts.length + " on the card · Smith adds anyone missing to Decision-makers above" : "Smith finds who owns the cloud decision and adds them to Decision-makers above")}
+        </span>
+      </div>
+
       {/* 3 — QUALIFICATION (AWS-MEDDIC) */}
       {qualKeys.length > 0 && <>
         <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
@@ -3120,48 +3168,6 @@ function InfoRow({ icon, label, value, mono }) {
   );
 }
 
-function FindContacts({ company, existing, onAddContact, flash }) {
-  const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState(null);
-  const haveNames = new Set(existing.map((c) => norm([c.first_name, c.last_name].join(" ")).toLowerCase()));
-  async function run() {
-    setBusy(true);
-    try {
-      const ppl = await findDecisionMakers(company);
-      setResults(ppl);
-      if (!ppl.length) flash("No decision-makers found" + (company.domain ? "" : " - try after finding the website"));
-    } catch (e) { flash("Find decision-makers failed: " + e.message); }
-    finally { setBusy(false); }
-  }
-  const fresh = (results || []).filter((p) => p.name && !haveNames.has(norm(p.name).toLowerCase()));
-  return (
-    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
-      <Btn variant="dark" size="sm" onClick={run} disabled={busy}>
-        {busy ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {busy ? "Searching the web…" : "Find decision-makers"}
-      </Btn>
-      {results && fresh.length === 0 && <span style={{ fontSize: 11.5, color: C.dim2, marginLeft: 10 }}>{results.length ? "Everyone found is already added." : "Nobody found - add manually or retry."}</span>}
-      {fresh.length > 0 && (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
-          {fresh.map((p, i) => (
-            <div key={i} style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 2, padding: "9px 11px", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{p.name}{p.title ? <span style={{ color: C.dim, fontWeight: 400 }}> · {p.title}</span> : null}</div>
-                <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 2 }}>
-                  {p.email ? <span>{p.email}{p.email_is_guess ? " (guess - verify)" : ""}</span> : null}
-                  {p.email && p.linkedin ? " · " : null}
-                  {p.linkedin ? <a href={p.linkedin} target="_blank" rel="noreferrer" style={{ color: C.blue, textDecoration: "none" }}>LinkedIn</a> : null}
-                  {p.why ? <div style={{ color: C.dim2, marginTop: 2 }}>{p.why}</div> : null}
-                </div>
-              </div>
-              <button onClick={() => { onAddContact(company.id, { name: p.name, title: p.title, email: p.email || "", linkedin: p.linkedin || "", source: "AI research" }); setResults((r) => r.filter((x) => x !== p)); }}
-                style={{ alignSelf: "flex-start", background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 9px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY, whiteSpace: "nowrap" }}>+ Add</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function CompanyCard({ project, company, contacts, activities, onBack, onUpdate, onStage, onAddActivity, onAddContact, onUpdateContact, flash, me, fundings, onAddFunding, onUpdateFunding }) {
   const [actType, setActType] = useState("Note");
@@ -3278,7 +3284,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             </select>
           </div>
         ))}
-        <FindContacts company={company} existing={myContacts} onAddContact={onAddContact} flash={flash} />
+        {/* Smith (below) finds decision-makers and populates this list. One finder, in the co-worker. */}
       </Collapsible>
 
       {/* company intelligence (merged cloud + web tech + data/AI) */}
@@ -3286,7 +3292,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* Smith (Alloy's AWS sales co-worker) - the single AWS box: fundability score + funding brief,
           next-best-action, qualification, co-sell. (Funding-fit folded in here 2026-05-31.) */}
-      <CoPilotPanel company={company} contacts={myContacts} onUpdate={onUpdate} flash={flash} />
+      <CoPilotPanel company={company} contacts={myContacts} onAddContact={onAddContact} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
       <OutcomePanel company={company} flash={flash} />
@@ -5988,3 +5994,5 @@ export default function Forge() {
     </div>
   );
 }
+
+
