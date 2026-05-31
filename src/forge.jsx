@@ -4573,8 +4573,7 @@ function LoginScreen({ onAuthed }) {
           <div style={{ fontSize: 12.5, color: C.dim, marginTop: 3, letterSpacing: ".02em" }}>{SLOGAN}</div>
         </div>
         <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderRadius: 4, padding: 26 }}>
-          <div style={{ fontSize: 19, fontFamily: FONT_DISPLAY, color: C.text }}>Sign in</div>
-          <div style={{ fontSize: 12.5, color: C.dim, marginBottom: 20 }}>Sign in to continue</div>
+          <div style={{ fontSize: 19, fontFamily: FONT_DISPLAY, color: C.text, marginBottom: 20 }}>Sign in</div>
 
           <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
             {[["password", "Password"], ["magic", "Magic link"]].map(([k, l]) => (
