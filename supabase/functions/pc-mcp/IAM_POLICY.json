@@ -1,0 +1,39 @@
+{
+  "_comment": "Least-privilege IAM policy for the pc-mcp edge-function identity (NOT the human SSO login). VERIFIED against the AWS Partner Central Getting Started Guide (c) 2026, agents 'Prerequisites' section (pp ~74-75) and the partnercentral:UseSession action reference. Attach to a dedicated IAM user/role; keys -> Supabase secrets PC_AWS_*. Corrections vs the original handover Appendix C are noted inline.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "MCPSession",
+      "Effect": "Allow",
+      "Action": ["partnercentral:UseSession"],
+      "Resource": "*",
+      "Condition": { "StringEquals": { "partnercentral:Catalog": ["AWS", "Sandbox"] } },
+      "_note": "UseSession is the MCP-session action (Access level: Write). Its only condition key is partnercentral:Catalog with valid values AWS|Sandbox. The handover's aws:IsMcpServiceAction is NOT in the guide's agent prerequisites — omitted. Tighten to [\"Sandbox\"] for dev-only."
+    },
+    {
+      "Sid": "OpportunityRead",
+      "Effect": "Allow",
+      "Action": ["partnercentral:Get*", "partnercentral:List*"],
+      "Resource": "*",
+      "_note": "Covers GetOpportunity + GetAwsOpporunitySummary (guide misspells 'Opporunity' — the Get* wildcard sidesteps any later spelling fix) and the Benefit List* reads."
+    },
+    {
+      "Sid": "FundingBenefits",
+      "Effect": "Allow",
+      "Action": [
+        "partnercentral:CreateBenefitApplication",
+        "partnercentral:UpdateBenefitApplication",
+        "partnercentral:AssociateBenefitApplicationResource",
+        "partnercentral:DisassociateBenefitApplicationResource"
+      ],
+      "Resource": "*",
+      "_note": "Exact write set from the guide's agent prerequisites. SubmitBenefitApplication is NOT required: the agent only DRAFTS a fund request and returns a portal link; a human submits in the AWS Partner Funding Portal. Add Submit* only if you later automate submission, and keep it human-approved."
+    },
+    {
+      "Sid": "MarketplaceRead",
+      "Effect": "Allow",
+      "Action": ["aws-marketplace:DescribeEntity", "aws-marketplace:SearchAgreements"],
+      "Resource": "*"
+    }
+  ]
+}

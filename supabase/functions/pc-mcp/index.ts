@@ -2,13 +2,37 @@
 //
 // ⚠️ NOT DEPLOYED. Gated behind the dedicated IAM identity (handover §5 decision #1)
 // and Partner Central console migration (§5 decision #2). Until a least-privilege IAM
-// user/role (Appendix C policy) exists and its keys are set as Supabase secrets
-// (PC_AWS_*), this returns HTTP 403 (AccessDenied on partnercentral:UseSession) — that
-// 403 IS the confirmation the permission set is the blocker, not a code bug.
+// user/role exists and its keys are set as Supabase secrets (PC_AWS_*), this returns
+// HTTP 403 (AccessDenied on partnercentral:UseSession) — that 403 IS the confirmation
+// the permission set is the blocker, not a code bug.
 //
 // Do NOT set PC_AWS_* secrets or deploy this until Jacob provisions the IAM identity.
 // The SSO ViewOnlyAccess login (jacob@novalo.se) must NOT be used here, and the earlier
 // exposed creds are BURNED — never reference them.
+//
+// AUTHORITATIVE IAM (verified against the AWS Partner Central Getting Started Guide,
+// "Prerequisites" for the agents, © 2026 — pp. ~74-75). The agent identity needs EXACTLY:
+//   partnercentral:ListBenefitAllocations
+//   partnercentral:ListBenefitApplications
+//   partnercentral:CreateBenefitApplication
+//   partnercentral:GetBenefitApplication
+//   partnercentral:UpdateBenefitApplication
+//   partnercentral:AssociateBenefitApplicationResource
+//   partnercentral:DisassociateBenefitApplicationResource
+//   partnercentral:GetOpportunity
+//   partnercentral:GetAwsOpporunitySummary   <-- guide spells it this way (missing 't' in
+//                                                 "Opporunity"). Use a Get* wildcard so a
+//                                                 later AWS spelling-fix doesn't break us.
+//   partnercentral:UseSession                <-- the MCP-session action; condition key
+//                                                 partnercentral:Catalog = [AWS | Sandbox]
+//   aws-marketplace:DescribeEntity
+//   aws-marketplace:SearchAgreements
+// Corrections vs the original handover Appendix C: the guide does NOT list
+// aws:IsMcpServiceAction in the agent prerequisites (drop it / make it optional), and
+// SubmitBenefitApplication is NOT required — the agent DRAFTS a fund request and returns
+// a portal link; a human submits in the AWS Partner Funding Portal. Managed-policy
+// shortcuts: AWSPartnerCentralSandboxFullAccess (dev/Sandbox), PartnerCentralIncentive-
+// BenefitManagement (funding/benefit flow), AWSPartnerCentralOpportunityManagement (P5).
 
 import { AwsClient } from "npm:aws4fetch@1"; // fallback: "https://esm.sh/aws4fetch@1"
 
