@@ -3762,18 +3762,18 @@ function FundingView({ project, companies, fundings, onAddFunding, onUpdateFundi
   );
 }
 
-function ConversionInsights({ companies }) {
-  const PIPE = new Set(["kontaktad", "mote_bokat", "kvalificerad", "forslag", "vunnen", "forlorad"]);
+function ConversionInsights({ companies, trackOf }) {
   const BOOKEDPLUS = new Set(["mote_bokat", "kvalificerad", "forslag", "vunnen"]);
-  const groupBy = (key) => {
+  const PLAY_LABEL = { MAP: "Migrate (MAP)", MAP_MODERNIZE: "Modernize", POC: "GenAI (POC)", ISV_WMP: "ISV / Marketplace", GREENFIELD_PGP: "Greenfield", NONE: "No play", "-": "Unscored" };
+  // Group by AWS play (the funding track) — which sales motion actually advances to a meeting/win.
+  const groupBy = () => {
     const m = {};
-    companies.forEach((c) => { const k = (c[key] || "").trim() || "-"; (m[k] = m[k] || []).push(c); });
-    return Object.entries(m).map(([label, list]) => ({
-      label, n: list.length,
-      reached: list.filter((c) => PIPE.has(c.stage)).length,
+    companies.forEach((c) => { const k = (trackOf && trackOf(c)) || "-"; (m[k] = m[k] || []).push(c); });
+    return Object.entries(m).map(([key, list]) => ({
+      label: PLAY_LABEL[key] || key, n: list.length,
       booked: list.filter((c) => BOOKEDPLUS.has(c.stage)).length,
       won: list.filter((c) => c.stage === "vunnen").length,
-    })).sort((a, b) => b.n - a.n).slice(0, 8);
+    })).sort((a, b) => b.n - a.n);
   };
   const Table = ({ rows, head }) => (
     <div style={{ marginBottom: 14 }}>
@@ -3797,11 +3797,10 @@ function ConversionInsights({ companies }) {
     </div>
   );
   return (
-    <Section title="Conversion - targets → booked → won" icon="percent">
+    <Section title="Advance-rate by AWS play" icon="percent">
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "16px 18px" }}>
-        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 14, lineHeight: 1.5 }}>Booked-rate per segment - counts read targets → booked → won. Double down on what converts. (Add SNI tagging on import to also break this down by industry code.)</div>
-        <Table rows={groupBy("source")} head="By source" />
-        <Table rows={groupBy("tier")} head="By tier" />
+        <div style={{ fontSize: 11.5, color: C.dim2, marginBottom: 14, lineHeight: 1.5 }}>Which funding motion advances to a meeting / win. Counts read leads → booked+ → won per play — double down on the play that converts.</div>
+        <Table rows={groupBy()} head="By play" />
       </div>
     </Section>
   );
@@ -3938,41 +3937,47 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const won = projCompanies.filter((c) => c.stage === "vunnen");
   const contacted = projCompanies.filter((c) => c.stage === "kontaktad");
 
-  const callsToday = calls.filter((a) => isToday(a.created_at)).length;
   const bookedThisMonth = activities.filter((a) => a.type === "Meeting" && isThisMonth(a.created_at)).length;
-  const conv = calls.length ? Math.round((bookedNow.length / calls.length) * 100) : 0;
 
-  // --- AWS PLAYS (the sales motions, each tied to a funding program) ---
-  // Derived from the detected cloud + data maturity that's already on each card, mirroring
-  // the funding engine's track logic: on AWS = modernize/resell; on a competitor cloud =
-  // MAP migrate; no detectable cloud = greenfield. A play is what you DO with the signal.
-  const cloudOf = (c) => String(c.cloud_provider || c.enrichment?.aws_verdict || "").toLowerCase();
+  // --- REAL funding tracks (not a cloud guess) — fetched once from funding_eligibility.
+  // companies rows don't carry primary_track, so the play tiles + funding metrics read this map.
+  const [trackMap, setTrackMap] = useState({});
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        if (typeof sb === "function") {
+          const rows = await sb("funding_eligibility", { query: "?select=company_id,primary_track,confidence,fundability_score" });
+          if (live && Array.isArray(rows)) { const m = {}; for (const r of rows) m[r.company_id] = r; setTrackMap(m); }
+        }
+      } catch { /* falls back to empty → tiles show 0 until loaded */ }
+    })();
+    return () => { live = false; };
+  }, [project.id]);
+  const trackOf = (c) => (trackMap[c.id] && trackMap[c.id].primary_track) || null;
+
+  // --- AWS PLAYS - the sales motions, each = an AWS funding program. Counts read the REAL
+  // funding-engine track (primary_track), so "Modernize" = genuinely on-AWS deals, not every AWS card. ---
   const PLAYS = [
-    { key: "migrate",   label: "Migrate",   prog: "MAP",            accent: C.accent,
-      hits: projCompanies.filter((c) => ["azure", "gcp"].includes(cloudOf(c))),
+    { key: "migrate",   track: "MAP",            label: "Migrate",   prog: "MAP",            accent: C.accent,
+      hits: projCompanies.filter((c) => trackOf(c) === "MAP"),
       pitch: "On Azure/GCP → move to AWS, AWS co-funds it" },
-    { key: "modernize", label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
-      hits: projCompanies.filter((c) => cloudOf(c) === "aws"),
+    { key: "modernize", track: "MAP_MODERNIZE",  label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
+      hits: projCompanies.filter((c) => trackOf(c) === "MAP_MODERNIZE"),
       pitch: "Already on AWS → optimize, resell, expand" },
-    { key: "genai",     label: "GenAI",     prog: "POC credits",    accent: C.violet,
-      hits: projCompanies.filter((c) => c.ai_native || Number(c.maturity_band) >= 3),
-      pitch: "AI/data-mature → AWS funds a GenAI pilot" },
-    { key: "greenfield",label: "Greenfield",prog: "Partner-led",    accent: C.blue,
-      hits: projCompanies.filter((c) => { const x = cloudOf(c); return !x || x === "none"; }),
+    { key: "genai",     track: "POC",            label: "GenAI",     prog: "POC credits",    accent: C.violet,
+      hits: projCompanies.filter((c) => trackOf(c) === "POC"),
+      pitch: "AI/data use case → AWS funds a GenAI pilot" },
+    { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "Partner-led",    accent: C.blue,
+      hits: projCompanies.filter((c) => trackOf(c) === "GREENFIELD_PGP"),
       pitch: "No cloud yet → net-new build on AWS" },
   ];
+  // funding-native KPIs
+  const FUNDABLE = new Set(["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP"]);
+  const fundingQualified = projCompanies.filter((c) => { const t = trackMap[c.id]; return t && FUNDABLE.has(t.primary_track) && (t.confidence === "high" || t.confidence === "med"); }).length;
+  const meddicQualified = projCompanies.filter((c) => { const q = c.enrichment && c.enrichment.copilot_qual; return q && Object.values(q).some((v) => v && v.ok); }).length;
   const hour = new Date().getHours();
   const greeting = hour < 5 ? "Working late" : hour < 11 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
-  // samtal senaste 14 dagar
-  const days = [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const label = `${d.getDate()}/${d.getMonth() + 1}`;
-    const count = calls.filter((a) => new Date(a.created_at).toDateString() === d.toDateString()).length;
-    days.push({ label, count });
-  }
-  const maxCalls = Math.max(1, ...days.map((d) => d.count));
 
   // per-projekt-statistik för översikten
   const projStats = projects.map((p) => {
@@ -4090,10 +4095,10 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 
       <Section title={`Dashboard - ${project.name}`} icon="chart">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Metric label="Leads" value={leads.length} icon="target" accent={C.blue} />
-          <Metric label="Calls today" value={callsToday} icon="phone" accent={C.accent} />
-          <Metric label="Booked meetings" value={bookedNow.length} icon="calendar" accent={C.green} />
-          <Metric label="Conv. rate" value={conv + "%"} icon="percent" accent={C.violet} />
+          <Metric label="Funding-qualified" value={fundingQualified} icon="tag" accent={C.accent} />
+          <Metric label="Meetings booked" value={bookedNow.length} icon="calendar" accent={C.green} />
+          <Metric label="Qualified (MEDDIC)" value={meddicQualified} icon="target" accent={C.blue} />
+          <Metric label="Won" value={won.length} icon="spark" accent={C.violet} />
         </div>
       </Section>
 
@@ -4110,20 +4115,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
         </div>
       </Section>
 
-      <Section title="Calls per day - last 14 days" icon="trend">
-        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "18px 16px" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 110 }}>
-            {days.map((d, i) => (
-              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                <div style={{ width: "100%", height: `${(d.count / maxCalls) * 88}px`, minHeight: d.count ? 4 : 0, background: d.count ? C.lime : "transparent", borderRadius: 4, transition: "height .3s" }} />
-                <span style={{ fontSize: 8.5, color: C.dim2, fontFamily: FONT_MONO, transform: "rotate(-45deg)", whiteSpace: "nowrap" }}>{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <ConversionInsights companies={projCompanies} />
+      <ConversionInsights companies={projCompanies} trackOf={trackOf} />
 
       <PipelineValuePanel companies={projCompanies} fundings={(fundings || []).filter((f) => f.project_id === project.id)} />
 
