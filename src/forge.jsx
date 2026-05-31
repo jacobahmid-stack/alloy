@@ -3120,48 +3120,6 @@ function InfoRow({ icon, label, value, mono }) {
   );
 }
 
-function FindContacts({ company, existing, onAddContact, flash }) {
-  const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState(null);
-  const haveNames = new Set(existing.map((c) => norm([c.first_name, c.last_name].join(" ")).toLowerCase()));
-  async function run() {
-    setBusy(true);
-    try {
-      const ppl = await findDecisionMakers(company);
-      setResults(ppl);
-      if (!ppl.length) flash("No decision-makers found" + (company.domain ? "" : " - try after finding the website"));
-    } catch (e) { flash("Find decision-makers failed: " + e.message); }
-    finally { setBusy(false); }
-  }
-  const fresh = (results || []).filter((p) => p.name && !haveNames.has(norm(p.name).toLowerCase()));
-  return (
-    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
-      <Btn variant="dark" size="sm" onClick={run} disabled={busy}>
-        {busy ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {busy ? "Searching the web…" : "Find decision-makers"}
-      </Btn>
-      {results && fresh.length === 0 && <span style={{ fontSize: 11.5, color: C.dim2, marginLeft: 10 }}>{results.length ? "Everyone found is already added." : "Nobody found - add manually or retry."}</span>}
-      {fresh.length > 0 && (
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 7 }}>
-          {fresh.map((p, i) => (
-            <div key={i} style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 2, padding: "9px 11px", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text }}>{p.name}{p.title ? <span style={{ color: C.dim, fontWeight: 400 }}> · {p.title}</span> : null}</div>
-                <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 2 }}>
-                  {p.email ? <span>{p.email}{p.email_is_guess ? " (guess - verify)" : ""}</span> : null}
-                  {p.email && p.linkedin ? " · " : null}
-                  {p.linkedin ? <a href={p.linkedin} target="_blank" rel="noreferrer" style={{ color: C.blue, textDecoration: "none" }}>LinkedIn</a> : null}
-                  {p.why ? <div style={{ color: C.dim2, marginTop: 2 }}>{p.why}</div> : null}
-                </div>
-              </div>
-              <button onClick={() => { onAddContact(company.id, { name: p.name, title: p.title, email: p.email || "", linkedin: p.linkedin || "", source: "AI research" }); setResults((r) => r.filter((x) => x !== p)); }}
-                style={{ alignSelf: "flex-start", background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 9px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY, whiteSpace: "nowrap" }}>+ Add</button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function CompanyCard({ project, company, contacts, activities, onBack, onUpdate, onStage, onAddActivity, onAddContact, onUpdateContact, flash, me, fundings, onAddFunding, onUpdateFunding }) {
   const [actType, setActType] = useState("Note");
@@ -3286,7 +3244,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* Smith (Alloy's AWS sales co-worker) - the single AWS box: fundability score + funding brief,
           next-best-action, qualification, co-sell. (Funding-fit folded in here 2026-05-31.) */}
-      <CoPilotPanel company={company} contacts={myContacts} onUpdate={onUpdate} flash={flash} />
+      <CoPilotPanel company={company} contacts={myContacts} onAddContact={onAddContact} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
       <OutcomePanel company={company} flash={flash} />
@@ -5988,3 +5946,4 @@ export default function Forge() {
     </div>
   );
 }
+
