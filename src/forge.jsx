@@ -3313,10 +3313,11 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             {["Note", "Call", "Email", "Meeting", "Reminder"].map((t) => <option key={t}>{t}</option>)}
           </select>
         </div>
+        {actType === "Meeting" && <div style={{ fontSize: 11, color: C.dim2, marginBottom: 8, lineHeight: 1.5 }}>After a meeting, also update <strong style={{ color: C.dim }}>Outcome</strong> above — did the predicted funding track hold? That feeds Smith's learning loop.</div>}
         <textarea
           value={actBody}
           onChange={(e) => setActBody(e.target.value)}
-          placeholder="Describe the activity…"
+          placeholder={actType === "Meeting" ? "Meeting notes — who, what was discussed, next step…" : "Describe the activity…"}
           rows={3}
           style={{ width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "11px 13px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }}
         />
