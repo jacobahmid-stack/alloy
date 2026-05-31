@@ -1559,6 +1559,27 @@ function Section({ title, icon, children, right }) {
     </div>
   );
 }
+/* Collapsible card chrome — the standard box on a company card. Click the header
+   to minimize/expand; state persists per-card-section in localStorage so a rep's
+   layout sticks. `right` = optional header-right node (status pill etc). */
+function Collapsible({ title, sectionKey, defaultOpen = true, right, accent, children }) {
+  const storeKey = sectionKey ? "alloy:box:" + sectionKey : null;
+  const [open, setOpen] = useState(() => {
+    if (!storeKey) return defaultOpen;
+    try { const v = localStorage.getItem(storeKey); return v === null ? defaultOpen : v === "1"; } catch { return defaultOpen; }
+  });
+  const toggle = () => setOpen((o) => { const n = !o; if (storeKey) { try { localStorage.setItem(storeKey, n ? "1" : "0"); } catch { /* ignore */ } } return n; });
+  return (
+    <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: accent ? `3px solid ${accent}` : `1px solid ${C.line}`, borderRadius: 2, marginBottom: 16, overflow: "hidden" }}>
+      <div onClick={toggle} style={{ display: "flex", alignItems: "center", gap: 9, padding: open ? "16px 18px 10px" : "14px 18px", cursor: "pointer", userSelect: "none" }}>
+        <span style={{ fontSize: 12, color: C.dim2, width: 12, flexShrink: 0, transition: "transform .15s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+        <span style={{ flex: 1, fontSize: 10, fontWeight: 600, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2 }}>{title}</span>
+        {right}
+      </div>
+      {open && <div style={{ padding: "0 18px 18px" }}>{children}</div>}
+    </div>
+  );
+}
 function Btn({ children, onClick, variant = "ghost", disabled, size = "md", full }) {
   const [hover, setHover] = useState(false);
   const base = {
@@ -3192,18 +3213,13 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>
       </div>
 
-      {/* info + finansiellt */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 10 }}>Company information</div>
+      {/* Company information - slimmed: header already shows domain/location/employees/tier/cloud,
+          so this box keeps only what the header doesn't (orgnr, industry, CEO, source, financials, description). */}
+      <Collapsible title="Company information" sectionKey="info">
         <InfoRow icon="#" label="Org. no." value={company.orgnr} mono />
         <InfoRow icon="tag" label="Industry" value={company.industry} />
-        <InfoRow icon="users" label="Employees" value={company.employees} />
         <InfoRow icon="user" label="CEO" value={company.ceo} />
-        <InfoRow icon="pin" label="Location" value={[company.city, company.county].filter(Boolean).join(", ")} />
-        <InfoRow icon="globe" label="Web" value={company.domain} mono />
         <InfoRow icon="target" label="Source" value={company.source} />
-        {company.tier && <InfoRow icon="star" label="Tier" value={company.tier} />}
-        {company.score != null && <InfoRow icon="chart" label="List score" value={company.score} />}
         {fin.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}`, display: "flex", gap: 28, flexWrap: "wrap" }}>
             {fin.map((f, i) => (
@@ -3219,12 +3235,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
             {company.enrichment.description}
           </div>
         )}
-        {/* "AWS value" chip hidden (2026-05): this field is NOT app-generated per company -
-            it's templated boilerplate that came in the Fastighetslista CSV import (the same
-            ~7 strings repeat across all 144 property companies), so it read as a per-company
-            insight when it isn't. Data is untouched in enrichment.aws_value and still feeds
-            funding matching + the partner-portal export; re-surface once it's grounded. */}
-      </div>
+      </Collapsible>
 
       {/* Decision-makers & contacts - who to call, kept high for a calling CRM */}
       <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
