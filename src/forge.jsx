@@ -5306,15 +5306,15 @@ export default function Forge() {
       <div className="alloy-shell" style={{ display: "grid", gridTemplateColumns: "232px 1fr", minHeight: "100vh" }}>
 
         {/* ===== RAIL (dark) ===== */}
-        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }} title={BRAND_FULL}>
+        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} title={BRAND_FULL}>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 15, letterSpacing: ".2em", textTransform: "uppercase", color: "#F1ECE3", fontWeight: 700 }}>{BRAND}</span>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 8.5, letterSpacing: ".18em", textTransform: "uppercase", color: C.darkLabel }}>by</span>
             <ForjLogo height={13} color={C.darkLabel} />
           </div>
 
           {/* project switcher */}
-          <div style={{ marginTop: 26, border: `1px solid ${C.darkRule}` }}>
+          <div style={{ marginTop: 26, border: `1px solid ${C.darkRule}`, flexShrink: 0 }}>
             {projects.map((p, i) => {
               const isA = p.id === activeProject;
               const cnt = companies.filter((c) => c.project_id === p.id && c.list_tag !== "archived_shell").length;
@@ -5327,8 +5327,8 @@ export default function Forge() {
             })}
           </div>
 
-          {/* nav */}
-          <nav style={{ marginTop: 26, display: "flex", flexDirection: "column" }}>
+          {/* nav — the ONLY scrollable zone; foot stays pinned + clickable on any screen height */}
+          <nav style={{ marginTop: 26, display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}>
             {NAV.map((n, i) => {
               const on = nav === n.key && !selectedCompany;
               return (
@@ -5339,8 +5339,8 @@ export default function Forge() {
             })}
           </nav>
 
-          {/* account (foot) */}
-          <div className="rail-foot" style={{ marginTop: "auto", paddingTop: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* account (foot) — pinned, never scrolls off screen */}
+          <div className="rail-foot" style={{ flexShrink: 0, marginTop: 14, paddingTop: 16, borderTop: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".16em", textTransform: "uppercase", color: C.darkLabel, wordBreak: "break-word" }}>{session?.email || "Signed in"}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px" }}>
               <button onClick={() => setEditingPartner(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Partner</button>
