@@ -2255,15 +2255,8 @@ function CompanyIntelPanel({ company, onSave, flash }) {
   const subhead = { fontSize: 10, fontWeight: 600, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 8 };
 
   return (
-    <div style={card}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="globe" size={16} color={C.accent} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>Company intelligence</span>
-        </div>
-        {(tech?.analyzed_at || innov?.analyzed_at) && <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO }}>{fmtDate(innov?.analyzed_at || tech?.analyzed_at)}</span>}
-      </div>
-
+    <Collapsible title="Company intelligence" sectionKey="intel"
+      right={(tech?.analyzed_at || innov?.analyzed_at) ? <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO }}>{fmtDate(innov?.analyzed_at || tech?.analyzed_at)}</span> : null}>
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="https://exempel.se"
           style={{ flex: 1, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 13px", color: C.text, fontSize: 13.5, fontFamily: FONT_MONO, outline: "none" }} />
@@ -2366,7 +2359,7 @@ function CompanyIntelPanel({ company, onSave, flash }) {
           </>
         )}
       </div>
-    </div>
+    </Collapsible>
   );
 }
 
@@ -2787,15 +2780,8 @@ function OutcomePanel({ company, flash }) {
   const trackMatched = matchKnown && outcome.actual_track === outcome.predicted_track;
 
   return (
-    <div style={card}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="target" size={16} color={C.accent} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>Outcome</span>
-          <span title="Predicted vs actual. Feeds the closed-loop learning that sharpens funding scoring over time." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>closed loop</span>
-        </div>
-        {outcome && <span style={{ fontSize: 11, fontWeight: 700, color: om.color }}>{om.label}</span>}
-      </div>
+    <Collapsible title="Outcome" sectionKey="outcome"
+      right={outcome ? <span style={{ fontSize: 11, fontWeight: 700, color: om.color }}>{om.label}</span> : <span title="Predicted vs actual. Feeds the closed-loop learning." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>closed loop</span>}>
 
       {!loaded ? (
         <div style={{ fontSize: 12.5, color: C.dim2 }}><Spinner size={12} /> Loading…</div>
@@ -2870,7 +2856,7 @@ function OutcomePanel({ company, flash }) {
           <button onClick={() => setEditing(true)} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_HEAD }}>✎ Update outcome</button>
         </>
       )}
-    </div>
+    </Collapsible>
   );
 }
 
@@ -2973,16 +2959,8 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
   const qualDone = qualKeys.filter((k) => qual[k] && qual[k].ok).length;
 
   return (
-    <div style={card}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 10, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="spark" size={16} color={C.accent} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>Smith</span>
-          <span title="Smith — your AWS sales co-worker. Forj forges the Alloy; Smith works the forge." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>AWS co-worker</span>
-          <Pill color={C.accent}>{meta.label}</Pill>
-        </div>
-        {!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>play estimated from cloud</span>}
-      </div>
+    <Collapsible title="Smith" sectionKey="smith" accent={C.accent}
+      right={<><span title="Smith — your AWS sales co-worker. Forj forges the Alloy; Smith works the forge." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>AWS co-worker</span><Pill color={C.accent}>{meta.label}</Pill>{!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>est. from cloud</span>}</>}>
 
       {/* fundability score (folded in from the old Funding-fit box) */}
       {loaded && (fit ? (
@@ -3105,7 +3083,7 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
           <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>Filing to Partner Central is done by a human in ACE (Alloy assembles the inputs; automated write-back is gated on the AWS IAM identity).</div>
         </div>
       )}
-    </div>
+    </Collapsible>
   );
 }
 
