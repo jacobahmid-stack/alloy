@@ -2360,6 +2360,145 @@ const FUND_TRACK_META = {
   NONE:           { label: "No funding signal",         blurb: "Pure AWS or no migration signal" },
 };
 
+/* ----------------------------------------------------------------------------
+   AWS PLAYBOOK  —  the co-pilot brain. One source of per-play truth that the
+   Funding Brief, Next-best-action, Qualification and Co-sell panels all read,
+   so guidance is consistent. This is what makes the co-pilot AWS-funding-native
+   instead of a generic CRM: each play maps to its own AWS programs, money line,
+   objections, MEDDIC anchors, and stage-by-stage next move. $0, deterministic.
+   ---------------------------------------------------------------------------- */
+const AWS_PLAYBOOK = {
+  MAP: {
+    motion: "On a competitor cloud or on-prem → migrate to AWS, AWS co-funds the move.",
+    programSeq: "OLA (free assessment) → MAP Assess → Mobilize → Migrate",
+    moneyLine: "AWS co-funds ~25% of the migration via MAP credits + partner funding. An OLA quantifies the savings at no cost.",
+    leadWith: "Offer a free OLA assessment — it quantifies their current spend and the AWS savings before any commitment.",
+    meddic: {
+      Metrics: "Current cloud / on-prem spend — the size of the migration (drives the MAP funding amount).",
+      "Economic buyer": "Who signs off on a multi-year cloud commitment (CIO / CFO / Head of IT).",
+      "Decision criteria": "Cost, risk, and lock-in of staying on Azure/GCP vs moving.",
+      "Decision process": "Is there a migration-readiness review or cloud RFP underway?",
+      "Identify pain": "Cost pressure, end-of-life hardware, vendor lock-in, or a renewal deadline.",
+      Champion: "Who owns the migration / modernization budget internally.",
+    },
+    objections: [
+      ["“We're committed to Azure/GCP.”", "MAP de-risks the move and AWS co-funds it; an OLA quantifies the savings for free — no commitment."],
+      ["“Migration is too risky.”", "MAP Assess builds the full business case and migration plan before you commit a krona."],
+      ["“No time or people for this.”", "It's partner-led and AWS-funded — you don't staff it; the partner runs it."],
+    ],
+    nextByStage: {
+      lead: "Confirm current cloud + spend band, then book a discovery call.",
+      research: "Confirm the decision-maker and current cloud spend before outreach.",
+      kontaktad: "Offer a free OLA assessment to quantify their AWS savings.",
+      mote_bokat: "Run the OLA / scope MAP Assess in the meeting.",
+      kvalificerad: "Submit the MAP Assess funding request via Partner Central.",
+      forslag: "Get sign-off on the migration business case; mobilize.",
+    },
+  },
+  MAP_MODERNIZE: {
+    motion: "Already on AWS → modernize existing workloads (GenAI / containers / data).",
+    programSeq: "OLA → MAP Modernize → GenAI / modernization credits",
+    moneyLine: "MAP Modernize funds the modernization of workloads they already run on AWS — expansion revenue, warm account.",
+    leadWith: "They already trust AWS — lead with a specific modernization win (cost, GenAI, or resilience) on a workload they run today.",
+    meddic: {
+      Metrics: "Current AWS spend + the workload targeted for modernization.",
+      "Economic buyer": "Who owns the AWS account / the workload's P&L.",
+      "Decision criteria": "ROI of modernizing vs leaving the workload as-is.",
+      "Decision process": "Existing AWS account team + their internal roadmap.",
+      "Identify pain": "Tech debt, scaling limits, or a GenAI ambition they can't yet ship.",
+      Champion: "The engineering or product owner of the target workload.",
+    },
+    objections: [
+      ["“What we have works fine.”", "Modernization is funded — MAP Modernize underwrites the upgrade, so it's low-cost to prove value."],
+      ["“We'll do it ourselves.”", "The partner + AWS funding accelerates it; you keep ownership, they de-risk delivery."],
+    ],
+    nextByStage: {
+      lead: "Identify the modernization-ready workload + the AWS account owner.",
+      kontaktad: "Propose a modernization assessment on a named workload.",
+      mote_bokat: "Scope the modernization + the MAP Modernize funding ask.",
+      kvalificerad: "Submit the MAP Modernize funding request.",
+    },
+  },
+  POC: {
+    motion: "Net-new GenAI use case → AWS funds a proof-of-concept, convert to production.",
+    programSeq: "POC credits → production commitment → (MAP Modernize at scale)",
+    moneyLine: "AWS funds the GenAI pilot with POC credits — prove value cheaply, then convert to a funded production build.",
+    leadWith: "Anchor on ONE concrete GenAI use case with a measurable outcome; AWS credits cover the pilot.",
+    meddic: {
+      Metrics: "The KPI the GenAI pilot will move (cost saved / revenue / time).",
+      "Economic buyer": "Who funds production after a successful pilot.",
+      "Decision criteria": "Pilot success metric + path to production.",
+      "Decision process": "Pilot → review → production decision.",
+      "Identify pain": "A manual/expensive process GenAI can automate.",
+      Champion: "The innovation / data / product sponsor.",
+    },
+    objections: [
+      ["“GenAI is hype.”", "That's why it's a funded POC — prove one concrete outcome with AWS credits before committing."],
+      ["“Data isn't ready.”", "The POC scopes exactly what data is needed; AWS funds the readiness work."],
+    ],
+    nextByStage: {
+      lead: "Pin down the single GenAI use case + its success metric.",
+      kontaktad: "Propose a scoped, AWS-funded POC.",
+      mote_bokat: "Agree the pilot scope + the POC credits ask.",
+      kvalificerad: "Submit the POC funding request.",
+    },
+  },
+  ISV_WMP: {
+    motion: "Software vendor → list on AWS Marketplace, co-sell with AWS.",
+    programSeq: "Marketplace listing → WMP funding → co-sell motion",
+    moneyLine: "WMP funds the Marketplace listing + go-to-market; AWS sellers then co-sell the product.",
+    leadWith: "Frame AWS Marketplace as a new distribution channel with AWS's sales force behind it, funded by WMP.",
+    meddic: {
+      Metrics: "Current ARR + the channel revenue Marketplace could add.",
+      "Economic buyer": "The vendor's CEO / VP Sales.",
+      "Decision criteria": "Channel economics + listing effort vs funded support.",
+      "Decision process": "Listing + co-sell enablement.",
+      "Identify pain": "Slow distribution / high CAC the AWS channel can offset.",
+      Champion: "Head of partnerships / sales.",
+    },
+    objections: [
+      ["“Marketplace is just billing.”", "It's a co-sell channel — AWS sellers bring it into their accounts, and WMP funds the launch."],
+    ],
+    nextByStage: {
+      lead: "Confirm it's a SaaS product fit for Marketplace.",
+      kontaktad: "Propose a funded Marketplace listing + co-sell plan.",
+      mote_bokat: "Scope the listing + WMP funding.",
+    },
+  },
+  GREENFIELD_PGP: {
+    motion: "No cloud yet → net-new build on AWS, partner-led with activation funding.",
+    programSeq: "Partner-led PGP → activation credits → MAP at scale",
+    moneyLine: "Partner-led PGP + activation credits fund the net-new build; lands the account on AWS from day one.",
+    leadWith: "They're choosing a cloud for the first time — be the trusted guide; AWS funds the first build.",
+    meddic: {
+      Metrics: "Scope of the net-new project + expected AWS spend.",
+      "Economic buyer": "Project sponsor / founder / CTO.",
+      "Decision criteria": "Which cloud to standardize on.",
+      "Decision process": "Vendor selection for the new build.",
+      "Identify pain": "A new product/system that needs infrastructure now.",
+      Champion: "The technical lead of the new initiative.",
+    },
+    objections: [
+      ["“We haven't picked a cloud.”", "That's the moment — AWS funds the first build via PGP, so the safe choice is also the cheapest to start."],
+    ],
+    nextByStage: {
+      lead: "Confirm the net-new project scope + timeline.",
+      kontaktad: "Position AWS + partner-led build with activation funding.",
+      mote_bokat: "Scope the build + the PGP funding ask.",
+    },
+  },
+  NONE: {
+    motion: "No clear funding signal yet — qualify the cloud situation before investing time.",
+    programSeq: "Re-detect cloud / re-score → assign a play",
+    moneyLine: "No fundable play detected. Confirm their cloud + a migration/modernization trigger first.",
+    leadWith: "Qualify: confirm cloud, spend, and any change trigger before spending sales effort here.",
+    meddic: {},
+    objections: [],
+    nextByStage: { lead: "Confirm cloud + look for a migration/modernization trigger." },
+  },
+};
+function playbookFor(track) { return AWS_PLAYBOOK[track] || AWS_PLAYBOOK.NONE; }
+
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
 // services a typical migration uses - so there is never a second, contradictory number.
@@ -2717,6 +2856,198 @@ function OutcomePanel({ company, flash }) {
 /* ============================================================================
    FÖRETAGSKORT  (detaljvy)
    ============================================================================ */
+/* ----------------------------------------------------------------------------
+   AWS CO-PILOT PANEL  —  arms the rep for the funding conversation. Deterministic
+   ($0), reads the persisted funding_eligibility row + the playbook brain. Four
+   sections: Funding Brief (meeting prep), Next best action (per-play, per-stage),
+   Qualification (AWS-MEDDIC anchored to the track), Co-sell / ACE prep. Human
+   drives; the co-pilot suggests. Filing to Partner Central stays out (gated on IAM).
+   ---------------------------------------------------------------------------- */
+function CoPilotPanel({ company, contacts, onUpdate, flash }) {
+  const [fit, setFit] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false });
+  const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        if (typeof sb === "function") {
+          const rows = await sb("funding_eligibility", { query: `?company_id=eq.${company.id}&select=*` });
+          if (live && rows && rows[0]) setFit(rows[0]);
+        }
+      } catch { /* fall through; brief still works off cloud guess */ }
+      if (live) setLoaded(true);
+    })();
+    return () => { live = false; };
+  }, [company.id]);
+
+  // Track from the funding engine; if unscored, fall back to a cloud-derived guess so the brief still arms the rep.
+  const cloud = String(company.cloud_provider || (company.enrichment && company.enrichment.aws_verdict) || "").toLowerCase();
+  const guess = cloud === "aws" ? "MAP_MODERNIZE" : (cloud === "azure" || cloud === "gcp") ? "MAP" : (!cloud || cloud === "none") ? "GREENFIELD_PGP" : "NONE";
+  const track = (fit && fit.primary_track) || guess;
+  const pb = playbookFor(track);
+  const meta = FUND_TRACK_META[track] || FUND_TRACK_META.NONE;
+  const ace = (fit && fit.ace_draft) || {};
+  const champRole = pb.meddic && pb.meddic.Champion;
+  const topContact = (contacts || [])[0];
+  const stageKey = company.stage || "lead";
+  const nextMove = pb.nextByStage[stageKey] || pb.nextByStage.lead || "Confirm the play and book a discovery call.";
+
+  const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
+  const secHead = (key, label, hint) => (
+    <button onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+      style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "8px 0", fontFamily: FONT_BODY, textAlign: "left" }}>
+      <span style={{ fontSize: 11, color: C.dim2, width: 12 }}>{open[key] ? "−" : "+"}</span>
+      <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.text }}>{label}</span>
+      {hint && <span style={{ fontSize: 11, color: C.dim2, fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>{hint}</span>}
+    </button>
+  );
+  const sub = { fontSize: 10, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: C.dim2, marginBottom: 6 };
+
+  function copyBrief() {
+    const lines = [
+      `AWS FUNDING BRIEF — ${company.name}`,
+      `Play: ${meta.label}${fit && fit.confidence ? ` (${fit.confidence} confidence)` : " (estimated from cloud)"}`,
+      cloud ? `Cloud: ${cloud.toUpperCase()}${fit && fit.est_spend_band ? ` · est. spend ${fit.est_spend_band}` : ""}` : "",
+      ``,
+      `Motion: ${pb.motion}`,
+      `AWS path: ${pb.programSeq}`,
+      `The money: ${pb.moneyLine}`,
+      `Lead with: ${pb.leadWith}`,
+      ace.use_case ? `\nACE use case: ${ace.use_case}` : "",
+      `\nLikely objections:`,
+      ...pb.objections.map(([o, a]) => `  • ${o}\n    → ${a}`),
+      `\nAsk for: ${topContact ? `${topContact.name}${topContact.title ? " (" + topContact.title + ")" : ""}` : (champRole || "the budget owner for this play")}`,
+      `\nNext move (${STATUS_COLOR[stageKey] ? stageKey : "stage"}): ${nextMove}`,
+    ].filter((x) => x !== "");
+    const text = lines.join("\n");
+    try { navigator.clipboard.writeText(text); flash("Funding brief copied"); }
+    catch { flash("Copy failed - select & copy manually"); }
+  }
+
+  function setQualField(k, patch) {
+    const next = { ...qual, [k]: { ...(qual[k] || {}), ...patch } };
+    setQual(next);
+    onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), copilot_qual: next } });
+  }
+  const qualKeys = Object.keys(pb.meddic || {});
+  const qualDone = qualKeys.filter((k) => qual[k] && qual[k].ok).length;
+
+  return (
+    <div style={card}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="spark" size={16} color={C.accent} />
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>AWS co-pilot</span>
+          <Pill color={C.accent}>{meta.label}</Pill>
+        </div>
+        {!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>play estimated from cloud — score funding fit for exact</span>}
+      </div>
+
+      {/* 1 — FUNDING BRIEF (meeting prep) */}
+      {secHead("brief", "Funding brief", "what to say in the room")}
+      {open.brief && (
+        <div style={{ paddingLeft: 20, marginBottom: 8 }}>
+          <div style={{ marginBottom: 10 }}>
+            <div style={sub}>The motion</div>
+            <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5 }}>{pb.motion}</div>
+          </div>
+          <div style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", marginBottom: 10 }}>
+            <div style={sub}>AWS path → the money</div>
+            <div style={{ fontSize: 12.5, color: C.accent, fontWeight: 600, marginBottom: 3 }}>{pb.programSeq}</div>
+            <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>{pb.moneyLine}</div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <div style={sub}>Lead with</div>
+            <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5 }}>{pb.leadWith}</div>
+          </div>
+          {pb.objections.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={sub}>Likely objections → response</div>
+              {pb.objections.map(([o, a], i) => (
+                <div key={i} style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{o}</div>
+                  <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.45, paddingLeft: 10 }}>→ {a}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ marginBottom: 10 }}>
+            <div style={sub}>Ask for</div>
+            <div style={{ fontSize: 12.5, color: C.text }}>
+              {topContact ? <>{topContact.name}{topContact.title ? <span style={{ color: C.dim2 }}> · {topContact.title}</span> : null}</> : (champRole || "the budget owner for this play")}
+            </div>
+          </div>
+          <Btn variant="dark" size="sm" onClick={copyBrief}><Icon name="copy" size={13} color={C.cream} /> Copy brief</Btn>
+        </div>
+      )}
+
+      {/* 2 — NEXT BEST ACTION */}
+      <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+      {secHead("nba", "Next best action", "for this play, this stage")}
+      {open.nba && (
+        <div style={{ paddingLeft: 20, marginBottom: 8 }}>
+          <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5, marginBottom: 8 }}>{nextMove}</div>
+          <Btn variant="ghost" size="sm" onClick={() => { onUpdate(company.id, { next_action: nextMove }); flash("Set as next step"); }}>Set as next step</Btn>
+        </div>
+      )}
+
+      {/* 3 — QUALIFICATION (AWS-MEDDIC) */}
+      {qualKeys.length > 0 && <>
+        <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+        {secHead("qual", "Qualification", `AWS-MEDDIC · ${qualDone}/${qualKeys.length}`)}
+        {open.qual && (
+          <div style={{ paddingLeft: 20, marginBottom: 8 }}>
+            {qualKeys.map((k) => {
+              const v = qual[k] || {};
+              return (
+                <div key={k} style={{ marginBottom: 10 }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!v.ok} onChange={(e) => setQualField(k, { ok: e.target.checked })} style={{ marginTop: 3 }} />
+                    <span>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: v.ok ? C.green : C.text }}>{k}</span>
+                      <span style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.45, display: "block" }}>{pb.meddic[k]}</span>
+                    </span>
+                  </label>
+                  <input value={v.note || ""} onChange={(e) => setQualField(k, { note: e.target.value })} placeholder="who / what you learned"
+                    style={{ width: "100%", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "6px 9px", color: C.text, fontSize: 12, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box", marginTop: 4 }} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </>}
+
+      {/* 4 — CO-SELL / ACE PREP */}
+      <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+      {secHead("cosell", "Co-sell / ACE", "prepare the opportunity")}
+      {open.cosell && (
+        <div style={{ paddingLeft: 20 }}>
+          {ace.use_case ? (
+            <div style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", marginBottom: 10 }}>
+              <div style={sub}>ACE opportunity draft</div>
+              <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5 }}>{ace.use_case}</div>
+              <div style={{ fontSize: 11, color: C.dim2, marginTop: 6 }}>Stage: <strong>{ace.stage || "Qualified"}</strong>{ace.expected_revenue_usd ? <> · Est. revenue: <strong>${Number(ace.expected_revenue_usd).toLocaleString("en-US")}</strong></> : null}</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.dim2, marginBottom: 10, lineHeight: 1.5 }}>No ACE draft yet — score funding fit to generate the opportunity draft.</div>
+          )}
+          <div style={sub}>Before you register</div>
+          <ul style={{ margin: "0 0 10px", paddingLeft: 16, fontSize: 12, color: C.dim, lineHeight: 1.7 }}>
+            <li>Confirm the play + funding program ({meta.label})</li>
+            <li>Named champion + economic buyer (see Qualification)</li>
+            <li>Estimated AWS spend / project value</li>
+            <li>Partner-originated vs AWS-originated decided</li>
+          </ul>
+          <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>Filing to Partner Central is done by a human in ACE (Alloy assembles the inputs; automated write-back is gated on the AWS IAM identity).</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StageSelect({ stage, onChange }) {
   return (
     <select
@@ -2928,6 +3259,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* AWS funding fit - deterministic pre-score (track + fundability), upstream of Partner Central */}
       <FundingFitPanel company={company} flash={flash} />
+
+      {/* AWS co-pilot - arms the rep: funding brief, next-best-action, qualification, co-sell */}
+      <CoPilotPanel company={company} contacts={myContacts} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
       <OutcomePanel company={company} flash={flash} />
