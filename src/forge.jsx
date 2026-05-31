@@ -3584,11 +3584,25 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const bookedThisMonth = activities.filter((a) => a.type === "Meeting" && isThisMonth(a.created_at)).length;
   const conv = calls.length ? Math.round((bookedNow.length / calls.length) * 100) : 0;
 
-  // --- AWS funding signals (the platform's edge) - computed from the loaded company set ---
-  const onAws = projCompanies.filter((c) => c.aws_detected || c.cloud_provider === "aws").length;
-  const mapReady = projCompanies.filter((c) => ["azure", "gcp"].includes(String(c.cloud_provider || "").toLowerCase())).length;
-  const band34 = projCompanies.filter((c) => Number(c.maturity_band) >= 3).length;
-  const aiNative = projCompanies.filter((c) => c.ai_native).length;
+  // --- AWS PLAYS (the sales motions, each tied to a funding program) ---
+  // Derived from the detected cloud + data maturity that's already on each card, mirroring
+  // the funding engine's track logic: on AWS = modernize/resell; on a competitor cloud =
+  // MAP migrate; no detectable cloud = greenfield. A play is what you DO with the signal.
+  const cloudOf = (c) => String(c.cloud_provider || c.enrichment?.aws_verdict || "").toLowerCase();
+  const PLAYS = [
+    { key: "migrate",   label: "Migrate",   prog: "MAP",            accent: C.accent,
+      hits: projCompanies.filter((c) => ["azure", "gcp"].includes(cloudOf(c))),
+      pitch: "On Azure/GCP → move to AWS, AWS co-funds it" },
+    { key: "modernize", label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
+      hits: projCompanies.filter((c) => cloudOf(c) === "aws"),
+      pitch: "Already on AWS → optimize, resell, expand" },
+    { key: "genai",     label: "GenAI",     prog: "POC credits",    accent: C.violet,
+      hits: projCompanies.filter((c) => c.ai_native || Number(c.maturity_band) >= 3),
+      pitch: "AI/data-mature → AWS funds a GenAI pilot" },
+    { key: "greenfield",label: "Greenfield",prog: "Partner-led",    accent: C.blue,
+      hits: projCompanies.filter((c) => { const x = cloudOf(c); return !x || x === "none"; }),
+      pitch: "No cloud yet → net-new build on AWS" },
+  ];
   const hour = new Date().getHours();
   const greeting = hour < 5 ? "Working late" : hour < 11 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
@@ -3618,7 +3632,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
 
   return (
     <div>
-      {/* welcome hero - greeting + the AWS signals that make this project worth working */}
+      {/* welcome hero - greeting + the AWS plays that make this project worth working */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
           {greeting}.
@@ -3626,16 +3640,26 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
         <div style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>
           {project.name} · {projCompanies.length} companies · {worklist.length > 0
             ? <><strong style={{ color: C.accent }}>{worklist.length}</strong> need follow-up today</>
-            : "no follow-ups due. Pick a signal below"}
+            : "no follow-ups due. Pick a play below"}
         </div>
       </div>
 
-      {/* SIGNALS IN FOCUS - the platform's edge, up top */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
-        <Metric label="On AWS" value={onAws} icon="spark" accent={C.accent} />
-        <Metric label="MAP-ready" value={mapReady} icon="trend" accent={C.blue} />
-        <Metric label="Modern data (Band 3-4)" value={band34} icon="chart" accent={C.teal} />
-        <Metric label="GenAI-native" value={aiNative} icon="spark" accent={C.violet} />
+      {/* AWS PLAYS - the sales motions, each a funding program. Click to work that play's list. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+        {PLAYS.map((p) => (
+          <div key={p.key}
+            title={p.pitch}
+            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "16px 18px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD }}>{p.label}</span>
+              <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em" }}>{p.prog}</span>
+            </div>
+            <div style={{ fontSize: 38, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em", marginTop: 10 }}>
+              {p.hits.length}
+            </div>
+            <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 8, lineHeight: 1.4 }}>{p.pitch}</div>
+          </div>
+        ))}
       </div>
 
       {onOrgLookup && <OrgSearchBar onLookup={onOrgLookup} />}
