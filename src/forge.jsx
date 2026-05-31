@@ -3325,8 +3325,8 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>{/* /activity sub-section (border-top divider) */}
       </Collapsible>
 
-      {/* opportunity & owner - deal admin, kept low on the card */}
-      <Collapsible title="Opportunity &amp; owner" sectionKey="opp">
+      {/* Deal & funding - opportunity value/owner + the AWS funding programs, merged */}
+      <Collapsible title="Deal &amp; funding" sectionKey="deal">
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: "1 1 180px" }}>
             <label style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: C.dim2, marginBottom: 4, display: "block" }}>Est. value (SEK / year)</label>
@@ -3345,9 +3345,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         </div>
         <input value={oppNote} onChange={(e) => setOppNote(e.target.value)} onBlur={() => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), opportunity: oppNote.trim() } })} placeholder="What's the deal? (AWS spend, migration scope, workloads, services…)"
           style={{ width: "100%", marginTop: 12, background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" }} />
+        <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 16, paddingTop: 4 }} />
+        <FundingPanel company={company} fundings={fundings || []} onAddFunding={onAddFunding} onUpdateFunding={onUpdateFunding} />
       </Collapsible>
-
-      <FundingPanel company={company} fundings={fundings || []} onAddFunding={onAddFunding} onUpdateFunding={onUpdateFunding} />
     </div>
   );
 }
@@ -3595,8 +3595,8 @@ function FundingPanel({ company, fundings, onAddFunding, onUpdateFunding }) {
     onAddFunding({ project_id: company.project_id, company_id: company.id, program: key, audience: "customer", funding_type: p.type, amount: estimateFunding(key, company.opp_value) || null, currency: "USD", stage: "Created", status: "Draft", phase: key === "MAP" ? "Assess" : null, title: company.name + " - " + key });
   };
   return (
-    <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-      <div style={lblCss}>AWS funding the customer can tap</div>
+    <div>
+      <div style={{ ...lblCss, marginTop: 4 }}>AWS funding the customer can tap</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {recs.map((r) => {
           const p = FUNDING_PROGRAMS[r.key]; const est = estimateFunding(r.key, company.opp_value);
