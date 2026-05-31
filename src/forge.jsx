@@ -2382,9 +2382,9 @@ const FUND_TRACK_META = {
 };
 
 /* ----------------------------------------------------------------------------
-   AWS PLAYBOOK  —  the co-pilot brain. One source of per-play truth that the
+   AWS PLAYBOOK  —  Smith's brain. One source of per-play truth that the
    Funding Brief, Next-best-action, Qualification and Co-sell panels all read,
-   so guidance is consistent. This is what makes the co-pilot AWS-funding-native
+   so guidance is consistent. This is what makes Smith AWS-funding-native
    instead of a generic CRM: each play maps to its own AWS programs, money line,
    objections, MEDDIC anchors, and stage-by-stage next move. $0, deterministic.
    ---------------------------------------------------------------------------- */
@@ -2878,11 +2878,14 @@ function OutcomePanel({ company, flash }) {
    FÖRETAGSKORT  (detaljvy)
    ============================================================================ */
 /* ----------------------------------------------------------------------------
-   AWS CO-PILOT PANEL  —  arms the rep for the funding conversation. Deterministic
-   ($0), reads the persisted funding_eligibility row + the playbook brain. Four
-   sections: Funding Brief (meeting prep), Next best action (per-play, per-stage),
-   Qualification (AWS-MEDDIC anchored to the track), Co-sell / ACE prep. Human
-   drives; the co-pilot suggests. Filing to Partner Central stays out (gated on IAM).
+   SMITH  —  Alloy's AWS sales co-worker. Arms the rep for the funding conversation.
+   (Brand: Forj forges the Alloy; Smith works the forge.) Deterministic ($0), reads
+   the persisted funding_eligibility row + the playbook brain. Four sections: Funding
+   Brief (meeting prep), Next best action (per-play, per-stage), Qualification
+   (AWS-MEDDIC anchored to the track), Co-sell / ACE prep. Human drives; Smith
+   suggests. Filing to Partner Central stays out (gated on IAM).
+   (Component kept as CoPilotPanel / enrichment key copilot_qual to avoid orphaning
+   saved data; only the user-facing name is "Smith".)
    ---------------------------------------------------------------------------- */
 function CoPilotPanel({ company, contacts, onUpdate, flash }) {
   const [fit, setFit] = useState(null);
@@ -2974,7 +2977,8 @@ function CoPilotPanel({ company, contacts, onUpdate, flash }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="spark" size={16} color={C.accent} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>AWS co-pilot</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>Smith</span>
+          <span title="Smith — your AWS sales co-worker. Forj forges the Alloy; Smith works the forge." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>AWS co-worker</span>
           <Pill color={C.accent}>{meta.label}</Pill>
         </div>
         {!loaded ? <Spinner size={12} /> : !fit && <span style={{ fontSize: 10.5, color: C.dim2 }}>play estimated from cloud</span>}
@@ -3302,8 +3306,8 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
       {/* company intelligence (merged cloud + web tech + data/AI) */}
       <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
 
-      {/* AWS co-pilot - the single AWS box: fundability score + funding brief, next-best-action,
-          qualification, co-sell. (Funding-fit folded in here 2026-05-31 to kill the duplicate.) */}
+      {/* Smith (Alloy's AWS sales co-worker) - the single AWS box: fundability score + funding brief,
+          next-best-action, qualification, co-sell. (Funding-fit folded in here 2026-05-31.) */}
       <CoPilotPanel company={company} contacts={myContacts} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
