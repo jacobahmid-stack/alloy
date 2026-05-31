@@ -1,0 +1,10 @@
+-- P4 — sector AI-maturity tiers (Strand-report derived, tunable).
+-- Keyword-matched against companies.industry; tier (0..3) feeds funding-eligibility
+-- as a score modifier (sector_tier * 2). tier 1 = basic-adoption sectors with
+-- digitalization headroom (retail/real-estate ~61% basic); tier 3 = advanced buyers
+-- (info & comms ~40% advanced, finance). Refine when the source PDFs are loaded.
+insert into funding_config (key, value, note) values
+('sector_maturity',
+ '{"fastighet":{"tier":1,"label":"Real estate (basic digital maturity)"},"bygg":{"tier":1,"label":"Construction (basic)"},"anläggning":{"tier":1,"label":"Construction (basic)"},"handel":{"tier":1,"label":"Retail/Wholesale (~61% basic adoption — Strand)"},"detaljhandel":{"tier":1,"label":"Retail (~61% basic — Strand)"},"livsmedel":{"tier":1,"label":"Food & grocery (basic)"},"telekom":{"tier":3,"label":"Information & Communication (~40% advanced — Strand)"},"it &":{"tier":3,"label":"Information & Communication (~40% advanced — Strand)"},"media":{"tier":3,"label":"Media & Communication (advanced)"},"kommunikation":{"tier":3,"label":"Media & Communication (advanced)"},"bank":{"tier":3,"label":"Banking & Finance (advanced buyers)"},"finans":{"tier":3,"label":"Banking & Finance (advanced buyers)"},"konsult":{"tier":2,"label":"Consulting (mixed maturity)"},"industri":{"tier":2,"label":"Industrial/Manufacturing (mid)"},"transport":{"tier":2,"label":"Transport & Logistics (mid)"},"logistik":{"tier":2,"label":"Transport & Logistics (mid)"},"energi":{"tier":2,"label":"Energy (mid)"},"bemanning":{"tier":1,"label":"Staffing & Recruitment (basic)"},"rekrytering":{"tier":1,"label":"Staffing & Recruitment (basic)"},"vård":{"tier":1,"label":"Healthcare & care (basic digital)"},"omsorg":{"tier":1,"label":"Healthcare & care (basic digital)"},"utbildning":{"tier":2,"label":"Education (mid)"}}',
+ 'P4: sector AI-maturity tiers (0-3) keyword-matched on industry. Seeded from Strand reports; tunable. tier*2 = score modifier.')
+on conflict (key) do update set value=excluded.value, note=excluded.note, updated_at=now();
