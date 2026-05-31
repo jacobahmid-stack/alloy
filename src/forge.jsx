@@ -4995,11 +4995,12 @@ export default function Forge() {
     const rec = {
       id: uid(), name: (r.name || "").trim(), orgnr: r.orgnr || orgnr, domain: "",
       city: r.city || "", county: r.county || "", country: r.country || "Sverige",
-      industry: r.industry || "", industry_code: r.industry_code || "",
+      industry: r.industry || "",
       employees: null, revenue_ksek: null, ceo: "", company_type: r.company_type || "",
       source: "SCB lookup", list_tag: "", stage: "lead", score: null, tier: "",
       aws_detected: false, aws_signals: "", next_action: "", notes: "",
-      enrichment: { description: "", lead_source: "Org-number search", opportunity: "" },
+      // industry_code is NOT a companies column — stash the SNI code in enrichment (jsonb) instead.
+      enrichment: { description: "", lead_source: "Org-number search", opportunity: "", industry_code: r.industry_code || "" },
       techstack: null, techstack_at: null, leadanalysis: null, leadanalysis_at: null,
       created_at: ts, updated_at: ts, project_id: activeProject,
     };
