@@ -117,6 +117,22 @@ function classify(company: any, scan: any, cfg: any) {
   const est_spend_band = spendBand(company.employees, empMap);
   if (est_spend_band) rationale.push(`~${company.employees ?? "?"} employees → est. spend ${est_spend_band}`);
 
+  // --- P4: sector AI-maturity (keyword-match industry → tier 0..3; from Strand reports). ---
+  // tier 1 (basic, e.g. retail/real-estate) = greenfield digitalization headroom;
+  // tier 3 (advanced, e.g. info/comms/finance) = sophisticated buyers. Both lift fit.
+  let sector_tier = 0; let sector_label: string | null = null;
+  const indL = String(company.industry || "").toLowerCase();
+  const sectorCfg = (cfg.sector_maturity && typeof cfg.sector_maturity === "object") ? cfg.sector_maturity : {};
+  if (indL) {
+    for (const [kw, meta] of Object.entries(sectorCfg as Record<string, any>)) {
+      if (indL.includes(kw)) {
+        const t = meta && typeof meta === "object" ? Number(meta.tier) || 0 : 0;
+        if (t > sector_tier) { sector_tier = t; sector_label = (meta && meta.label) || kw; }
+      }
+    }
+  }
+  if (sector_label) rationale.push(`Sector: ${sector_label}`);
+
   // MAP floor gate: below the ~$250K floor, POC is better-sized.
   if (primary === "MAP" && (est_spend_band === "<50k" || est_spend_band === "50-250k")) {
     if (!secondary.includes("POC")) secondary.unshift("POC");
@@ -129,6 +145,7 @@ function classify(company: any, scan: any, cfg: any) {
   let score = (TRACK_STRENGTH[primary] || 0)
     + (BAND_SCORE[est_spend_band || ""] || 0)
     + (band !== null ? band * 4 : 0)
+    + (sector_tier * 2)            // P4 sector AI-maturity modifier
     + (CONF_PTS[confidence] || 0);
   score = Math.max(0, Math.min(100, Math.round(score)));
 
@@ -144,6 +161,7 @@ function classify(company: any, scan: any, cfg: any) {
     secondary_tracks: secondary,
     use_case: useCaseText(primary, company),
     customer: { name: company.name, domain: company.domain, industry: company.industry ?? null, employees: company.employees ?? null },
+    sector_tier, sector_label,
     partner_path_note: "Funding access is gated by Partner Path/Tier (and an MDF Wallet for MDF). This score is necessary, not sufficient — org standing is the real gate.",
   };
 

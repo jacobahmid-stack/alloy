@@ -476,6 +476,24 @@ async function detectAws(domain) {
   return JSON.parse(text);
 }
 
+// Deterministic AWS funding-program fit (track + score + rationale). $0 — no LLM.
+// apply:false = compute/preview; apply:true = persist to funding_eligibility.
+async function scoreFundingFit(companyId, apply = false) {
+  const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
+  const base = (cfg.url || "").replace(/\/+$/, "");
+  if (!base) throw new Error("Supabase URL missing (requires the standalone build)");
+  const ak = cfg.anonKey || "";
+  const headers = { "Content-Type": "application/json" };
+  if (ak) { headers["Authorization"] = "Bearer " + ak; headers["apikey"] = ak; }
+  const res = await fetch(base + "/functions/v1/funding-eligibility", {
+    method: "POST", headers, body: JSON.stringify({ company_ids: [companyId], apply }),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error("funding-eligibility " + res.status + " — " + text.slice(0, 160));
+  const data = JSON.parse(text);
+  return (data.report || [])[0] || null;
+}
+
 async function registrySearch(params) {
   const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
   const base = (cfg.url || "").replace(/\/+$/, "");
@@ -2308,6 +2326,128 @@ function CompanyIntelPanel({ company, onSave, flash }) {
   );
 }
 
+/* AWS funding-fit — deterministic track + score, UPSTREAM of Partner Central.
+   Reads the persisted funding_eligibility row; "Re-score" recomputes ($0, no LLM). */
+const FUND_TRACK_META = {
+  MAP:            { label: "MAP — Migrate to AWS",     blurb: "Competitor-cloud / on-prem takeout" },
+  MAP_MODERNIZE:  { label: "MAP — Modernize",          blurb: "GenAI/agentic on existing AWS workloads" },
+  POC:            { label: "POC",                       blurb: "Net-new GenAI proof-of-concept" },
+  ISV_WMP:        { label: "ISV · Marketplace (WMP)",   blurb: "List SaaS on AWS Marketplace" },
+  GREENFIELD_PGP: { label: "Greenfield (PGP)",          blurb: "No current cloud — net-new build" },
+  NONE:           { label: "No funding signal",         blurb: "Pure AWS or no migration signal" },
+};
+function FundingFitPanel({ company, flash }) {
+  const [fit, setFit] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        if (typeof sb === "function") {
+          const rows = await sb("funding_eligibility", { query: `?company_id=eq.${company.id}&select=*` });
+          if (live && rows && rows[0]) { setFit(rows[0]); setLoaded(true); return; }
+        }
+      } catch { /* fall through to lazy compute */ }
+      if (live) setLoaded(true);
+    })();
+    return () => { live = false; };
+  }, [company.id]);
+
+  async function rescore() {
+    setBusy(true);
+    try {
+      const r = await scoreFundingFit(company.id, true); // apply:true → persists
+      if (r) { setFit({ ...r, fundability_score: r.fundability_score, scored_at: new Date().toISOString() }); flash("Funding fit scored"); }
+      else flash("No score returned");
+    } catch (e) { flash("Funding scoring failed: " + (e?.message || e)); }
+    finally { setBusy(false); }
+  }
+
+  const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
+  const subhead = { fontSize: 10, fontWeight: 600, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2, marginBottom: 8 };
+  const track = fit?.primary_track || "NONE";
+  const meta = FUND_TRACK_META[track] || FUND_TRACK_META.NONE;
+  const score = fit?.fundability_score ?? 0;
+  const scoreColor = score >= 65 ? C.green : score >= 45 ? C.amber : C.dim2;
+  const ace = fit?.ace_draft || {};
+  const secondaries = fit?.secondary_tracks || ace.secondary_tracks || [];
+
+  return (
+    <div style={card}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="tag" size={16} color={C.accent} />
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.text, fontFamily: FONT_BODY }}>AWS funding fit</span>
+          <span title="Deterministic pre-score, upstream of Partner Central. AWS's own agent makes the authoritative call post-handoff." style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px" }}>pre-score</span>
+        </div>
+        {fit?.scored_at && <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO }}>{fmtDate(fit.scored_at)}</span>}
+      </div>
+
+      {!loaded ? (
+        <div style={{ fontSize: 12.5, color: C.dim2 }}><Spinner size={12} /> Loading…</div>
+      ) : !fit ? (
+        <div>
+          <div style={{ fontSize: 12.5, color: C.dim2, marginBottom: 12, lineHeight: 1.5 }}>No funding fit scored yet. Deterministic — reads cloud + maturity + size + sector. No AI, instant.</div>
+          <Btn variant="dark" size="sm" onClick={rescore} disabled={busy}>{busy ? <Spinner /> : <Icon name="tag" size={13} color={C.cream} />} {busy ? "Scoring…" : "Score funding fit"}</Btn>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "stretch", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ flex: "1 1 230px", minWidth: 0 }}>
+              <div style={subhead}>Recommended track</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.accent, fontFamily: FONT_DISPLAY }}>{meta.label}</span>
+                {secondaries.map((s) => <span key={s} style={{ fontSize: 10.5, fontWeight: 700, color: C.blue, border: `1px solid ${C.blue}55`, borderRadius: 2, padding: "2px 7px" }}>+ {s}</span>)}
+              </div>
+              <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 4, lineHeight: 1.5 }}>{meta.blurb}</div>
+            </div>
+            <div style={{ flex: "0 0 130px" }}>
+              <div style={subhead}>Fundability</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 26, fontWeight: 400, color: scoreColor, fontFamily: FONT_DISPLAY, lineHeight: 1 }}>{score}</span>
+                <span style={{ fontSize: 12, color: C.dim2 }}>/100</span>
+              </div>
+              <div style={{ height: 5, background: C.line2, borderRadius: 3, marginTop: 6, overflow: "hidden" }}>
+                <div style={{ width: score + "%", height: "100%", background: scoreColor }} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            <Pill color={fit.confidence === "high" ? C.green : fit.confidence === "med" ? C.amber : C.dim2}>{fit.confidence} confidence</Pill>
+            {fit.migration_source && fit.migration_source !== "unknown" && <Pill color={C.dim}>from {fit.migration_source}</Pill>}
+            {fit.est_spend_band && <Pill color={C.dim}>{fit.est_spend_band} est. spend</Pill>}
+            {ace.sector_label && <Pill color={C.dim}>{ace.sector_label}</Pill>}
+            {fit.needs_human_review && <Pill color={C.amber}>needs review</Pill>}
+          </div>
+
+          {(fit.rationale || []).length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={subhead}>Why</div>
+              <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: C.dim, lineHeight: 1.6 }}>
+                {fit.rationale.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {ace.use_case && (
+            <div style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", marginBottom: 12 }}>
+              <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2, marginBottom: 4 }}>ACE opportunity draft</div>
+              <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5 }}>{ace.use_case}</div>
+              <div style={{ fontSize: 11, color: C.dim2, marginTop: 6 }}>Stage: <strong>{ace.stage || "Qualified"}</strong>{ace.expected_revenue_usd ? <> · Est. revenue: <strong>${Number(ace.expected_revenue_usd).toLocaleString("en-US")}</strong></> : null}</div>
+            </div>
+          )}
+
+          <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5, marginBottom: 10 }}>{ace.partner_path_note || "Pre-score only. AWS's Partner Central agent makes the authoritative funding call after handoff."}</div>
+          <button onClick={rescore} disabled={busy} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: FONT_HEAD }}>{busy ? <Spinner size={12} /> : "↻"} Re-score</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ============================================================================
    FÖRETAGSKORT  (detaljvy)
    ============================================================================ */
@@ -2506,6 +2646,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* company intelligence (merged cloud + web tech + data/AI) — above contacts */}
       <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
+
+      {/* AWS funding fit — deterministic pre-score (track + fundability), upstream of Partner Central */}
+      <FundingFitPanel company={company} flash={flash} />
 
       {/* lead analysis & call hypothesis */}
       <LeadAnalysisPanel project={project} company={company} contacts={myContacts} onSave={onUpdate} onAddContact={onAddContact} flash={flash} />
