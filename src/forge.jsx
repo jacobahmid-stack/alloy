@@ -5306,7 +5306,7 @@ export default function Forge() {
       <div className="alloy-shell" style={{ display: "grid", gridTemplateColumns: "232px 1fr", minHeight: "100vh" }}>
 
         {/* ===== RAIL (dark) ===== */}
-        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", overflow: "hidden" }}>
+        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", maxHeight: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} title={BRAND_FULL}>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 15, letterSpacing: ".2em", textTransform: "uppercase", color: "#F1ECE3", fontWeight: 700 }}>{BRAND}</span>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 8.5, letterSpacing: ".18em", textTransform: "uppercase", color: C.darkLabel }}>by</span>
