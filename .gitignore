@@ -33,3 +33,6 @@ supabase/.branches/
 _*.cjs
 _*.json
 par_innov*.txt
+
+# allow the template (real .env stays ignored above)
+!.env.example
