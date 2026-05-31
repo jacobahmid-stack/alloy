@@ -3237,12 +3237,10 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         )}
       </Collapsible>
 
-      {/* Decision-makers & contacts - who to call, kept high for a calling CRM */}
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: C.dim2 }}>Decision-makers & contacts{myContacts.length ? " · " + myContacts.length : ""}</div>
-          <button onClick={() => onAddContact(company.id, { name: "", role: "" })} style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>+ Contact</button>
-        </div>
+      {/* Decision-makers & contacts - who to call */}
+      <Collapsible sectionKey="contacts"
+        title={"Decision-makers & contacts" + (myContacts.length ? " · " + myContacts.length : "")}
+        right={<button onClick={(e) => { e.stopPropagation(); onAddContact(company.id, { name: "", role: "" }); }} style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>+ Contact</button>}>
         {myContacts.length === 0 && <div style={{ fontSize: 12.5, color: C.dim2 }}>No contacts registered.</div>}
         {myContacts.map((c) => (
           <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 0", borderBottom: `1px solid ${C.line}` }}>
@@ -3263,7 +3261,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           </div>
         ))}
         <FindContacts company={company} existing={myContacts} onAddContact={onAddContact} flash={flash} />
-      </div>
+      </Collapsible>
 
       {/* company intelligence (merged cloud + web tech + data/AI) */}
       <CompanyIntelPanel company={company} onSave={onUpdate} flash={flash} />
