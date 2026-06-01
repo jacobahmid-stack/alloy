@@ -1702,6 +1702,40 @@ function Spinner({ size = 13, color = C.accent }) {
     }} />
   );
 }
+// Branded loading splash — held ~2.5s so users register where they're going.
+// Rotating Smith-voiced lines + an orange progress shimmer. Self-contained timer.
+function LoadingSplash() {
+  const lines = [
+    "Forging your pipeline…",
+    "Smith is reading the room…",
+    "Lining up today's funded plays…",
+    "Scoring the AWS funding fit…",
+    "Sharpening the next move…",
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % lines.length), 700);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 22 }}>
+      <link rel="stylesheet" href={fontLink} />
+      <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} @keyframes alloyshimmer{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}} @keyframes alloyfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}`}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <span style={{ fontFamily: FONT_HEAD, fontSize: 34, letterSpacing: ".28em", textTransform: "uppercase", color: C.text, fontWeight: 700, paddingLeft: ".28em" }}>{BRAND}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
+          <ForjLogo height={16} color={C.text} />
+        </div>
+      </div>
+      {/* orange progress shimmer */}
+      <div style={{ width: 180, height: 3, borderRadius: 3, background: C.line, overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", inset: 0, width: "30%", background: C.accent, borderRadius: 3, animation: "alloyshimmer 1.1s ease-in-out infinite" }} />
+      </div>
+      <div key={i} style={{ fontSize: 13, color: C.dim, letterSpacing: ".02em", fontFamily: FONT_BODY, animation: "alloyfade .4s ease both", minHeight: 18 }}>{lines[i]}</div>
+    </div>
+  );
+}
 function Confidence({ level }) {
   const map = { high: C.green, low: C.dim2, medium: C.amber };
   const l = lc(level);
@@ -4357,7 +4391,7 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles, onSetNextStep }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles, onSetNextStep, tall }) {
   // initialMsgs/onPersist: when given (card-scoped chat), the thread persists to the account
   // (enrichment.smith_thread); when absent (launcher), the chat is ephemeral.
   // savedFiles/onSaveFiles: card-scoped — pre-load the account's saved files + persist new ones.
@@ -4475,7 +4509,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
         </div>
       )}
       {msgs.length > 0 && (
-        <div ref={scrollRef} style={{ maxHeight: 230, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+        <div ref={scrollRef} style={{ maxHeight: tall ? "min(58vh, 560px)" : 230, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
           {msgs.map((m, i) => (
             <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "90%" }}>
               <div style={{ background: m.role === "user" ? C.ink : C.panel, color: m.role === "user" ? C.cream : C.text, border: m.role === "user" ? "none" : `1px solid ${C.line}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
@@ -4719,11 +4753,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
       {/* Smith's morning briefing — in-app digest, dismissible per day */}
       {!briefDismissed && <SmithBriefing greeting={greeting} recs={smithRecs} stale={Array(staleCount)} fundingQualified={fundingQualified} bookedNow={bookedNow.length} onOpen={onOpen} onDismiss={dismissBrief} />}
 
-      {/* universal command bar — search company / add by org-nr / ask Smith */}
-      {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
-
-      {/* welcome hero - greeting only when the briefing isn't already greeting above */}
-      <div style={{ marginBottom: 22 }}>
+      {/* welcome hero - greeting first (orient), then the command bar (act). Greeting shown
+          here only when the briefing above isn't already greeting. */}
+      <div style={{ marginBottom: 16 }}>
         {briefDismissed && (
           <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
             {greeting}.
@@ -4735,6 +4767,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
             : "no follow-ups due. Pick a play below"}
         </div>
       </div>
+
+      {/* universal command bar — search company / add by org-nr / ask Smith */}
+      {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
 
       {/* SMITH recommends — the single most valuable account to work per play, right now */}
       {smithRecs.length > 0 && (
@@ -4755,9 +4790,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
             title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
             onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
             style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "14px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD }}>{p.label}</span>
-              <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em" }}>{p.prog}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+              <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
+              <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
             </div>
             <div style={{ fontSize: 34, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em", marginTop: 8 }}>
               {p.hits.length}
@@ -6303,6 +6338,7 @@ export default function Forge() {
     (async () => {
       setAuthToken(session.access_token);
       setLoading(true);
+      const loadStart = Date.now(); // hold the branded loading screen a beat so users see where they're going
       let admin = false;
       try { admin = await db.isAdmin(); } catch {}
       setIsAdmin(admin);
@@ -6334,6 +6370,9 @@ export default function Forge() {
         }
       } catch (e) { /* invalid/expired invite */ }
 
+      const elapsed = Date.now() - loadStart;
+      const MIN_SPLASH = 2500;
+      if (elapsed < MIN_SPLASH) await new Promise((r) => setTimeout(r, MIN_SPLASH - elapsed));
       setLoading(false);
     })();
   }, [session]);
@@ -6665,23 +6704,7 @@ export default function Forge() {
     return <LoginScreen onAuthed={(s) => setSession(s)} />;
   }
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-        <link rel="stylesheet" href={fontLink} />
-        <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}`}</style>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
-          <span style={{ fontFamily: FONT_HEAD, fontSize: 28, letterSpacing: ".26em", textTransform: "uppercase", color: C.text, fontWeight: 700, paddingLeft: ".26em" }}>{BRAND}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontFamily: FONT_HEAD, fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: C.dim }}>by</span>
-            <ForjLogo height={16} color={C.text} />
-          </div>
-          <div style={{ fontSize: 12.5, color: C.dim, marginTop: 4, letterSpacing: ".02em" }}>{SLOGAN}</div>
-        </div>
-        <Spinner size={22} />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSplash />;
 
   // Role still resolving for a non-admin - avoid flashing the operator UI
   if (!isAdmin && myRole === null) {
@@ -6827,7 +6850,7 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); }} />
+          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); setSmithFocus(true); }} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
         ) : nav === "hot" ? (
@@ -6857,7 +6880,34 @@ export default function Forge() {
       {/* SMITH floating launcher — reachable from every screen */}
       {session && (
         <>
-          {smithOpen && (
+          {smithOpen && smithFocus && (
+            /* FOCUS = full-screen chat. Backdrop click closes focus back to the corner panel. */
+            <div onClick={() => setSmithFocus(false)} style={{ position: "fixed", inset: 0, zIndex: 62, background: "rgba(20,19,16,.45)", backdropFilter: "blur(3px)", display: "flex", alignItems: "stretch", justifyContent: "center", padding: "max(3vh, 16px)" }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, boxShadow: "0 20px 60px rgba(20,19,16,.3)", overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
+                    <span style={{ fontSize: 11, color: C.dim2 }}>{selectedCompany ? selectedCompany.name : (project?.name) || ""}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button onClick={() => setSmithFocus(false)} title="Back to recommendations" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Show plays</button>
+                    <button onClick={() => { setSmithOpen(false); setSmithFocus(false); }} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 16px" }}>
+                  <SmithChat tall
+                    project={project}
+                    projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
+                    trackMap={smithTracks} contacts={contacts} recs={smithLauncherRecs}
+                    seed={smithSeed} onClearSeed={() => setSmithSeed("")}
+                    onOpen={(id) => { setSelected(id); setSmithOpen(false); setSmithFocus(false); }} flash={flash}
+                    focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
+                </div>
+              </div>
+            </div>
+          )}
+          {smithOpen && !smithFocus && (
             <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -6866,13 +6916,13 @@ export default function Forge() {
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <button onClick={() => setSmithFocus((v) => !v)} title={smithFocus ? "Show recommendations" : "Focus mode — just chat with Smith"} style={{ background: "transparent", border: "none", color: smithFocus ? C.accent : C.dim2, fontSize: 11, fontWeight: 600, lineHeight: 1, cursor: "pointer", padding: "2px 6px", fontFamily: FONT_BODY }}>{smithFocus ? "Show plays" : "Focus"}</button>
+                  <button onClick={() => setSmithFocus(true)} title="Expand to a full chat window" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11, fontWeight: 600, lineHeight: 1, cursor: "pointer", padding: "2px 6px", fontFamily: FONT_BODY }}>⤢ Expand</button>
                   <button onClick={() => { setSmithOpen(false); setSmithFocus(false); }} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
                 </div>
               </div>
-              {!smithFocus && <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
+              <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
                 onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
-                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />}
+                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
               <SmithChat
                 project={project}
                 projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
@@ -6887,8 +6937,8 @@ export default function Forge() {
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
             style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: C.accent, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", boxShadow: "0 6px 20px rgba(184,61,12,.36)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0) > 0 && !smithOpen && (
-              <span style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0)}</span>
+            {smithLauncherRecs.length > 0 && !smithOpen && (
+              <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.length}</span>
             )}
             S
           </button>
