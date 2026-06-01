@@ -3782,14 +3782,19 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 /* ============================================================================
    DASHBOARD
    ============================================================================ */
-function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen, onOutcome, onSnooze, flash }) {
+function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen, onOutcome, onSnooze, onDone, onAskSmith, flash }) {
   const today = dayStr(0);
   const score = (c) => (c.score ?? 0) * 10 + (c.leadanalysis?.score ?? 0);
+  // "Done for today" — tick an item and it vanishes so the board clears. Dated tasks also persist
+  // (next_action cleared via onDone); nudges/suggestions are dismissed for the session.
+  const [dismissed, setDismissed] = useState(() => new Set());
+  const hide = (key) => setDismissed((s) => { const n = new Set(s); n.add(key); return n; });
+  const done = (c) => { if (c.next_action_at && onDone) onDone(c.id); hide(c.id); };
   const proj = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const dated = proj.filter((c) => c.next_action_at);
-  const overdue = dated.filter((c) => c.next_action_at < today).sort((a, b) => (a.next_action_at < b.next_action_at ? -1 : 1));
-  const dueToday = dated.filter((c) => c.next_action_at === today).sort((a, b) => score(b) - score(a));
-  const ready = proj.filter((c) => !c.next_action_at && (phaseOf(c.stage) === "readiness" || c.stage === "kontaktad")).sort((a, b) => score(b) - score(a)).slice(0, 15);
+  const overdue = dated.filter((c) => c.next_action_at < today && !dismissed.has(c.id)).sort((a, b) => (a.next_action_at < b.next_action_at ? -1 : 1));
+  const dueToday = dated.filter((c) => c.next_action_at === today && !dismissed.has(c.id)).sort((a, b) => score(b) - score(a));
+  const ready = proj.filter((c) => !c.next_action_at && !dismissed.has(c.id) && (phaseOf(c.stage) === "readiness" || c.stage === "kontaktad")).sort((a, b) => score(b) - score(a)).slice(0, 15);
   const total = overdue.length + dueToday.length;
 
   // --- SMITH day-to-day nudges (deterministic, $0) ---
@@ -3872,6 +3877,7 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
             <button key={k} onClick={() => onOutcome(c.id, k)} style={outcomeBtn(OUTCOMES[k].tone)}>{OUTCOMES[k].label}</button>
           ))}
           <span style={{ flex: 1 }} />
+          <button onClick={() => done(c)} title="Done for today — clear it from the queue" style={{ ...outcomeBtn("green"), borderColor: C.green + "66" }}>✓ Done</button>
           <button onClick={() => onSnooze(c.id, 1)} style={snoozeBtn}>+1d</button>
           <button onClick={() => onSnooze(c.id, 7)} style={snoozeBtn}>+1w</button>
         </div>
@@ -3908,29 +3914,30 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
       </div>
 
       {/* SMITH SAYS — deterministic per-play picks, $0, always on (above the optional LLM agent) */}
-      {smithPicks.length > 0 && (
+      {smithPicks.filter((r) => !dismissed.has("pick:" + r.track)).length > 0 && (
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent }} />
             <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.dim, fontFamily: FONT_BODY }}>Smith says — work these first</h3>
-            <Pill color={C.accent}>{smithPicks.length}</Pill>
+            <Pill color={C.accent}>{smithPicks.filter((r) => !dismissed.has("pick:" + r.track)).length}</Pill>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {smithPicks.map((r) => {
+            {smithPicks.filter((r) => !dismissed.has("pick:" + r.track)).map((r) => {
               const accent = C[r.accent] || C.accent;
               return (
-                <div key={r.track} onClick={() => onOpen(r.company.id)} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 2, padding: "12px 14px", cursor: "pointer", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 74 }}>
+                <div key={r.track} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 2, padding: "12px 14px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 74, cursor: "pointer" }} onClick={() => onOpen(r.company.id)}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: accent, fontFamily: FONT_HEAD }}>{r.label}</div>
                     {r.fundability != null && <div style={{ fontSize: 11, color: C.dim2, marginTop: 2 }}>fund {r.fundability}</div>}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onOpen(r.company.id)}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14.5, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{r.company.name}</span>
                       <span style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px", fontSize: 10, color: C.dim }}>{r.reasonTag}</span>
                     </div>
                     <div style={{ fontSize: 12, color: C.dim, marginTop: 3, lineHeight: 1.45 }}>{r.action}</div>
                   </div>
+                  <button onClick={(e) => { e.stopPropagation(); hide("pick:" + r.track); }} title="Done — clear this pick" style={{ ...outcomeBtn("green"), borderColor: C.green + "66", flexShrink: 0 }}>✓</button>
                 </div>
               );
             })}
@@ -3939,17 +3946,17 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
       )}
 
       {/* GOING COLD — stale-deal reminders */}
-      {stale.length > 0 && (
+      {stale.filter(({ c }) => !dismissed.has("stale:" + c.id)).length > 0 && (
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
             <Dot color={C.amber} />
             <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.dim, fontFamily: FONT_BODY }}>Going cold</h3>
-            <Pill color={C.amber}>{stale.length}</Pill>
+            <Pill color={C.amber}>{stale.filter(({ c }) => !dismissed.has("stale:" + c.id)).length}</Pill>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {stale.map(({ c, why }) => (
-              <div key={c.id} onClick={() => onOpen(c.id)} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 2, padding: "11px 14px", cursor: "pointer", display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+            {stale.filter(({ c }) => !dismissed.has("stale:" + c.id)).map(({ c, why }) => (
+              <div key={c.id} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 2, padding: "11px 14px", display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onOpen(c.id)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 14, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{c.name}</span>
                     <Pill color={STATUS_COLOR[c.stage]} bg={C.panel2}><Dot color={STATUS_COLOR[c.stage]} />{STAGE_LABEL[c.stage]}</Pill>
@@ -3957,6 +3964,7 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
                   <div style={{ fontSize: 12, color: C.dim, marginTop: 3 }}>{why}</div>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); onSnooze(c.id, 1); }} style={snoozeBtn}>+1d</button>
+                <button onClick={(e) => { e.stopPropagation(); hide("stale:" + c.id); }} title="Done — clear this reminder" style={{ ...snoozeBtn, color: C.green, borderColor: C.green + "66" }}>✓</button>
               </div>
             ))}
           </div>
@@ -3988,8 +3996,16 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
       <Group title="Overdue" color={C.red} items={overdue} badge={(c) => { const d = Math.round((new Date(today) - new Date(c.next_action_at)) / 864e5); return d === 1 ? "1 day late" : d + " days late"; }} />
       <Group title="Due today" color={C.accent} items={dueToday} />
       <Group title="Ready to call - no date set" color={C.dim2} items={ready} />
-      {total === 0 && ready.length === 0 && (
-        <div style={{ textAlign: "center", padding: 48, color: C.dim2, fontSize: 13 }}>Nothing in the queue. Schedule a next action on a company to see it here.</div>
+      {total === 0 && ready.length === 0 &&
+       smithPicks.filter((r) => !dismissed.has("pick:" + r.track)).length === 0 &&
+       stale.filter(({ c }) => !dismissed.has("stale:" + c.id)).length === 0 &&
+       (!triage || triage.length === 0) && (
+        <div style={{ textAlign: "center", padding: "56px 24px", color: C.dim }}>
+          <div style={{ fontSize: 42, marginBottom: 10 }}>{SMITH_EMOJI}</div>
+          <div style={{ fontSize: 19, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, marginBottom: 6 }}>{dismissed.size > 0 ? "Forged through it." : "Board's clear."}</div>
+          <div style={{ fontSize: 13, color: C.dim2, marginBottom: 20, lineHeight: 1.5 }}>{dismissed.size > 0 ? "You cleared today's queue — nice work. Time to dig with Smith." : "Nothing scheduled. Pick a play, or let Smith point you at the next move."}</div>
+          {onAskSmith && <button onClick={onAskSmith} style={{ background: SMITH_AV_BG, color: "#fff", border: "none", borderRadius: 4, padding: "11px 22px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{SMITH_EMOJI}</span> Ask Smith</button>}
+        </div>
       )}
     </div>
   );
@@ -4644,7 +4660,7 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.accent}`, borderRadius: 4, padding: "16px 20px", marginBottom: 20, position: "relative", boxShadow: "0 1px 3px rgba(20,19,16,0.05)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+        <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
         <span style={{ flex: 1 }} />
         <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
@@ -4697,7 +4713,12 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: variant === "hero" ? 10 : 8 }}>
-      {variant === "rail" && greeting && <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>}
+      {variant === "rail" && greeting && (
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ width: 26, height: 26, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span className="smith-hammer" style={{ fontSize: 14 }}>{SMITH_EMOJI}</span></span>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>
+        </div>
+      )}
       {card(top, true)}
       {rest.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: variant === "hero" ? "repeat(auto-fit, minmax(190px, 1fr))" : "1fr", gap: 8 }}>
@@ -6806,6 +6827,13 @@ export default function Forge() {
       <link rel="stylesheet" href={fontLink} />
       <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid #B83D0C!important;outline-offset:1px} ::selection{background:#B83D0C;color:#FDFAF5}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes forgehit{0%,50%{transform:rotate(-20deg)}68%{transform:rotate(24deg)}78%{transform:rotate(10deg)}88%{transform:rotate(20deg)}100%{transform:rotate(-20deg)}}
+        @keyframes forgeglow{0%,100%{box-shadow:0 6px 20px rgba(255,140,30,.40)}55%{box-shadow:0 6px 30px rgba(255,170,50,.75)}}
+        @keyframes forgespark{0%,62%{opacity:0;transform:translate(0,0) scale(.4)}70%{opacity:1;transform:translate(7px,-7px) scale(1)}100%{opacity:0;transform:translate(13px,-12px) scale(.3)}}
+        .smith-hammer{display:inline-block;transform-origin:72% 82%;animation:forgehit 2.4s ease-in-out infinite}
+        .smith-launch{animation:forgeglow 2.4s ease-in-out infinite}
+        .smith-launch .smith-spark{position:absolute;top:12px;right:13px;width:5px;height:5px;border-radius:50%;background:#FFE08A;animation:forgespark 2.4s ease-in-out infinite;pointer-events:none}
+        @media(prefers-reduced-motion:reduce){.smith-hammer,.smith-launch,.smith-launch .smith-spark{animation:none}}
         *{scrollbar-width:thin;scrollbar-color:${C.line2} transparent}
         select option{background:${C.cream};color:${C.text}}
         ::selection{background:${C.accent};color:${C.cream}}
@@ -6930,7 +6958,7 @@ export default function Forge() {
         ) : nav === "dashboard" ? (
           <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); setSmithFocus(true); }} />
         ) : nav === "today" ? (
-          <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
+          <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} onDone={(id) => updateCompany(id, { next_action_at: null })} onAskSmith={() => { setSmithOpen(true); setSmithFocus(true); }} flash={flash} />
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
@@ -6964,7 +6992,7 @@ export default function Forge() {
               <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, boxShadow: "0 20px 60px rgba(20,19,16,.3)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
                     <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                     <span style={{ fontSize: 11, color: C.dim2 }}>{selectedCompany ? selectedCompany.name : (project?.name) || ""}</span>
                   </div>
@@ -6989,7 +7017,7 @@ export default function Forge() {
             <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
@@ -7013,12 +7041,13 @@ export default function Forge() {
                 focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
             </div>
           )}
-          <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
-            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", boxShadow: "0 6px 22px rgba(255,140,30,.45)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker, forging the pipeline" className="smith-launch"
+            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 54, height: 54, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {smithLauncherRecs.length > 0 && !smithOpen && (
-              <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.length}</span>
+              <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}`, zIndex: 1 }}>{smithLauncherRecs.length}</span>
             )}
-            <span style={{ fontSize: 22, lineHeight: 1 }}>{SMITH_EMOJI}</span>
+            <span className="smith-spark" />
+            <span className="smith-hammer" style={{ fontSize: 23, lineHeight: 1 }}>{SMITH_EMOJI}</span>
           </button>
         </>
       )}
