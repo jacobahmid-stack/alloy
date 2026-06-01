@@ -298,7 +298,12 @@ function dayStr(offset = 0) {
 }
 // Active = neither user-removed (list_tag 'archived_shell') nor an importer reject (stage 'archived').
 // Used everywhere companies are shown/counted so rejected SPVs never pollute the pipeline or Smith's context.
-const isActiveCompany = (c) => !!c && isActiveCompany(c) && c.stage !== "archived";
+const isActiveCompany = (c) => !!c && c.list_tag !== "archived_shell" && c.stage !== "archived";
+// ICP size discipline — Novalo/Alto are a boutique AWS partner; giant orgs (own cloud teams, SI
+// competitors like CGI/Capgemini, public mega-agencies) are NOT the ICP. One tunable line.
+// Used to choose who to FEATURE / work-first; NOT to filter raw counts. Unknown size = kept.
+const ICP_MAX_EMP = 1000;
+const isTooLarge = (c) => { const e = Number(c && c.employees); return Number.isFinite(e) && e >= ICP_MAX_EMP; };
 // Normalize + validate a LinkedIn personal-profile URL. Accepts protocol-less and
 // country-subdomain forms (the model often returns "linkedin.com/in/janheggen"), adds https,
 // and only rejects genuinely fake placeholder slugs. Real numeric suffixes (…-77120143) pass.
@@ -2966,7 +2971,7 @@ function smithRecommendations(projCompanies, trackMap, contactSet, activities, o
   const recs = [];
   for (const play of SMITH_PLAYS) {
     const cands = projCompanies
-      .filter((c) => play.predicate ? play.predicate(c) : ((trackMap[c.id] && trackMap[c.id].primary_track) === play.track))
+      .filter((c) => !isTooLarge(c) && (play.predicate ? play.predicate(c) : ((trackMap[c.id] && trackMap[c.id].primary_track) === play.track)))
       .map((c) => {
         const fe = trackMap[c.id] || {};
         const hasContact = contactSet.has(c.id);
@@ -5355,6 +5360,13 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
     () => smithRecommendations(projCompanies, trackMap, smithContactSet, activities),
     [projCompanies, trackMap, smithContactSet, activities],
   );
+  // MAP "Assess" kit features the best ICP-FIT customer case (not the biggest org): ranked by ICP
+  // score among domained, non-too-large accounts. Top pick + a few alternatives the rep can choose.
+  const kitCandidates = useMemo(() => projCompanies
+    .filter((c) => c.domain && !isTooLarge(c))
+    .map((c) => ({ c, icp: icpScore(c, smithContactSet.has(c.id)) }))
+    .sort((a, b) => b.icp - a.icp)
+    .slice(0, 4), [projCompanies, smithContactSet]);
   // stale-deal count for the briefing (same rule as the Today "Going cold" group)
   const staleCount = useMemo(() => {
     const lastAct = {};
@@ -5424,20 +5436,38 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
 
-      {/* Highlight: Smith's AWS Migration Kit (assessment + funding paperwork) — discoverable from the dashboard */}
-      {(() => {
-        const kitTarget = [...projCompanies].filter((c) => c.domain).sort((a, b) => (b.employees || 0) - (a.employees || 0))[0] || projCompanies[0];
+      {/* MAP "Assess" kit — features the best ICP-FIT customer case (right account, not the biggest). */}
+      {kitCandidates.length > 0 && (() => {
+        const top = kitCandidates[0].c;
+        const alts = kitCandidates.slice(1, 4).map((x) => x.c);
+        const PLAYN = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace" };
+        const sig = (c) => {
+          const cloud = c.cloud_provider && c.cloud_provider !== "unknown" ? String(c.cloud_provider).toUpperCase() : null;
+          const tr = trackMap[c.id] && trackMap[c.id].primary_track;
+          return [cloud, (c.employees ? `~${Number(c.employees).toLocaleString()} emp` : null), tr ? (PLAYN[tr] || tr) : null].filter(Boolean).join(" · ");
+        };
+        const short = (n) => n.length > 22 ? n.slice(0, 22) + "…" : n;
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "13px 18px", marginBottom: 22 }}>
-            <div style={{ width: 40, height: 40, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0, boxShadow: "0 2px 8px rgba(255,122,26,0.25)" }}>🔨</div>
-            <div style={{ flex: 1, minWidth: 230 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Build a MAP “Assess” kit in one click</span>
-                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em", color: "#fff", background: C.accent, borderRadius: 3, padding: "2px 6px" }}>NEW</span>
+          <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "14px 18px", marginBottom: 22 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0, boxShadow: "0 2px 8px rgba(255,122,26,0.25)" }}>🔨</div>
+              <div style={{ flex: 1, minWidth: 230 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Build a MAP “Assess” kit in one click</div>
+                <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 3 }}>Smith drafts the 7-R assessment, the DMS/SCT plan, and the AWS funding paperwork (ACE + PoC). You review &amp; submit.</div>
               </div>
-              <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 3 }}>Smith drafts the 7-R assessment, the DMS/SCT plan, and the AWS funding paperwork (ACE + PoC) for any account. You review &amp; submit.</div>
+              <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(top.id)}>Try it on {short(top.name)} →</Btn>
             </div>
-            {kitTarget && <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(kitTarget.id)}>Try it on {kitTarget.name.length > 20 ? kitTarget.name.slice(0, 20) + "…" : kitTarget.name} →</Btn>}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Best ICP fit</span>
+              <span style={{ fontSize: 11.5, color: C.dim2 }}>{sig(top) || "matches your ICP"}</span>
+              {alts.length > 0 && <><span style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.dim2 }}>or try</span></>}
+              {alts.map((c) => (
+                <button key={c.id} onClick={() => onOpen && onOpen(c.id)} title={`Run the kit on ${c.name}${sig(c) ? " — " + sig(c) : ""}`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 20, padding: "4px 10px", fontSize: 10.5, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>
+                  {short(c.name)} →
+                </button>
+              ))}
+            </div>
           </div>
         );
       })()}
