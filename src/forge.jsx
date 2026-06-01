@@ -24,6 +24,41 @@ const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the
 const POWERED_BY = "Powered by Novalo Technologies on AWS";  // build-partner credit, shown discreetly
 const SMITH_EMOJI = "🔨";  // Smith is the blacksmith who works the Forj — warm craftsman. One line to restyle his avatar everywhere.
 const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // molten-forge glow — brighter than the burnt-orange accent so the hammer pops
+// Smith's FACE — a bearded craftsman (dark brown hair, 3-day beard) on the forge glow. Hand-drawn
+// flat SVG so he reads as a character at any size. Self-contained circular avatar.
+let _smithFaceN = 0;
+function SmithFace({ size = 24, title }) {
+  const u = "sf" + (++_smithFaceN);
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" style={{ display: "block", flexShrink: 0 }} role="img" aria-label={title || "Smith"}>
+      <defs>
+        <linearGradient id={u + "g"} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FF7A1A" /><stop offset="1" stopColor="#FFB02E" />
+        </linearGradient>
+        <clipPath id={u + "c"}><circle cx="32" cy="32" r="32" /></clipPath>
+      </defs>
+      <g clipPath={`url(#${u}c)`}>
+        <rect width="64" height="64" fill={`url(#${u}g)`} />
+        {/* leather apron + shoulders (the smith) */}
+        <path d="M11 64 C11 49 22 45 32 45 C42 45 53 49 53 64 Z" fill="#4A3526" />
+        <path d="M25 49 L32 58 L39 49 Z" fill="#6E4C34" />
+        <rect x="28" y="41" width="8" height="9" rx="3" fill="#D7986A" />
+        {/* ears + face */}
+        <circle cx="19.5" cy="31" r="2.6" fill="#E7AD7D" /><circle cx="44.5" cy="31" r="2.6" fill="#E7AD7D" />
+        <ellipse cx="32" cy="30" rx="13" ry="15.5" fill="#E9AF7F" />
+        {/* dark-brown hair, tousled */}
+        <path d="M17.5 29 C15.5 9 30 6.5 32 6.5 C34 6.5 48.5 9 46.5 29 C44.5 19.5 42 16.5 32 16.5 C22 16.5 19.5 19.5 17.5 29 Z" fill="#2C1E12" />
+        {/* 3-day beard along the jaw + chin */}
+        <path d="M19.5 29.5 C19.5 44 26 47.5 32 47.5 C38 47.5 44.5 44 44.5 29.5 C44.5 38.5 40 41.5 32 41.5 C24 41.5 19.5 38.5 19.5 29.5 Z" fill="#33251A" />
+        <path d="M26 35.5 C28.5 38 35.5 38 38 35.5" stroke="#33251A" strokeWidth="3.2" fill="none" strokeLinecap="round" />
+        {/* eyes + brows */}
+        <circle cx="27" cy="30" r="1.8" fill="#241812" /><circle cx="37" cy="30" r="1.8" fill="#241812" />
+        <path d="M23.5 26 C25.5 24.5 28.5 24.5 30 26" stroke="#2C1E12" strokeWidth="1.9" fill="none" strokeLinecap="round" />
+        <path d="M34 26 C35.5 24.5 38.5 24.5 40.5 26" stroke="#2C1E12" strokeWidth="1.9" fill="none" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
 // TODO (post-migration): once Smith's inference actually runs on Amazon Bedrock, add a
 // sharper "Smith runs on Amazon Bedrock" callout ON SMITH (not the footer) — earned, high-value.
 
@@ -3749,9 +3784,6 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           next-best-action, qualification, co-sell. (Funding-fit folded in here 2026-05-31.) */}
       <CoPilotPanel company={company} project={project} contacts={myContacts} onAddContact={onAddContact} onUpdate={onUpdate} flash={flash} />
 
-      {/* outcome capture - predicted vs actual (the closed-loop moat) */}
-      <OutcomePanel company={company} flash={flash} />
-
       {/* Lead-analysis panel removed (2026-05-31): the co-pilot Funding Brief now owns
           "what to say on the call", AWS-native; the old panel duplicated it and leaked
           raw <cite> markup. researchLead/draftOutreach agents remain in code for reuse. */}
@@ -3828,6 +3860,9 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 16, paddingTop: 4 }} />
         <FundingPanel company={company} fundings={fundings || []} onAddFunding={onAddFunding} onUpdateFunding={onUpdateFunding} />
       </Collapsible>
+
+      {/* Outcome LAST — you log predicted-vs-actual after the work, the call and the deal. Closed-loop moat. */}
+      <OutcomePanel company={company} flash={flash} />
     </div>
   );
 }
@@ -4054,7 +4089,7 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
        stale.filter(({ c }) => !dismissed.has("stale:" + c.id)).length === 0 &&
        (!triage || triage.length === 0) && (
         <div style={{ textAlign: "center", padding: "56px 24px", color: C.dim }}>
-          <div style={{ fontSize: 42, marginBottom: 10 }}>{SMITH_EMOJI}</div>
+          <div style={{ marginBottom: 10, display: "flex", justifyContent: "center" }}><SmithFace size={56} /></div>
           <div style={{ fontSize: 19, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, marginBottom: 6 }}>{dismissed.size > 0 ? "Forged through it." : "Board's clear."}</div>
           <div style={{ fontSize: 13, color: C.dim2, marginBottom: 20, lineHeight: 1.5 }}>{dismissed.size > 0 ? "You cleared today's queue — nice work. Time to dig with Smith." : "Nothing scheduled. Pick a play, or let Smith point you at the next move."}</div>
           {onAskSmith && <button onClick={onAskSmith} style={{ background: SMITH_AV_BG, color: "#fff", border: "none", borderRadius: 4, padding: "11px 22px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{SMITH_EMOJI}</span> Ask Smith</button>}
@@ -4713,7 +4748,7 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.accent}`, borderRadius: 4, padding: "16px 20px", marginBottom: 20, position: "relative", boxShadow: "0 1px 3px rgba(20,19,16,0.05)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
+        <SmithFace size={26} />
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
         <span style={{ flex: 1 }} />
         <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
@@ -4768,7 +4803,7 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
     <div style={{ display: "flex", flexDirection: "column", gap: variant === "hero" ? 10 : 8 }}>
       {variant === "rail" && greeting && (
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span style={{ width: 26, height: 26, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><span className="smith-hammer" style={{ fontSize: 14 }}>{SMITH_EMOJI}</span></span>
+          <SmithFace size={28} />
           <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>
         </div>
       )}
@@ -7055,7 +7090,7 @@ export default function Forge() {
               <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, boxShadow: "0 20px 60px rgba(20,19,16,.3)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
+                    <SmithFace size={26} />
                     <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                     <span style={{ fontSize: 11, color: C.dim2 }}>{selectedCompany ? selectedCompany.name : (project?.name) || ""}</span>
                   </div>
@@ -7080,7 +7115,7 @@ export default function Forge() {
             <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}><span className="smith-hammer">{SMITH_EMOJI}</span></span>
+                  <SmithFace size={24} />
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
@@ -7110,7 +7145,7 @@ export default function Forge() {
               <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}`, zIndex: 1 }}>{smithLauncherRecs.length}</span>
             )}
             <span className="smith-spark" />
-            <span className="smith-hammer" style={{ fontSize: 23, lineHeight: 1 }}>{SMITH_EMOJI}</span>
+            <SmithFace size={42} />
           </button>
         </>
       )}
