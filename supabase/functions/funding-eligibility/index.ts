@@ -1,15 +1,6 @@
-// funding-eligibility — deterministic AWS funding-program fit scoring, UPSTREAM of
-// Partner Central. Mirrors aws-origin-detect's contract:
-//   report-only by default; {apply:true} writes to funding_eligibility;
-//   modes {limit,offset} (DB rows) or {company_ids:[...]} or {unscored_only:true}.
-//
-// DETERMINISTIC CORE: the rules below decide the track + score — never an LLM. An LLM
-// hallucinating a funding rule is a credibility-killer the first time an AE checks it.
-// claude-proxy is reserved for {render:true} to phrase ace_draft prose ONLY (not wired
-// yet — default => $0 / no LLM call). It must never change track or number.
-//
-// Confidence inheritance: funding_confidence = min(detection_confidence, rule_confidence).
-// Reads companies + latest_origin_scan (P1 view) + funding_config (tunable heuristics).
+// funding-eligibility - deterministic AWS funding-program fit scoring, UPSTREAM of
+// Partner Central. report-only by default; {apply:true} writes; modes {limit,offset} or
+// {company_ids:[...]} or {unscored_only:true}. DETERMINISTIC CORE - never an LLM.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
@@ -42,16 +33,14 @@ function spendBand(employees: any, empMap: [number | null, string][]): string | 
   return ">10m";
 }
 
-// Industry is intentionally NOT woven into the use-case prose — it dilutes the pitch and
-// is already shown under Company information. Keep this text tight + workload-focused.
 function useCaseText(track: string, c: any): string {
   switch (track) {
-    case "MAP": return `Migrate ${c.name} from its current non-AWS estate to AWS (MAP) — takeout of competitor-cloud / on-prem workloads.`;
+    case "MAP": return `Migrate ${c.name} from its current non-AWS estate to AWS (MAP): takeout of competitor-cloud / on-prem workloads.`;
     case "MAP_MODERNIZE": return `Modernize ${c.name} on AWS with GenAI/agentic capability on existing workloads (MAP modernize).`;
-    case "POC": return `Net-new GenAI/agentic proof-of-concept for ${c.name}.`;
-    case "ISV_WMP": return `List ${c.name}'s SaaS on AWS Marketplace (WMP) — credit routes to the end customer.`;
-    case "GREENFIELD_PGP": return `Greenfield AWS build for ${c.name} (no current cloud detected).`;
-    default: return `${c.name}: no current migration/expansion signal — monitor.`;
+    case "POC": return `Net-new GenAI/agentic proof-of-concept for ${c.name} (POC credits).`;
+    case "ISV_WMP": return `List ${c.name}'s SaaS on AWS Marketplace (WMP): credit routes to the end customer.`;
+    case "GREENFIELD_PGP": return `Net-new greenfield build on AWS for ${c.name} (Partner-led / PGP): no existing estate to migrate.`;
+    default: return `${c.name}: no current migration/expansion signal, monitor.`;
   }
 }
 
@@ -72,53 +61,80 @@ function classify(company: any, scan: any, cfg: any) {
   else if (["none", "other"].includes(cp)) detConf = "med";
   else detConf = "low";
 
-  if (COMPETITOR_CLOUDS.includes(cp)) {
+  // emp signal for greenfield-vs-migrate split (small + no real estate = net-new build).
+  const emp = Number(company.employees);
+  const empKnown = isFinite(emp) && emp > 0;
+  const onAws = cp === "aws" || awsDet || (scan && scan.verdict === "aws");
+  // Greenfield (Partner-led/PGP) vs Migrate (MAP): a company with NO detectable hyperscaler
+  // that is also SMALL and data/AI-immature has no real estate to migrate -> net-new build on
+  // AWS (PGP). A larger or data-mature non-cloud company DOES have an estate (on-prem/colo)
+  // -> Migrate (MAP). cfg.greenfield_max_emp tunes the cutoff.
+  const gfMaxEmp = Number(cfg.greenfield_max_emp) || 50;
+  const isNetNew = empKnown && emp < gfMaxEmp && (band === null || band <= 1);
+
+  // GenAI-native (band 4 / ai_native) = a net-new GenAI workload -> POC credits is the
+  // PRIMARY play, ahead of migrate/modernize, regardless of current cloud. (AWS funds a
+  // net-new GenAI pilot as POC, not MAP.) Migrate/Modernize the rest of the estate = secondary.
+  if (aiNative || (band !== null && band >= 4)) {
+    migration_source = onAws ? "aws" : (cp || "unknown");
+    primary = "POC"; ruleConf = "high";
+    secondary.push(onAws ? "MAP_MODERNIZE" : "MAP");
+    rationale.push(`GenAI-native (band ${band ?? "?"}, ai_native) -> net-new GenAI pilot = POC credits (primary); migrate/modernize the rest (secondary)`);
+  } else if (COMPETITOR_CLOUDS.includes(cp)) {
     migration_source = cp; primary = "MAP"; ruleConf = "high";
-    rationale.push(`${cp.toUpperCase()} origin → AWS takeout = MAP`);
-    if (band !== null && band >= 3) { secondary.push("POC"); rationale.push(`Data/AI maturity band ${band} → net-new GenAI workload = POC (secondary)`); }
+    rationale.push(`${cp.toUpperCase()} origin -> AWS takeout = MAP`);
+    if (band !== null && band >= 3) { secondary.push("POC"); rationale.push(`Data/AI maturity band ${band} -> net-new GenAI workload = POC (secondary)`); }
   } else if (cp === "aws" || awsDet) {
     migration_source = "aws";
-    if (aiNative || (band !== null && band >= 4)) {
-      primary = "MAP_MODERNIZE"; ruleConf = "high"; secondary.push("POC");
-      rationale.push(`Already on AWS + GenAI-native (band ${band ?? "?"}) → MAP modernize`);
-    } else if (band !== null && band >= 3) {
+    if (band !== null && band >= 3) {
       primary = "MAP_MODERNIZE"; ruleConf = "med";
-      rationale.push(`Already on AWS + modern data stack (band ${band}) → MAP modernize candidate`);
+      rationale.push(`Already on AWS + modern data stack (band ${band}) -> MAP modernize candidate`);
     } else {
       // Already on AWS with no extra AI/data signal is STILL the core partner play:
       // optimize / FinOps / resell / expand on the existing AWS estate (MAP modernize).
-      // (Previously scored NONE, which wrongly hid every existing AWS customer.)
       primary = "MAP_MODERNIZE"; ruleConf = "med";
-      rationale.push(`Already on AWS → optimize / FinOps / resell / expand on existing estate (MAP modernize)`);
+      rationale.push(`Already on AWS -> optimize / FinOps / resell / expand on existing estate (MAP modernize)`);
     }
   } else if (cp === "cloudflare") {
     if (scan && scan.verdict === "aws") {
       migration_source = "aws";
       primary = "MAP_MODERNIZE"; ruleConf = "med";
-      rationale.push(`AWS origin behind Cloudflare (${scan.confidence}) → already on AWS → optimize / resell / expand (MAP modernize)`);
+      rationale.push(`AWS origin behind Cloudflare (${scan.confidence}) -> already on AWS -> optimize / resell / expand (MAP modernize)`);
       if (band !== null && band >= 3) secondary.push("POC");
-    } else if (scan && scan.verdict === "none") {
-      migration_source = "unknown"; primary = "MAP"; ruleConf = "low";
-      rationale.push(`Behind Cloudflare, no AWS origin found → non-AWS origin likely, MAP candidate (low conf)`);
+    } else if (isNetNew) {
+      migration_source = "net_new"; primary = "GREENFIELD_PGP"; ruleConf = "low";
+      rationale.push(`Behind Cloudflare, no AWS origin, small (${emp} emp) + data/AI-immature -> net-new build on AWS (PGP)`);
     } else {
       migration_source = "unknown"; primary = "MAP"; ruleConf = "low";
-      rationale.push(`Behind Cloudflare, origin not yet scanned → run aws-origin-detect; MAP candidate (low conf)`);
+      rationale.push(`Behind Cloudflare, no AWS origin -> existing non-AWS estate likely, MAP candidate (low conf)`);
     }
   } else if (cp === "none") {
-    migration_source = "unknown"; primary = "GREENFIELD_PGP"; ruleConf = "med";
-    rationale.push(`No current cloud detected → greenfield (PGP)`);
+    if (isNetNew) {
+      migration_source = "net_new"; primary = "GREENFIELD_PGP"; ruleConf = "med";
+      rationale.push(`No cloud + small (${emp} emp) + data/AI-immature -> net-new build on AWS (PGP)`);
+    } else {
+      migration_source = "on_prem"; primary = "MAP"; ruleConf = "low";
+      rationale.push(`No detectable cloud but established estate -> on-prem/colo migration (MAP)`);
+    }
   } else {
-    migration_source = cp === "other" ? "other_cloud" : "unknown";
-    primary = "MAP"; ruleConf = "low";
-    rationale.push(`${cp || "unknown"} cloud → possible on-prem/colo/other, MAP candidate (low conf)`);
+    // "other"/"unknown" cloud: CDN-fronted or colo. Small+immature = net-new greenfield;
+    // otherwise an existing estate to migrate.
+    if (isNetNew) {
+      migration_source = "net_new"; primary = "GREENFIELD_PGP"; ruleConf = "low";
+      rationale.push(`${cp || "unknown"} footprint, small (${emp} emp) + data/AI-immature -> net-new build on AWS (PGP)`);
+    } else {
+      migration_source = cp === "other" ? "other_cloud" : "unknown";
+      primary = "MAP"; ruleConf = "low";
+      rationale.push(`${cp || "unknown"} cloud -> possible on-prem/colo/other estate, MAP candidate (low conf)`);
+    }
   }
 
   const empMap: [number | null, string][] = cfg.employee_band_map ||
     [[10, "<50k"], [50, "50-250k"], [250, "250k-1m"], [1000, "1m-10m"], [null, ">10m"]];
   const est_spend_band = spendBand(company.employees, empMap);
-  if (est_spend_band) rationale.push(`~${company.employees ?? "?"} employees → est. spend ${est_spend_band}`);
+  if (est_spend_band) rationale.push(`~${company.employees ?? "?"} employees -> est. spend ${est_spend_band}`);
 
-  // P4: sector AI-maturity (keyword-match industry -> tier 0..3; from Strand reports).
+  // P4: sector AI-maturity (keyword-match industry -> tier 0..3).
   let sector_tier = 0; let sector_label: string | null = null;
   const indL = String(company.industry || "").toLowerCase();
   const sectorCfg = (cfg.sector_maturity && typeof cfg.sector_maturity === "object") ? cfg.sector_maturity : {};
@@ -134,7 +150,7 @@ function classify(company: any, scan: any, cfg: any) {
 
   if (primary === "MAP" && (est_spend_band === "<50k" || est_spend_band === "50-250k")) {
     if (!secondary.includes("POC")) secondary.unshift("POC");
-    rationale.push(`Below ~$${cfg.map_floor_usd || 250000} MAP floor → POC better-sized (secondary)`);
+    rationale.push(`Below ~$${cfg.map_floor_usd || 250000} MAP floor -> POC better-sized (secondary)`);
   }
   if (band !== null) rationale.push(`Maturity band ${band}${aiNative ? " (AI-native)" : ""}`);
 
@@ -157,7 +173,7 @@ function classify(company: any, scan: any, cfg: any) {
     use_case: useCaseText(primary, company),
     customer: { name: company.name, domain: company.domain, industry: company.industry ?? null, employees: company.employees ?? null },
     sector_tier, sector_label,
-    partner_path_note: "Funding access is gated by Partner Path/Tier (and an MDF Wallet for MDF). This score is necessary, not sufficient — org standing is the real gate.",
+    partner_path_note: "Funding access is gated by Partner Path/Tier (and an MDF Wallet for MDF). This score is necessary, not sufficient: org standing is the real gate.",
   };
 
   return { primary, secondary, score, confidence, migration_source, est_spend_band, rationale, ace_draft, needs_human_review };
@@ -175,8 +191,6 @@ Deno.serve(async (req) => {
   const apply = body.apply === true;
   const render = body.render === true;
   const ids = Array.isArray(body.company_ids) ? body.company_ids.filter((x: any) => typeof x === "string") : null;
-  // unscored_only: select ONLY active companies that have NO funding_eligibility row yet.
-  // Lets a cron keep every card scored as discovery adds new companies. Implies apply.
   const unscoredOnly = body.unscored_only === true;
 
   const cfg: Record<string, any> = {};
@@ -186,7 +200,6 @@ Deno.serve(async (req) => {
   let rows: any[] | null = null;
   let error: any = null;
   if (unscoredOnly) {
-    // Fetch already-scored ids, then pick active+domain companies not in that set.
     const scored = new Set<string>();
     const { data: feRows } = await sb.from("funding_eligibility").select("company_id");
     for (const r of (feRows || [])) scored.add(r.company_id);
@@ -206,7 +219,7 @@ Deno.serve(async (req) => {
     rows = res.data; error = res.error;
   }
   if (error) return json({ error: error.message }, 500);
-  const writeRows = unscoredOnly || apply;  // unscored_only always persists
+  const writeRows = unscoredOnly || apply;
 
   const idList = (rows || []).map((r: any) => r.id);
   const scanMap = new Map<string, any>();
@@ -244,8 +257,7 @@ Deno.serve(async (req) => {
   return json({
     summary: {
       mode: unscoredOnly ? "unscored_only" : (ids ? "company_ids" : "range"), batch: (rows || []).length, offset,
-      apply: writeRows, wrote, render_requested: render,
-      tracks,
+      apply: writeRows, wrote, render_requested: render, tracks,
     },
     report,
   });
