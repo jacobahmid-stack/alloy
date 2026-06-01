@@ -32,10 +32,14 @@ let _smithFaceN = 0;
 // — dark swept hair, brown eyes, a medium (2–3 week) beard + mustache, raising a cross-peen hammer.
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
-  const [imgOk, setImgOk] = useState(true);
-  const src = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/") + "smith.png";
-  if (imgOk) {
-    return <img src={src} width={size} height={size} alt={title || "Smith"} onError={() => setImgOk(false)}
+  const base = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/");
+  // Smith wears a different face each weekday (Mon–Sat); Sunday + any miss fall back to the all-week look, then smith.png, then the SVG.
+  const DAYS = ["all_week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  let di = 0; try { di = new Date().getDay(); } catch { /* default all_week */ }
+  const srcs = [base + "smith_" + (DAYS[di] || "all_week") + ".jpg", base + "smith_all_week.jpg", base + "smith.png"];
+  const [imgI, setImgI] = useState(0);
+  if (imgI < srcs.length) {
+    return <img src={srcs[imgI]} width={size} height={size} alt={title || "Smith"} onError={() => setImgI((n) => n + 1)}
       style={{ display: "block", flexShrink: 0, borderRadius: "50%", objectFit: "cover", objectPosition: "center top", background: "#DCE9F5" }} />;
   }
   const HAIR = "#2E2014", BEARD = "#3A2818", SKIN = "#E9B488", LIP = "#C16B52", STEEL = "#9AA1A8", STEELD = "#6E757C", WOOD = "#A9743B";
