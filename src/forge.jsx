@@ -23,6 +23,7 @@ const BRAND_FULL = "ALLOY by FORJ";
 const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
 const POWERED_BY = "Powered by Novalo Technologies on AWS";  // build-partner credit, shown discreetly
 const SMITH_EMOJI = "🔨";  // Smith is the blacksmith who works the Forj — warm craftsman. One line to restyle his avatar everywhere.
+const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // molten-forge glow — brighter than the burnt-orange accent so the hammer pops
 // TODO (post-migration): once Smith's inference actually runs on Amazon Bedrock, add a
 // sharper "Smith runs on Amazon Bedrock" callout ON SMITH (not the footer) — earned, high-value.
 
@@ -4643,7 +4644,7 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.accent}`, borderRadius: 4, padding: "16px 20px", marginBottom: 20, position: "relative", boxShadow: "0 1px 3px rgba(20,19,16,0.05)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+        <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
         <span style={{ flex: 1 }} />
         <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
@@ -6963,7 +6964,7 @@ export default function Forge() {
               <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, boxShadow: "0 20px 60px rgba(20,19,16,.3)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                     <span style={{ fontSize: 11, color: C.dim2 }}>{selectedCompany ? selectedCompany.name : (project?.name) || ""}</span>
                   </div>
@@ -6988,7 +6989,7 @@ export default function Forge() {
             <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
@@ -7013,7 +7014,7 @@ export default function Forge() {
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
-            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: C.accent, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", boxShadow: "0 6px 20px rgba(184,61,12,.36)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: SMITH_AV_BG, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", boxShadow: "0 6px 22px rgba(255,140,30,.45)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {smithLauncherRecs.length > 0 && !smithOpen && (
               <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.length}</span>
             )}
