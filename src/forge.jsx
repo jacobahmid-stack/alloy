@@ -3342,6 +3342,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
       {/* Account-scoped Smith chat: attach this account's docs, work them, save back to the card */}
       <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
       <SmithChat
+        key={"smithchat-" + company.id}
         project={project}
         projCompanies={[company]}
         trackMap={fit ? { [company.id]: fit } : {}}
@@ -3349,6 +3350,8 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         recs={[]}
         focusCompany={company}
         onOpen={() => {}}
+        initialMsgs={(company.enrichment && company.enrichment.smith_thread) || []}
+        onPersist={(thread) => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), smith_thread: thread.slice(-30) } })}
         onSaveToCard={async (id, kind, text, viaWeb) => {
           const key = kind === "draft" ? "smith_drafts" : "smith_research";
           const enr = company.enrichment || {};
@@ -4275,8 +4278,10 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard }) {
-  const [msgs, setMsgs] = useState([]);
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist }) {
+  // initialMsgs/onPersist: when given (card-scoped chat), the thread persists to the account
+  // (enrichment.smith_thread); when absent (launcher), the chat is ephemeral.
+  const [msgs, setMsgs] = useState(() => Array.isArray(initialMsgs) ? initialMsgs : []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [web, setWeb] = useState(false);
@@ -4318,11 +4323,15 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
     setMsgs(next); setBusy(useWeb ? "web" : true);
     try {
       const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb, focusCompany, files: attached });
-      setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing.", web: useWeb }]);
+      const reply = { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing.", web: useWeb };
+      setMsgs((m) => [...m, reply]);
+      if (onPersist) { try { onPersist([...next, reply]); } catch { /* best-effort */ } }
     } catch (e) {
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
     } finally { setBusy(false); }
   }
+  // clear the persisted account thread
+  function clearThread() { setMsgs([]); if (onPersist) { try { onPersist([]); } catch {} } }
   function copy(text, i) {
     try { navigator.clipboard.writeText(text); setCopied(i); flash && flash("Copied to clipboard"); setTimeout(() => setCopied(-1), 1500); }
     catch { flash && flash("Copy failed — select the text manually"); }
@@ -4347,7 +4356,9 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Ask Smith</span>
+        {onPersist && <span style={{ fontSize: 10, color: C.dim2 }}>· saved to this account</span>}
         <span style={{ flex: 1 }} />
+        {onPersist && msgs.length > 0 && <button onClick={clearThread} title="Clear this account's Smith thread" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY }}>Clear</button>}
         <button onClick={() => fileRef.current && fileRef.current.click()} title="Attach a file for Smith to work with (text/CSV/markdown/JSON)"
           style={{ display: "flex", alignItems: "center", gap: 5, background: files.length ? C.accent : "transparent", color: files.length ? "#fff" : C.dim2, border: `1px solid ${files.length ? C.accent : C.line2}`, borderRadius: 20, padding: "3px 9px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
           <Icon name="download" size={11} color={files.length ? "#fff" : C.dim2} /> Attach{files.length ? ` ${files.length}` : ""}
