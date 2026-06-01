@@ -21,6 +21,7 @@ const BRAND = "ALLOY";           // the platform
 const MAKER = "Forj";            // the company behind it
 const BRAND_FULL = "ALLOY by FORJ";
 const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
+const POWERED_BY = "Powered by Novalo Technologies on AWS Bedrock";  // build-partner credit, shown discreetly
 
 // ---- små helpers ----
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -6123,6 +6124,27 @@ export default function Forge() {
   const [myRole, setMyRole] = useState(null);
   const [editingAccess, setEditingAccess] = useState(false);
 
+  // Back-button guard: the app has in-memory nav (no router), so the browser Back button would
+  // otherwise leave Alloy entirely. We keep a "trap" history entry and, on popstate, step BACK
+  // one level WITHIN the app (open card -> list; any non-dashboard view -> dashboard) instead of
+  // exiting. Refs avoid re-binding the listener on every nav change.
+  const navRef = useRef({ nav, selected });
+  navRef.current = { nav, selected };
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // seed one trap entry so there's always something to pop back into
+    try { window.history.pushState({ alloy: true }, ""); } catch {}
+    const onPop = () => {
+      const { nav: n, selected: s } = navRef.current;
+      if (s) { setSelected(null); }              // a card is open -> back to the list/view
+      else if (n !== "dashboard") { setNav("dashboard"); } // a section is open -> back to dashboard
+      // re-arm the trap so the NEXT back press is also caught in-app
+      try { window.history.pushState({ alloy: true }, ""); } catch {}
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   // Auth init: magic-link tokens in URL hash win; else restore stored session; refresh if expired.
   useEffect(() => {
     (async () => {
@@ -6640,6 +6662,9 @@ export default function Forge() {
               {isAdmin && <button onClick={() => setEditingAccess(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Access</button>}
               <button onClick={() => setEditingPw(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Password</button>
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
+            </div>
+            <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
+              Powered by <span style={{ color: C.darkText }}>Novalo Technologies</span> on <span style={{ color: C.accent }}>AWS Bedrock</span>
             </div>
           </div>
         </aside>
