@@ -36,7 +36,7 @@ function SmithFace({ size = 24, title }) {
   const src = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/") + "smith.png";
   if (imgOk) {
     return <img src={src} width={size} height={size} alt={title || "Smith"} onError={() => setImgOk(false)}
-      style={{ display: "block", flexShrink: 0, borderRadius: "50%", objectFit: "cover", background: "#DCE9F5" }} />;
+      style={{ display: "block", flexShrink: 0, borderRadius: "50%", objectFit: "cover", objectPosition: "center 28%", background: "#DCE9F5" }} />;
   }
   const HAIR = "#2E2014", BEARD = "#3A2818", SKIN = "#E9B488", LIP = "#C16B52", STEEL = "#9AA1A8", STEELD = "#6E757C", WOOD = "#A9743B";
   return (
