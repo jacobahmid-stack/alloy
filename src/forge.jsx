@@ -179,7 +179,14 @@ function SmithContact({ project, flash }) {
 // client-side (proxy STRICT_TASKS is off); move it into claude-proxy's TASK_SYSTEM as
 // "discover_prospects" before enabling STRICT_TASKS.
 const DISCOVER_SYS = "You are Smith's prospecting researcher for an AWS partner. Given a natural-language description of a target list, you find REAL companies that match and return them as structured JSON. Use web search to ground every company — only return companies that genuinely exist and plausibly fit; NEVER invent a name, domain, or figure. Interpret the rules precisely: geography (e.g. 'Swedish only' = Swedish-HQ companies), size thresholds (employees/revenue), industry, and any cloud / AI / digitalisation-maturity signals requested. AWS-play guidance: MAP (Migration Acceleration Program) targets customers with substantial EXISTING on-prem or non-AWS-cloud workloads to migrate — so 'MAP-eligible / new money' means sizable companies NOT already all-in on AWS (on-prem, Azure, GCP or hybrid), ideally showing migration or modernisation intent; GenAI-POC = companies with active AI/data initiatives; Resell = companies already consuming AWS. For EACH prospect return: name; domain (registered domain only, no protocol/path, empty if unknown); city; country (ISO-2, e.g. SE); employees_est (integer estimate or null); revenue_msek (estimate in MSEK or null); current_cloud (one of aws|azure|gcp|on-prem|hybrid|unknown); ai_maturity (one of none|emerging|active|advanced); why (<=25 words naming the CONCRETE signals you saw that make it fit); aws_play (one of MAP|MAP-Modernize|GenAI-POC|Greenfield|Resell). Estimates are for prioritisation, not facts — never fabricate precision. Prefer fit and quality over volume; return 8-20 prospects unless the rules are very narrow. Respond ONLY with valid JSON, no other text: {\"interpretation\":\"<one sentence on how you read the rules>\",\"list_name\":\"<short list name>\",\"prospects\":[{\"name\":\"\",\"domain\":\"\",\"city\":\"\",\"country\":\"\",\"employees_est\":null,\"revenue_msek\":null,\"current_cloud\":\"\",\"ai_maturity\":\"\",\"why\":\"\",\"aws_play\":\"\"}]}";
-const DISCOVER_EXAMPLE = "Enterprise prospects eligible for a MAP on AWS — a new-money list. Swedish companies only, 1000 employees and up, with cloud and AI signals and real digitalisation maturity.";
+const DISCOVER_EXAMPLE = "Find 15 Swedish manufacturers with 500+ employees still running on-prem or VMware — prime MAP migration targets. Prioritise the ones with an active cloud or AI initiative I can hook into.";
+// Real-scenario starters a rep can click to fill the box (GitHub-Copilot-style prompt chips).
+const DISCOVER_EXAMPLES = [
+  { label: "On-prem manufacturers → MAP", text: "Find 15 Swedish manufacturers, 500+ employees, still on-prem or VMware — prime MAP migration targets. Prioritise the ones with an active cloud or AI initiative." },
+  { label: "GenAI PoC on AWS", text: "Build a GenAI PoC list: Nordic SaaS companies, 100–1000 employees, already on AWS, hiring ML or data engineers — net-new GenAI pilots." },
+  { label: "Win over Azure/GCP retailers", text: "Swedish retailers on Azure or GCP worth a migration pitch — 1000+ employees, with a recent funding round or expansion." },
+  { label: "Modernize an AWS estate", text: "Companies already on AWS in the Nordics, 200+ employees, that look under-optimised — Modernize / MAP-Modernize candidates to expand and resell." },
+];
 function SmithDiscover({ project, onImportRows, flash }) {
   const [request, setRequest] = useState("");
   const [busy, setBusy] = useState(false);
@@ -239,6 +246,14 @@ function SmithDiscover({ project, onImportRows, flash }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
       <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Tell Smith the rules — he researches a fresh prospect list and you save the ones you want.</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {DISCOVER_EXAMPLES.map((ex, i) => (
+          <button key={i} type="button" onClick={() => setRequest(ex.text)} title={ex.text}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 20, padding: "4px 10px", fontSize: 10.5, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>
+            <Icon name="spark" size={10} color={C.accent} /> {ex.label}
+          </button>
+        ))}
+      </div>
       <textarea style={{ ...fld, resize: "vertical", minHeight: 70 }} rows={4} placeholder={DISCOVER_EXAMPLE} value={request} onChange={(e) => setRequest(e.target.value)} />
       <Btn variant="primary" size="sm" onClick={build} disabled={busy}>{busy ? <Spinner size={12} /> : null} {busy ? "Researching…" : "Build list"}</Btn>
       {error && <div style={{ fontSize: 11.5, color: C.red }}>{error}</div>}
@@ -404,7 +419,7 @@ const FUNDING_PROGRAMS = {
   MAP:       { name: "Migration Acceleration Program (MAP)",      journey: "Migrate & Modernize", type: "both",    blurb: "Co-funds the customer's migration to AWS (assess → mobilize → migrate). Cash + credits scale with committed migration spend." },
   WMP:       { name: "Workload Migration Program (WMP)",          journey: "Migrate & Modernize", type: "both",    blurb: "Co-funds migrating a specific customer workload to AWS." },
 };
-const JOURNEY_COLOR = { "Assess": "#3E5A7A", "Build & Prove": "#B83D0C", "Migrate & Modernize": "#2E7D32" };
+const JOURNEY_COLOR = { "Assess": "#3E5A7A", "Build & Prove": "#B83D0C", "Migrate & Modernize": "#2C6E2A" };
 function fmtMoney(amount, currency) {
   const v = Number(amount) || 0; const c = currency || "USD";
   const n = v >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " M" : v >= 1e3 ? Math.round(v / 1e3) + " k" : String(Math.round(v));
@@ -1864,8 +1879,8 @@ const CLOUD = {
   gcp: { label: "GCP", color: "#2F6FAE", note: "On Google Cloud - competitive displacement play." },
   azure: { label: "Azure", color: "#6A3FA0", note: "On Microsoft Azure - competitive displacement play." },
   cloudflare: { label: "Cloudflare", color: "#C77D11", note: "Behind Cloudflare - origin cloud hidden." },
-  other: { label: "Other host", color: "#827E76", note: "Hosted elsewhere / no major cloud detected." },
-  unknown: { label: "", color: "#827E76", note: "Not checked yet." },
+  other: { label: "Other host", color: "#6E6A62", note: "Hosted elsewhere / no major cloud detected." },
+  unknown: { label: "", color: "#6E6A62", note: "Not checked yet." },
 };
 function cloudMeta(c) {
   const p = c?.cloud_provider || (c?.aws_detected ? "aws" : "");
@@ -3083,7 +3098,7 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
 // inventory. It never fabricates a real server list or precise TCO; it frames, flags, and points to
 // the real discovery (e.g. a Cloudamize/agent scan) for measured numbers.
 const MIGRATION_ASSESS_SYS = `You are Smith, an AWS migration solutions architect for an AWS partner. From the ACCOUNT context + the ALLOY KNOWLEDGE BASE excerpts, draft a DISCOVERY-STAGE migration assessment a rep can take to the customer and use to open a MAP "Assess" funding case.
-ABSOLUTE HONESTY: you do NOT have the customer's real inventory, dependencies, or measured costs. Everything is a reasoned HYPOTHESIS based on the company's industry, size, and known cloud posture + AWS best practice. Never invent a specific server/app inventory or precise TCO figures. State assumptions explicitly, use ranges, mark every estimate as "estimate — validate", and note that measured numbers require a discovery scan (e.g. Cloudamize / AWS ADS). Ground every AWS-specific recommendation in the provided KNOWLEDGE BASE and cite it as [source p.N]; if it isn't there and you're unsure, say so.
+ABSOLUTE HONESTY: you do NOT have the customer's real inventory, dependencies, or measured costs. Everything is a reasoned HYPOTHESIS based on the company's industry, size, and known cloud posture + AWS best practice. Never invent a specific server/app inventory or precise TCO figures. State assumptions explicitly, use ranges, mark every estimate as "estimate — validate", and note that measured numbers require a discovery scan (e.g. Cloudamize / AWS ADS). Ground every AWS-specific recommendation in the provided KNOWLEDGE BASE and cite it as [source p.N]; if it isn't there and you're unsure, say so. Default the AWS region to eu-north-1 (Stockholm) for Nordic customers, and flag data residency / EU data sovereignty as a concrete migration driver wherever the industry warrants it (public sector, municipal, finance, healthcare).
 Output GitHub-flavoured markdown with exactly these sections:
 ## 1. Portfolio assessment — the 7 R's (hypothesis)
 One line on what this is (a hypothesis to validate). Then a markdown table | Workload (typical for this company) | Disposition (Retire/Retain/Rehost/Relocate/Repurchase/Replatform/Refactor) | Why | AWS target | covering the application categories a company like this typically runs. Keep it to the most likely 6–10 rows.
@@ -3711,18 +3726,29 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         </div>
       ))}
 
-      {/* AWS MIGRATION KIT — prominent entry to Smith's assessment + funding-paperwork agent.
+      {/* AWS MIGRATION KIT — guided 3-step flow: Assess (hypothesis) → Refine (measured) → Paperwork.
           Drafts land in the Ask Smith thread below (grounded in Alloy's brain). */}
       <div style={{ background: "linear-gradient(135deg, rgba(255,122,26,0.10), rgba(255,176,46,0.05))", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "11px 13px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
           <span style={{ fontSize: 14 }}>🔨</span>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>AWS Migration Kit</span>
+          <span style={{ fontSize: 10, color: C.dim2 }}>· guided · 3 steps</span>
         </div>
-        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 9 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong> — a 7-R assessment, a DMS/SCT plan, then the ACE opportunity + PoC pre-approval. Import an AWS discovery export (ADS / Migration Hub) to refine it on <strong>measured</strong> data. You review &amp; submit. Output lands in <strong>Ask Smith</strong> below ↓</div>
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-          <Btn variant="primary" size="sm" onClick={() => setSmithAction("assess")}>📋 Migration assessment</Btn>
-          <Btn variant="ghost" size="sm" onClick={() => setSmithAction("measured")}>📊 Refine with measured data</Btn>
-          <Btn variant="ghost" size="sm" onClick={() => setSmithAction("paperwork")}>📝 Funding paperwork</Btn>
+        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 10 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong>. You review &amp; submit — every draft lands in <strong>Ask Smith</strong> below ↓</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { n: 1, action: "assess", variant: "primary", icon: "📋", title: "Migration assessment", desc: "7-R portfolio + DMS/SCT plan + MAP-Assess business case — a hypothesis to validate with the customer." },
+            { n: 2, action: "measured", variant: "ghost", icon: "📊", title: "Refine with measured data", desc: "Attach an ADS / Migration Hub / Migration Evaluator export — Smith re-runs it on real inventory: right-sizing + TCO." },
+            { n: 3, action: "paperwork", variant: "ghost", icon: "📝", title: "Funding paperwork", desc: "ACE opportunity + PoC pre-approval, drafted from the assessment. You submit." },
+          ].map((s) => (
+            <div key={s.n} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+              <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, fontFamily: FONT_HEAD }}>{s.n}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Btn variant={s.variant} size="sm" onClick={() => setSmithAction(s.action)}>{s.icon} {s.title}</Btn>
+                <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.45, marginTop: 3 }}>{s.desc}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -4856,7 +4882,7 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
           onKeyDown={(e) => { if (e.key === "Enter") onEnter(); if (e.key === "Escape") setQ(""); }}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Search a company, paste an org-number to add from SCB, or ask Smith…"
+          placeholder={'Search a company, paste an org-nr to add from SCB, or ask Smith “who should I call first?”'}
           style={{ flex: 1, minWidth: 200, background: "transparent", border: "none", padding: "9px 4px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none" }}
         />
         {looksOrg ? (
@@ -5037,11 +5063,32 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
     /* eslint-disable-next-line */
   }, [actionSeed]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy]);
-  const suggestions = files.length
-    ? ["Pull the action items + owners out of this", "Summarize this for a sales call", "Draft an email from this"]
-    : focusCompany
-    ? [`What's the AWS play for ${focusCompany.name}?`, `Draft an opener to ${focusCompany.name}`, `What should I validate before pitching ${focusCompany.name}?`]
-    : ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
+  // Real-scenario, state-aware starter asks (Copilot-style chips). Smith reads where the account
+  // actually is — stage, whether it has a contact, its funding track, whether an assessment is
+  // already in the thread — and proposes the next real move instead of generic prompts.
+  const suggestions = useMemo(() => {
+    if (files.length) return ["Pull the action items + owners out of this file", "Turn this into a one-page brief for a sales call", "Draft a follow-up email from this"];
+    const c = focusCompany;
+    if (c) {
+      const name = c.name;
+      const hasContact = (contacts || []).some((x) => x.company_id === c.id);
+      const track = (trackMap && trackMap[c.id] && trackMap[c.id].primary_track) || null;
+      const PLAY = { MAP: "MAP migration", MAP_MODERNIZE: "Modernize", POC: "GenAI PoC", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace" };
+      const hasAssess = (msgs || []).some((m) => m.role === "smith" && /7 ?R|migration assessment|portfolio assessment|MAP[- ]?Assess/i.test(m.text || ""));
+      const out = [];
+      out.push(hasAssess
+        ? `Draft the AWS funding paperwork (ACE + PoC) for ${name}`
+        : `Draft a discovery-stage migration assessment for ${name}`);
+      out.push(hasContact
+        ? `Draft a follow-up to ${name} that moves the deal forward`
+        : `Who's the IT/cloud decision-maker at ${name}, and how do I open the conversation?`);
+      out.push(track
+        ? `Make the business case for ${name}'s ${PLAY[track] || track} play`
+        : `What's the strongest AWS angle for ${name} — and which funding program fits?`);
+      return out;
+    }
+    return ["Who should I call first today — and what do I open with?", "Which deals are going cold and need a nudge?", "Draft me a MAP prospect list: Swedish 1000+ employees on AWS"];
+  }, [files.length, focusCompany, contacts, trackMap, msgs]);
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -5099,8 +5146,11 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
       )}
       {msgs.length === 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: C.dim2, letterSpacing: ".04em", marginBottom: 1, fontFamily: FONT_HEAD, textTransform: "uppercase", fontWeight: 700 }}>{focusCompany ? `Ask Smith about ${focusCompany.name}` : "Ask Smith"}</div>
           {suggestions.map((s) => (
-            <button key={s} onClick={() => send(s)} style={{ textAlign: "left", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: "8px 11px", fontSize: 12, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>{s}</button>
+            <button key={s} onClick={() => send(s)} style={{ textAlign: "left", display: "flex", alignItems: "center", gap: 8, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: "8px 11px", fontSize: 12, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>
+              <Icon name="spark" size={12} color={C.accent} /> <span style={{ flex: 1 }}>{s}</span>
+            </button>
           ))}
         </div>
       )}
