@@ -22,6 +22,7 @@ const MAKER = "Forj";            // the company behind it
 const BRAND_FULL = "ALLOY by FORJ";
 const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
 const POWERED_BY = "Powered by Novalo Technologies on AWS";  // build-partner credit, shown discreetly
+const SMITH_EMOJI = "🔨";  // Smith is the blacksmith who works the Forj — warm craftsman. One line to restyle his avatar everywhere.
 // TODO (post-migration): once Smith's inference actually runs on Amazon Bedrock, add a
 // sharper "Smith runs on Amazon Bedrock" callout ON SMITH (not the footer) — earned, high-value.
 
@@ -493,6 +494,54 @@ async function detectAws(domain) {
   const text = await res.text();
   if (!res.ok) throw new Error("aws-detect " + res.status + " - " + text.slice(0, 160));
   return JSON.parse(text);
+}
+
+// Deep origin detection: enumerates Certificate-Transparency subdomains (many bypass the CDN),
+// resolves them, and precise-matches their IPs to AWS/GCP/Azure + ASN. This is how we see the
+// real origin "behind Cloudflare". Slower + non-deterministic (CT availability varies), so it's
+// a best-effort escalation, not the default. Returns the per-domain report object (or null).
+async function detectCloudDeep(domain) {
+  const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
+  const base = (cfg.url || "").replace(/\/+$/, "");
+  if (!base) throw new Error("Supabase URL missing (requires the standalone build)");
+  const ak = cfg.anonKey || "";
+  const headers = { "Content-Type": "application/json" };
+  if (ak) { headers["Authorization"] = "Bearer " + ak; headers["apikey"] = ak; }
+  const res = await fetch(base + "/functions/v1/cloud-detect", { method: "POST", headers, body: JSON.stringify({ domains: [domain] }) });
+  const text = await res.text();
+  if (!res.ok) throw new Error("cloud-detect " + res.status + " - " + text.slice(0, 160));
+  const j = JSON.parse(text);
+  return (j.report || [])[0] || null;
+}
+
+// Smart cloud detection: fast apex check first; if the origin is hidden behind a proxy
+// (Cloudflare/other/unknown with no compute signal), escalate to the deep CT scan and merge
+// the stronger verdict — with explicit confidence + evidence so an "AWS" claim is verifiable.
+async function detectCloudSmart(domain, onProgress) {
+  const r = await detectAws(domain);
+  let provider = r.provider || (r.aws_detected ? "aws" : "unknown");
+  let aws_detected = !!r.aws_detected;
+  let signals = (r.signals || []).join(", ") || (r.cdn ? "Behind " + r.cdn : "");
+  let confidence = aws_detected ? "high" : "";
+  if (["cloudflare", "other", "unknown"].includes(provider) && !aws_detected) {
+    if (onProgress) onProgress("Apex behind " + (r.cdn || "a proxy") + " — digging for the hidden origin…");
+    try {
+      const deep = await detectCloudDeep(domain);
+      if (deep && ["aws", "gcp", "azure"].includes(deep.provider) && deep.confidence && deep.confidence !== "none") {
+        provider = deep.provider;
+        aws_detected = deep.provider === "aws";
+        confidence = deep.confidence;
+        const ev = [];
+        if (deep.services && deep.services.length) ev.push(deep.services.join("/"));
+        if (deep.asns && deep.asns.length) ev.push("ASN " + deep.asns.slice(0, 3).join(","));
+        signals = `${deep.provider.toUpperCase()} origin behind ${r.cdn || "proxy"} · ${deep.confidence} confidence` + (ev.length ? ` (CT evidence: ${ev.join("; ")})` : "");
+      } else if (deep) {
+        const n = deep.ct_count || 0;
+        signals = (signals ? signals + " · " : "") + `deep scan: no cloud origin exposed (${n} CT subdomain${n === 1 ? "" : "s"} checked)`;
+      }
+    } catch { /* deep scan is best-effort; keep the shallow verdict */ }
+  }
+  return { provider, aws_detected, signals, email_provider: r.email_provider || null, cdn: r.cdn || null, confidence };
 }
 
 // Deterministic AWS funding-program fit (track + score + rationale). $0 - no LLM.
@@ -1949,15 +1998,15 @@ function TechStackPanel({ company, onSave, flash }) {
     if (!d) { flash("Enter a domain first"); return; }
     setAwsBusy(true);
     try {
-      const r = await detectAws(d);
+      const r = await detectCloudSmart(d, flash);
       await onSave(company.id, {
-        aws_detected: !!r.aws_detected,
-        cloud_provider: r.provider || (r.aws_detected ? "aws" : "unknown"),
-        email_provider: r.email_provider || null,
-        aws_signals: (r.signals || []).join(", ") || (r.cdn ? "Behind " + r.cdn : ""),
+        aws_detected: r.aws_detected,
+        cloud_provider: r.provider,
+        email_provider: r.email_provider,
+        aws_signals: r.signals,
         domain: d,
       });
-      flash((r.provider && CLOUD[r.provider]?.label ? CLOUD[r.provider].label + ": " : "") + ((r.signals || []).join(", ") || (r.cdn ? "behind " + r.cdn : "no major-cloud signal")) + (r.email_label ? " · " + r.email_label : ""));
+      flash((r.provider && CLOUD[r.provider]?.label ? CLOUD[r.provider].label + ": " : "") + (r.signals || "no major-cloud signal"));
     } catch (e) {
       flash("AWS check failed: " + e.message);
     } finally { setAwsBusy(false); }
@@ -2293,12 +2342,12 @@ function CompanyIntelPanel({ company, onSave, flash }) {
     setBusy(true);
     try {
       try {
-        const r = await detectAws(d);
+        const r = await detectCloudSmart(d, flash);
         await onSave(company.id, {
-          aws_detected: !!r.aws_detected,
-          cloud_provider: r.provider || (r.aws_detected ? "aws" : "unknown"),
-          email_provider: r.email_provider || null,
-          aws_signals: (r.signals || []).join(", ") || (r.cdn ? "Behind " + r.cdn : ""),
+          aws_detected: r.aws_detected,
+          cloud_provider: r.provider,
+          email_provider: r.email_provider,
+          aws_signals: r.signals,
           domain: d,
         });
       } catch (e) { flash("Cloud detect failed: " + e.message); }
@@ -4594,7 +4643,7 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.accent}`, borderRadius: 4, padding: "16px 20px", marginBottom: 20, position: "relative", boxShadow: "0 1px 3px rgba(20,19,16,0.05)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
-        <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+        <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
         <span style={{ flex: 1 }} />
         <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
@@ -6257,6 +6306,7 @@ export default function Forge() {
   const [activities, setActivities] = useState([]);
   const [fundings, setFundings] = useState([]);
   const [nav, setNav] = useState("dashboard"); // dashboard | today | hot | list | pipeline | import
+  const [railOpen, setRailOpen] = useState(true); // collapse the dark sidebar for a full-width card
   const [playFilter, setPlayFilter] = useState(null); // when a dashboard play tile is clicked -> filter the list
   const [autoEnrich, setAutoEnrich] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -6764,10 +6814,10 @@ export default function Forge() {
       {editingPw && session && <PasswordModal session={session} onClose={() => setEditingPw(false)} flash={flash} />}
       {editingAccess && <AccessPanel projects={projects} onClose={() => setEditingAccess(false)} flash={flash} />}
 
-      <div className="alloy-shell" style={{ display: "grid", gridTemplateColumns: "232px 1fr", minHeight: "100vh" }}>
+      <div className="alloy-shell" style={{ display: "grid", gridTemplateColumns: railOpen ? "232px 1fr" : "1fr", minHeight: "100vh" }}>
 
         {/* ===== RAIL (dark) ===== */}
-        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: "flex", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", maxHeight: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
+        <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: railOpen ? "flex" : "none", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", maxHeight: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} title={BRAND_FULL}>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 15, letterSpacing: ".2em", textTransform: "uppercase", color: "#F1ECE3", fontWeight: 700 }}>{BRAND}</span>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 8.5, letterSpacing: ".18em", textTransform: "uppercase", color: C.darkLabel }}>by</span>
@@ -6819,9 +6869,15 @@ export default function Forge() {
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
 
           {/* context bar */}
-          <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(243,240,234,0.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}`, padding: "16px 32px" }}>
-            <div style={{ fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim }}>
-              {(project?.name) || BRAND_FULL} <span style={{ color: C.line2 }}>/</span> <span style={{ color: C.ink, fontWeight: 600 }}>{selectedCompany ? "Lead" : (NAV.find((n) => n.key === nav)?.label || "")}</span>
+          <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(243,240,234,0.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}`, padding: "12px 32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <button onClick={() => setRailOpen((v) => !v)} title={railOpen ? "Hide sidebar (full-width view)" : "Show sidebar"} aria-label="Toggle sidebar"
+                style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 4, padding: "4px 9px", fontSize: 13, lineHeight: 1, cursor: "pointer", fontFamily: FONT_BODY, flexShrink: 0 }}>
+                {railOpen ? "⟨ ⟨" : "☰"}
+              </button>
+              <div style={{ fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim }}>
+                {(project?.name) || BRAND_FULL} <span style={{ color: C.line2 }}>/</span> <span style={{ color: C.ink, fontWeight: 600 }}>{selectedCompany ? "Lead" : (NAV.find((n) => n.key === nav)?.label || "")}</span>
+              </div>
             </div>
           </div>
 
@@ -6846,8 +6902,8 @@ export default function Forge() {
             </div>
           )}
 
-          {/* innehåll */}
-          <div style={{ maxWidth: 760, width: "100%", margin: "0 auto", padding: "24px 18px 60px" }}>
+          {/* innehåll — the customer card breathes wider; lists stay readable */}
+          <div style={{ maxWidth: selectedCompany ? 1080 : 880, width: "100%", margin: "0 auto", padding: "24px 18px 60px", transition: "max-width .2s ease" }}>
         {selectedCompany ? (
           <CompanyCard
             project={project}
@@ -6907,7 +6963,7 @@ export default function Forge() {
               <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, boxShadow: "0 20px 60px rgba(20,19,16,.3)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+                    <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                     <span style={{ fontSize: 11, color: C.dim2 }}>{selectedCompany ? selectedCompany.name : (project?.name) || ""}</span>
                   </div>
@@ -6932,7 +6988,7 @@ export default function Forge() {
             <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>{SMITH_EMOJI}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
@@ -6961,7 +7017,7 @@ export default function Forge() {
             {smithLauncherRecs.length > 0 && !smithOpen && (
               <span title={`${smithLauncherRecs.length} plays need you`} style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.length}</span>
             )}
-            S
+            <span style={{ fontSize: 22, lineHeight: 1 }}>{SMITH_EMOJI}</span>
           </button>
         </>
       )}
