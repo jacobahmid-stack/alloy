@@ -427,7 +427,10 @@ const FUNDING_PROGRAMS = {
   MAP:       { name: "Migration Acceleration Program (MAP)",      journey: "Migrate & Modernize", type: "both",    blurb: "Co-funds the customer's migration to AWS (assess → mobilize → migrate). Cash + credits scale with committed migration spend." },
   WMP:       { name: "Workload Migration Program (WMP)",          journey: "Migrate & Modernize", type: "both",    blurb: "Co-funds migrating a specific customer workload to AWS." },
 };
-const JOURNEY_COLOR = { "Assess": "#3E5A7A", "Build & Prove": "#B83D0C", "Migrate & Modernize": "#2C6E2A" };
+const JOURNEY_LIGHT = { "Assess": "#3E5A7A", "Build & Prove": "#B83D0C", "Migrate & Modernize": "#2C6E2A" };
+const JOURNEY_DARK = { "Assess": "#5B9BD8", "Build & Prove": "#EA6A33", "Migrate & Modernize": "#5FB85A" };
+// theme-aware (brighter on dark); _theme is initialised before any render reads this.
+const JOURNEY_COLOR = new Proxy({}, { get: (_t, k) => (_theme === "dark" ? JOURNEY_DARK : JOURNEY_LIGHT)[k] });
 function fmtMoney(amount, currency) {
   const v = Number(amount) || 0; const c = currency || "USD";
   const n = v >= 1e6 ? (v / 1e6).toFixed(1).replace(".", ",") + " M" : v >= 1e3 ? Math.round(v / 1e3) + " k" : String(Math.round(v));
@@ -1824,7 +1827,7 @@ const db = new Proxy({}, { get: (_t, prop) => (...args) => activeDb()[prop](...a
 /* ============================================================================
    STIL  -  exakt forj.se-designspråk (varmt papper, editorial, rost-accent)
    ============================================================================ */
-const C = {
+const LIGHT = {
   bg: "#F3F0EA",        // --bg, varmt papper
   cream: "#FDFAF5",     // --cream
   panel: "#FDFAF5",     // kort
@@ -1840,6 +1843,8 @@ const C = {
   lime: "#B83D0C",      // alias -> accent (gamla referenser)
   limeSoft: "rgba(184,61,12,0.12)",
   limeDim: "#97320B",
+  accentFill: "#B83D0C",  // accent as a filled background (light text sits on it; brand-orange in both themes)
+  onAccent: "#FDFAF5",    // text/icon colour on accentFill — stays light in dark mode
   // mörka sektioner
   dark: "#141310",
   darkRule: "#3F3D3A",
@@ -1856,6 +1861,30 @@ const C = {
   gold: "#946410",        // alias of amber (same readable gold)
   pink: "#B83D0C",      // alias -> accent
 };
+// DARK — warm near-black mode. Surfaces darken, ink lightens; every accent/semantic colour uses a
+// brighter variant so text clears WCAG AA on the dark panels (cream-tuned values are only ~3:1 on dark).
+const DARK = {
+  bg: "#15130E", cream: "#211E17", panel: "#211E17", panel2: "#2A2620",
+  line: "#37322A", line2: "#443E34",
+  text: "#F2EDE4", ink: "#F4EFE7", dim: "#B6B0A5", dim2: "#9A958B",
+  accent: "#EA6A33", accentDark: "#EA6A33", accentFill: "#B83D0C", onAccent: "#FDFAF5",
+  lime: "#EA6A33", limeSoft: "rgba(234,106,51,0.16)", limeDim: "#EA6A33",
+  dark: "#100F0B", darkRule: "#34302A", darkText: "#D8D3C9", darkMuted: "#9A958C", darkLabel: "#857F75",
+  green: "#5FB85A", amber: "#D7A23F", red: "#E8694A", blue: "#5B9BD8", teal: "#3CB9A4", violet: "#A98BDA", gold: "#D7A23F",
+  pink: "#EA6A33",
+};
+const THEMES = { light: LIGHT, dark: DARK };
+let _theme = (() => { try { return localStorage.getItem("alloy:theme") === "dark" ? "dark" : "light"; } catch { return "light"; } })();
+const _themeSubs = new Set();
+function setAlloyTheme(t) { _theme = t === "dark" ? "dark" : "light"; try { localStorage.setItem("alloy:theme", _theme); } catch {} _themeSubs.forEach((fn) => { try { fn(_theme); } catch {} }); }
+function useTheme() {
+  const [t, setT] = useState(_theme);
+  useEffect(() => { _themeSubs.add(setT); setT(_theme); return () => { _themeSubs.delete(setT); }; }, []);
+  return t;
+}
+// C reads the ACTIVE theme on every property access, so all inline `C.x` styles re-theme on toggle
+// with zero component changes. (Nothing spreads/enumerates C — verified — so a get-only Proxy is safe.)
+const C = new Proxy({}, { get: (_t, k) => (THEMES[_theme] || LIGHT)[k] });
 const FONT_DISPLAY = "'DM Serif Display', Georgia, serif";   // serif, ofta kursiv
 const FONT_HEAD = "'Bricolage Grotesque', sans-serif";        // brand/etiketter, uppercase
 const FONT_BODY = "'DM Sans', system-ui, sans-serif";
@@ -3769,7 +3798,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
             { n: 3, action: "paperwork", variant: "ghost", icon: "📝", title: "Funding paperwork", desc: "ACE opportunity + PoC pre-approval, drafted from the assessment. You submit." },
           ].map((s) => (
             <div key={s.n} style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-              <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, fontFamily: FONT_HEAD }}>{s.n}</span>
+              <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: "50%", background: C.accentFill, color: C.onAccent, fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2, fontFamily: FONT_HEAD }}>{s.n}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Btn variant={s.variant} size="sm" onClick={() => setSmithAction(s.action)}>{s.icon} {s.title}</Btn>
                 <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.45, marginTop: 3 }}>{s.desc}</div>
@@ -5190,7 +5219,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
           placeholder={files.length ? "Tell Smith what to do with the file(s)…" : web ? "Ask Smith to research a prospect…" : "Ask about your pipeline, attach a file, or draft an email…"}
           style={{ flex: 1, resize: "none", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", maxHeight: 90 }}
         />
-        <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
+        <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
       </div>
       <div style={{ fontSize: 10, color: C.dim2, marginTop: 6 }}>Smith advises from your live pipeline and drafts for you. He won't send or change anything.</div>
     </div>
@@ -5233,7 +5262,7 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
         ))}
       </div>
       {top && (
-        <button onClick={() => onOpen(top.company.id)} style={{ marginTop: 13, background: C.accent, color: "#fff", border: "none", borderRadius: 3, padding: "9px 15px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
+        <button onClick={() => onOpen(top.company.id)} style={{ marginTop: 13, background: C.accentFill, color: C.onAccent, border: "none", borderRadius: 3, padding: "9px 15px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
           Work {top.company.name} <span style={{ fontSize: 14 }}>→</span>
         </button>
       )}
@@ -5560,7 +5589,7 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 15.5, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{p.name}</span>
-                    {active && <Pill color={p.color}>active</Pill>}
+                    {active && <Pill color={C.accent}>active</Pill>}
                   </div>
                   <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>
                     {p.partner?.name} · {p.total} companies
@@ -6945,6 +6974,7 @@ function PartnerPortal({ project, onSignOut }) {
 }
 
 export default function Forge() {
+  const theme = useTheme(); // subscribe the whole app to theme changes (re-render -> C reflects the active theme)
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState(DEFAULT_PROJECTS);
   const [activeProject, setActiveProject] = useState("alto");
@@ -7516,6 +7546,7 @@ export default function Forge() {
               <button onClick={() => setEditingPartner(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Partner</button>
               {isAdmin && <button onClick={() => setEditingAccess(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Access</button>}
               <button onClick={() => setEditingPw(true)} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Password</button>
+              <button onClick={() => setAlloyTheme(theme === "dark" ? "light" : "dark")} title="Toggle light / dark theme" style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
             </div>
             <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
@@ -7528,7 +7559,7 @@ export default function Forge() {
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
 
           {/* context bar */}
-          <div style={{ position: "sticky", top: 0, zIndex: 10, background: "rgba(243,240,234,0.9)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}`, padding: "12px 32px" }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 10, background: C.bg, backdropFilter: "blur(10px)", borderBottom: `1px solid ${C.line}`, padding: "12px 32px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <button onClick={() => setRailOpen((v) => !v)} title={railOpen ? "Hide sidebar (full-width view)" : "Show sidebar"} aria-label="Toggle sidebar"
                 style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 4, padding: "4px 9px", fontSize: 13, lineHeight: 1, cursor: "pointer", fontFamily: FONT_BODY, flexShrink: 0 }}>
