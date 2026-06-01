@@ -1241,11 +1241,23 @@ const localDb = {
     const cur = await _read(KEYS.contacts);
     await _write(KEYS.contacts, [c, ...cur]);
   },
+  async deleteContact(id) {
+    const cur = await _read(KEYS.contacts);
+    await _write(KEYS.contacts, cur.filter((c) => c.id !== id));
+  },
+  async deleteCompany(id) {
+    const cur = await _read(KEYS.companies);
+    await _write(KEYS.companies, cur.filter((c) => c.id !== id));
+  },
 
   async allActivities() { return _read(KEYS.activities); },
   async addActivity(act) {
     const cur = await _read(KEYS.activities);
     await _write(KEYS.activities, [act, ...cur]);
+  },
+  async deleteActivity(id) {
+    const cur = await _read(KEYS.activities);
+    await _write(KEYS.activities, cur.filter((a) => a.id !== id));
   },
   async allFundings() { return _read(KEYS.fundings); },
   async addFunding(f) {
@@ -1431,8 +1443,11 @@ const supabaseDb = {
   async bulkAddContacts(list) { if (list.length) await sb("contacts", { method: "POST", body: uniformRows(list) }); },
   async updateContact(id, patch) { await sb("contacts", { method: "PATCH", query: `?id=eq.${id}`, body: patch }); },
   async addContact(c) { await sb("contacts", { method: "POST", body: [c] }); },
+  async deleteContact(id) { await sb("contacts", { method: "DELETE", query: `?id=eq.${id}` }); },
   async allActivities() { return (await sb("activities", { query: "?select=*&order=created_at.desc" })) || []; },
   async addActivity(act) { await sb("activities", { method: "POST", body: [act] }); },
+  async deleteActivity(id) { await sb("activities", { method: "DELETE", query: `?id=eq.${id}` }); },
+  async deleteCompany(id) { await sb("companies", { method: "DELETE", query: `?id=eq.${id}` }); },
   async allFundings() { return (await sb("fundings", { query: "?select=*&order=created_at.desc" })) || []; },
   async addFunding(f) { await sb("fundings", { method: "POST", body: [f] }); },
   async updateFunding(id, patch) { await sb("fundings", { method: "PATCH", query: `?id=eq.${id}`, body: patch }); },
@@ -3427,7 +3442,51 @@ function InfoRow({ icon, label, value, mono }) {
 }
 
 
-function CompanyCard({ project, company, contacts, activities, onBack, onUpdate, onStage, onAddActivity, onAddContact, onUpdateContact, flash, me, fundings, onAddFunding, onUpdateFunding }) {
+// Contact row with inline edit + delete (anyone with project write access; RLS enforces server-side).
+function ContactRow({ c, onUpdateContact, onDeleteContact }) {
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState({ first_name: c.first_name || "", last_name: c.last_name || "", title: c.title || "", email: c.email || "", phone: c.phone || "", linkedin: c.linkedin || "" });
+  const fld = { background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "5px 8px", fontSize: 12, color: C.text, fontFamily: FONT_BODY, outline: "none", width: "100%", boxSizing: "border-box" };
+  if (edit) {
+    return (
+      <div style={{ padding: "9px 0", borderBottom: `1px solid ${C.line}`, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <input style={fld} placeholder="First name" value={f.first_name} onChange={(e) => setF({ ...f, first_name: e.target.value })} />
+          <input style={fld} placeholder="Last name" value={f.last_name} onChange={(e) => setF({ ...f, last_name: e.target.value })} />
+        </div>
+        <input style={fld} placeholder="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <input style={fld} placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          <input style={fld} placeholder="Phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+        </div>
+        <input style={fld} placeholder="LinkedIn URL" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
+        <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+          <Btn variant="dark" size="sm" onClick={() => { onUpdateContact(c.id, f); setEdit(false); }}>Save</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => setEdit(false)}>Cancel</Btn>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 0", borderBottom: `1px solid ${C.line}` }}>
+      <div style={{ width: 32, height: 32, borderRadius: 2, background: C.panel2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, color: C.dim, flexShrink: 0, fontFamily: FONT_BODY }}>
+        {initials([c.first_name, c.last_name].join(" ")) || "?"}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{[c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed"}</div>
+        <div style={{ fontSize: 12, color: C.dim }}>{[c.title, c.phone, c.email].filter(Boolean).join(" · ")}{c.linkedin ? <> · <a href={c.linkedin} target="_blank" rel="noreferrer" style={{ color: C.blue, textDecoration: "none" }}>LinkedIn</a></> : null}</div>
+      </div>
+      <select value={normalizeStatus(c.status)} onChange={(e) => onUpdateContact(c.id, { status: e.target.value })}
+        style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11, cursor: "pointer", fontFamily: FONT_BODY, outline: "none" }}>
+        {[...new Set([...CONTACT_STATUSES, normalizeStatus(c.status)].filter(Boolean))].map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <button onClick={() => setEdit(true)} title="Edit contact" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11, cursor: "pointer", fontFamily: FONT_BODY, padding: "2px 4px" }}>Edit</button>
+      <button onClick={() => { if (confirm("Delete " + ([c.first_name, c.last_name].filter(Boolean).join(" ") || "this contact") + "?")) onDeleteContact(c.id); }} title="Delete contact" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 14, lineHeight: 1, cursor: "pointer", padding: "2px 4px" }}>×</button>
+    </div>
+  );
+}
+
+function CompanyCard({ project, company, contacts, activities, onBack, onUpdate, onStage, onAddActivity, onAddContact, onUpdateContact, onDeleteContact, onDeleteActivity, onDeleteCompany, isAdmin, flash, me, fundings, onAddFunding, onUpdateFunding }) {
   const [actType, setActType] = useState("Note");
   const [actBody, setActBody] = useState("");
   const [naText, setNaText] = useState(company.next_action || "");
@@ -3492,6 +3551,11 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
           <StageSelect stage={company.stage} onChange={(s) => onStage(company.id, s)} />
           <button onClick={removeLead} title="Archive this lead - hides the card from every list (recoverable by an admin)"
             style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim2, borderRadius: 2, padding: "8px 11px", fontSize: 12, cursor: "pointer", fontFamily: FONT_BODY }}>Remove</button>
+          {isAdmin && onDeleteCompany && (
+            <button onClick={() => { if (confirm(`PERMANENTLY delete "${company.name}"?\n\nThis erases the company and its data for good — it cannot be restored. Use Remove (archive) instead if you might want it back.`)) onDeleteCompany(company.id); }}
+              title="Permanently delete (admin) - irreversible"
+              style={{ background: "transparent", border: `1px solid ${C.red}`, color: C.red, borderRadius: 2, padding: "8px 11px", fontSize: 12, cursor: "pointer", fontFamily: FONT_BODY }}>Delete</button>
+          )}
         </div>
       </div>
 
@@ -3525,22 +3589,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         right={<button onClick={(e) => { e.stopPropagation(); onAddContact(company.id, { name: "", role: "" }); }} style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>+ Contact</button>}>
         {myContacts.length === 0 && <div style={{ fontSize: 12.5, color: C.dim2 }}>No contacts registered.</div>}
         {myContacts.map((c) => (
-          <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 0", borderBottom: `1px solid ${C.line}` }}>
-            <div style={{ width: 32, height: 32, borderRadius: 2, background: C.panel2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, color: C.dim, flexShrink: 0, fontFamily: FONT_BODY }}>
-              {initials([c.first_name, c.last_name].join(" ")) || "?"}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{[c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed"}</div>
-              <div style={{ fontSize: 12, color: C.dim }}>{[c.title, c.phone, c.email].filter(Boolean).join(" · ")}{c.linkedin ? <> · <a href={c.linkedin} target="_blank" rel="noreferrer" style={{ color: C.blue, textDecoration: "none" }}>LinkedIn</a></> : null}</div>
-            </div>
-            <select
-              value={normalizeStatus(c.status)}
-              onChange={(e) => onUpdateContact(c.id, { status: e.target.value })}
-              style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11, cursor: "pointer", fontFamily: FONT_BODY, outline: "none" }}
-            >
-              {[...new Set([...CONTACT_STATUSES, normalizeStatus(c.status)].filter(Boolean))].map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+          <ContactRow key={c.id} c={c} onUpdateContact={onUpdateContact} onDeleteContact={onDeleteContact} />
         ))}
         {/* Smith (below) finds decision-makers and populates this list. One finder, in the co-worker. */}
       </Collapsible>
@@ -3596,6 +3645,8 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 3 }}>
                     <Pill color={C.blue}>{a.type}</Pill>
                     <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO }}>{fmtDate(a.created_at)}</span>
+                    <span style={{ flex: 1 }} />
+                    {onDeleteActivity && <button onClick={() => { if (confirm("Delete this activity entry?")) onDeleteActivity(a.id); }} title="Delete activity" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 14, lineHeight: 1, cursor: "pointer", padding: "0 2px" }}>×</button>}
                   </div>
                   <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a.body}</div>
                 </div>
@@ -6540,6 +6591,19 @@ export default function Forge() {
     setContacts((p) => p.map((c) => (c.id === id ? { ...c, ...patch } : c)));
     await db.updateContact(id, patch);
   }, []);
+  const deleteContact = useCallback(async (id) => {
+    setContacts((p) => p.filter((c) => c.id !== id));
+    try { await db.deleteContact(id); } catch (e) { flash("Delete failed: " + (e?.message || e)); }
+  }, [flash]);
+  const deleteActivity = useCallback(async (id) => {
+    setActivities((p) => p.filter((a) => a.id !== id));
+    try { await db.deleteActivity(id); } catch (e) { flash("Delete failed: " + (e?.message || e)); }
+  }, [flash]);
+  const deleteCompany = useCallback(async (id) => {
+    setCompanies((p) => p.filter((c) => c.id !== id));
+    setSelected(null);
+    try { await db.deleteCompany(id); flash("Company permanently deleted"); } catch (e) { flash("Delete failed: " + (e?.message || e)); }
+  }, [flash]);
 
   const selectedCompany = companies.find((c) => c.id === selected);
 
@@ -6752,6 +6816,10 @@ export default function Forge() {
             onAddActivity={addActivity}
             onAddContact={addContact}
             onUpdateContact={updateContact}
+            onDeleteContact={deleteContact}
+            onDeleteActivity={deleteActivity}
+            onDeleteCompany={deleteCompany}
+            isAdmin={isAdmin}
             flash={flash}
             me={session?.email || ""}
             fundings={fundings}
