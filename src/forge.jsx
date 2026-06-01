@@ -2421,6 +2421,15 @@ function CompanyIntelPanel({ company, onSave, flash }) {
             {company.aws_signals && <span style={{ fontSize: 12, color: C.dim }}>{company.aws_signals}</span>}
           </div>
           {cloudMeta(company) && <div style={{ fontSize: 11.5, color: C.dim2, marginTop: 6, lineHeight: 1.5 }}>{cloudMeta(company).note}</div>}
+          {(() => {
+            const e = estResellSpend(company);
+            if (!e) return null;
+            return (
+              <div style={{ marginTop: 8, padding: "8px 11px", background: C.amber + "12", border: `1px solid ${C.amber}33`, borderRadius: 2, fontSize: 11.5, color: C.text, lineHeight: 1.5 }}>
+                <strong style={{ color: C.amber }}>Resell estimate</strong> · est. AWS spend <strong>~{fmtSEK(e.monthly)}/mo</strong> ({e.band}, by {e.basis}) · Resell ARR <strong>~{fmtSEK(e.arr)}/yr</strong> <span style={{ color: C.dim2 }}>· {e.confidence} confidence — band only, exact is owner-only</span>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2831,6 +2840,43 @@ function estimateAwsCost(annualUsd) {
   const mo = yr / 12;
   const items = CALC.split.map(([label, pct]) => ({ label, mo: mo * pct }));
   return { yr, mo, items, mapYr: yr * (CALC.mapOffsetPct / 100) };
+}
+
+// --- RESELL spend-band estimate (free signals only) -------------------------------------------
+// AWS spend is owner-only, so we ESTIMATE a band from revenue + employees + sector + the AWS
+// service footprint we already detected. A band, never a quote — the exact figure comes once you
+// win the billing relationship. RESELL_MARGIN is the illustrative partner net margin on resold spend.
+const RESELL_MARGIN = 0.10;
+function resellSector(company) {
+  const s = ((company.industry || "") + " " + ((company.enrichment && company.enrichment.sni_code) || "")).toLowerCase();
+  if (/saas|software|fintech|martech|adtech|edtech|proptech|tech|platform|\bai\b|data|\bit\b|\b58\d|\b62\d|\b63\d/.test(s)) return "saas";
+  if (/e-?com|retail|handel|webshop|consumer|brand|\b47\d/.test(s)) return "ecom";
+  return "other";
+}
+function resellRevenueSek(company) {
+  const e = company.enrichment || {};
+  if (e.revenue_sek != null && Number(e.revenue_sek) > 0) return Number(e.revenue_sek);
+  if (company.revenue_ksek != null && Number(company.revenue_ksek) > 0) return Number(company.revenue_ksek) * 1000;
+  return null;
+}
+// Returns null when there's no size signal at all (revenue + employees both unknown).
+function estResellSpend(company) {
+  if (!(company.aws_detected || company.cloud_provider === "aws")) return null;
+  const sector = resellSector(company);
+  const pct = sector === "saas" ? 0.08 : sector === "ecom" ? 0.04 : 0.012;        // cloud spend as % of revenue
+  const sig = (company.aws_signals || "").toLowerCase();
+  let mult = 1;                                                                    // service-footprint nudge
+  if (/ec2|rds|ecs|eks|globalaccelerator|global accelerator|elasticache|redshift/.test(sig)) mult = 1.35;
+  else if (/cloudfront|amazon\b/.test(sig) && !/ec2/.test(sig)) mult = 0.7;        // CDN/asset-only = lighter origin
+  const rev = resellRevenueSek(company);
+  const emp = Number(company.enrichment && company.enrichment.employees) || null;
+  let annual = null, basis = "";
+  if (rev) { annual = rev * pct * mult; basis = "revenue"; }
+  else if (emp) { const per = sector === "saas" ? 48000 : sector === "ecom" ? 30000 : 10000; annual = emp * per * mult; basis = "headcount"; }
+  if (!annual || annual < 1) return null;
+  const monthly = annual / 12;
+  const band = monthly < 50000 ? "small" : monthly < 250000 ? "mid" : monthly < 1e6 ? "large" : "enterprise";
+  return { sector, monthly, annual, arr: annual * RESELL_MARGIN, band, basis, confidence: rev ? "med" : "low" };
 }
 function FundingFitPanel({ company, flash }) {
   const [fit, setFit] = useState(null);
@@ -4886,6 +4932,12 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
                 <span style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
                 <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
               </div>
+              {p.track === "RESELL" && (() => {
+                const ests = p.hits.map(estResellSpend).filter(Boolean);
+                if (!ests.length) return null;
+                const mo = ests.reduce((s, e) => s + e.monthly, 0), arr = ests.reduce((s, e) => s + e.arr, 0);
+                return <div style={{ fontSize: 10.5, color: C.amber, fontWeight: 600, marginTop: 5, lineHeight: 1.35 }}>~{fmtSEK(mo)}/mo book · ARR ~{fmtSEK(arr)}/yr <span style={{ color: C.dim2, fontWeight: 400 }}>({ests.length} sized)</span></div>;
+              })()}
               <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, flex: 1 }}>{p.pitch}</div>
               {/* Smith's pick for this play — the "who to work first", folded into the tile */}
               {rec && rec.company && (
