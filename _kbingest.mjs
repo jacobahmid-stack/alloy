@@ -5,11 +5,9 @@ const DIR = "C:/Users/jacob/AppData/Local/Temp/alloy_kb";
 const BASE = "https://nvjizahtcqgmfhiodtej.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52aml6YWh0Y3FnbWZoaW9kdGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk0NDMsImV4cCI6MjA5NTU2NTQ0M30.G0gf0z0wg9RQqsyZcEBXPYJ1YVeTe_NOULtDAEI2xEA";
 const DOCS = [
-  { id: "aws-marketplace-ug", title: "AWS Marketplace — Seller Guide", kind: "aws-doc" },
-  { id: "aws-resilience-hub", title: "AWS Resilience Hub — User Guide", kind: "aws-doc" },
-  { id: "aws-mbse", title: "Model-Based Systems Engineering on AWS", kind: "aws-doc" },
-  { id: "aws-elasticache-redis", title: "Amazon ElastiCache (Redis) — User Guide", kind: "aws-doc" },
-  { id: "aws-sap-ase-to-rds-sqlserver", title: "SAP ASE → Amazon RDS for SQL Server — Migration", kind: "aws-doc" },
+  { id: "aws-prescriptive-guidance", title: "AWS Prescriptive Guidance", kind: "aws-doc" },
+  { id: "aws-partner-central-gs", title: "AWS Partner Central — Getting Started", kind: "aws-doc" },
+  { id: "aws-partnercentral-selling-api", title: "AWS Partner Central — Selling (ACE / co-sell)", kind: "aws-doc" },
 ];
 const CHUNK = 1800, OVERLAP = 150, BATCH = 60, EMBED = false; // FTS-only bulk (in-runtime embed is CPU-capped ~6/call)
 const dropLine = (l) => {

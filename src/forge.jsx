@@ -189,9 +189,15 @@ function SmithDiscover({ project, onImportRows, flash }) {
     const q = request.trim() || DISCOVER_EXAMPLE;
     setBusy(true); setError(""); setData(null); setSavedN(0); setPicked(new Set());
     try {
+      // Ground the AWS-play assignment in Alloy's brain (Smith Playbook / BOX / AWS docs).
+      let playRef = "";
+      try {
+        const kb = await kbSearch(`AWS plays and funding eligibility (MAP, WMP, GenAI POC, Resell) for: ${q}`, 5);
+        if (kb.length) playRef = `\n\nAWS PLAY REFERENCE — use these real definitions from Alloy's knowledge base when you set aws_play; do not contradict them:\n` + kb.map((h) => `[${h.title}${h.page ? " p." + h.page : ""}] ${String(h.content).slice(0, 480)}`).join("\n\n");
+      } catch { /* brain optional */ }
       const txt = await callClaude({
         task: "discover_prospects", system: DISCOVER_SYS,
-        user: `Build a prospecting list from these rules:\n\n${q}\n\nResearch real matching companies and return the JSON now.`,
+        user: `Build a prospecting list from these rules:\n\n${q}${playRef}\n\nResearch real matching companies and return the JSON now.`,
         tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
         maxTokens: 4096,
       });
@@ -259,7 +265,7 @@ function SmithDiscover({ project, onImportRows, flash }) {
           {savedN > 0
             ? <div style={{ fontSize: 11.5, color: C.green }}>Saved {savedN} to {project?.name || "this project"} ✓ — find them in your list, enriching now.</div>
             : <Btn variant="primary" size="sm" onClick={save}>Save {picked.size} to {project?.name || "project"}</Btn>}
-          <div style={{ fontSize: 10, color: C.dim2, lineHeight: 1.5 }}>Sizes &amp; signals are AI estimates for prioritisation — Alloy verifies domain, cloud &amp; size after saving.</div>
+          <div style={{ fontSize: 10, color: C.dim2, lineHeight: 1.5 }}>AWS plays grounded in Alloy's brain (Smith Playbook · BOX · AWS docs). Sizes &amp; signals are AI estimates for prioritisation — Alloy verifies domain, cloud &amp; size after saving.</div>
         </div>
       )}
     </div>
