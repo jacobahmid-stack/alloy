@@ -3235,7 +3235,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
       {open.nba && (
         <div style={{ paddingLeft: 20, marginBottom: 8 }}>
           <div style={{ fontSize: 12.5, color: C.text, lineHeight: 1.5, marginBottom: 8 }}>{nextMove}</div>
-          <Btn variant="ghost" size="sm" onClick={() => { onUpdate(company.id, { next_action: nextMove }); flash("Set as next step"); }}>Set as next step</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => { onUpdate(company.id, { next_action: nextMove, next_action_at: dayStr(1) }); flash("Set as next step — added to Today"); }}>Set as next step</Btn>
         </div>
       )}
 
@@ -3368,6 +3368,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         onOpen={() => {}}
         initialMsgs={(company.enrichment && company.enrichment.smith_thread) || []}
         onPersist={(thread) => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), smith_thread: thread.slice(-30) } })}
+        onSetNextStep={(action) => onUpdate(company.id, { next_action: action, next_action_at: dayStr(1) })}
         savedFiles={(company.enrichment && company.enrichment.smith_files) || []}
         onSaveFiles={(attached) => {
           const enr = company.enrichment || {};
@@ -4302,7 +4303,7 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles, onSetNextStep }) {
   // initialMsgs/onPersist: when given (card-scoped chat), the thread persists to the account
   // (enrichment.smith_thread); when absent (launcher), the chat is ephemeral.
   // savedFiles/onSaveFiles: card-scoped — pre-load the account's saved files + persist new ones.
@@ -4312,6 +4313,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   const [web, setWeb] = useState(false);
   const [copied, setCopied] = useState(-1);
   const [saved, setSaved] = useState(-1);
+  const [stepped, setStepped] = useState(-1);
   const [files, setFiles] = useState(() => Array.isArray(savedFiles) ? savedFiles.map((f) => ({ name: f.name, text: f.text || "", chars: f.chars || (f.text || "").length })) : []);
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
@@ -4359,6 +4361,18 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   }
   // clear the persisted account thread
   function clearThread() { setMsgs([]); if (onPersist) { try { onPersist([]); } catch {} } }
+  // Turn a Smith reply into the account's next step (human-approved, one click). Picks the
+  // most action-like line: a "Next move/step" line if present, else the first concrete line.
+  function setNextStep(text, i) {
+    if (!onSetNextStep) return;
+    const lines = (text || "").split("\n").map((l) => l.replace(/^[\s>*\-•#]+/, "").replace(/\*\*/g, "").trim()).filter(Boolean);
+    const move = lines.find((l) => /^next (move|step)\b/i.test(l));
+    let action = move ? move.replace(/^next (move|step)[:\s-]*/i, "") : (lines.find((l) => l.length > 12 && l.length < 160) || lines[0] || "");
+    action = action.slice(0, 200);
+    if (!action) { flash && flash("Nothing to set"); return; }
+    onSetNextStep(action);
+    setStepped(i); flash && flash("Set as next step"); setTimeout(() => setStepped(-1), 1800);
+  }
   function copy(text, i) {
     try { navigator.clipboard.writeText(text); setCopied(i); flash && flash("Copied to clipboard"); setTimeout(() => setCopied(-1), 1500); }
     catch { flash && flash("Copy failed — select the text manually"); }
@@ -4419,6 +4433,11 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
                   {focusCompany && onSaveToCard && (
                     <button onClick={() => saveToCard(m.text, i)} title={"Save to " + focusCompany.name + "'s card"} style={{ background: "transparent", border: "none", color: saved === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
                       <Icon name="download" size={11} color={saved === i ? C.green : C.dim2} /> {saved === i ? "Saved" : "Save to card"}
+                    </button>
+                  )}
+                  {onSetNextStep && (
+                    <button onClick={() => setNextStep(m.text, i)} title="Make this the account's next step (adds it to your Today queue for tomorrow)" style={{ background: "transparent", border: "none", color: stepped === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
+                      <Icon name="target" size={11} color={stepped === i ? C.green : C.dim2} /> {stepped === i ? "Added to Today" : "→ Today"}
                     </button>
                   )}
                 </div>
