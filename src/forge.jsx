@@ -4771,35 +4771,42 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
 
-      {/* SMITH recommends — the single most valuable account to work per play, right now */}
-      {smithRecs.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith recommends</span>
-            <span style={{ fontSize: 11, color: C.dim2 }}>your best account in each play, right now</span>
-          </div>
-          <SmithPanel recs={smithRecs} onOpen={onOpen} onOpenPlay={onOpenPlay} variant="hero" />
-        </div>
-      )}
-
-      {/* AWS PLAYS - one horizontal row (4 cols). Each = a funding program; click to work its list. */}
+      {/* AWS PLAYS — one row, one source of truth: each tile = how many + WHO to work next
+          (Smith's pick folded in) + why. Replaces the old duplicated "Smith recommends" section. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Your plays today</span>
+        <span style={{ fontSize: 11, color: C.dim2 }}>count, and who Smith says to work first</span>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 26 }}>
-        {PLAYS.map((p) => (
-          <div key={p.key}
-            title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
-            onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
-            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "14px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
-              <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
+        {PLAYS.map((p) => {
+          const rec = smithRecs.find((r) => r.track === p.track);
+          return (
+            <div key={p.key}
+              title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
+              onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
+              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 3, padding: "14px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
+                <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 8 }}>
+                <span style={{ fontSize: 34, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
+                <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
+              </div>
+              <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, flex: 1 }}>{p.pitch}</div>
+              {/* Smith's pick for this play — the "who to work first", folded into the tile */}
+              {rec && rec.company && (
+                <div onClick={(e) => { e.stopPropagation(); onOpen && onOpen(rec.company.id); }}
+                  style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}`, cursor: "pointer" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, marginBottom: 3, fontFamily: FONT_HEAD }}>Work first →</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rec.company.name}</div>
+                  <div style={{ fontSize: 10.5, color: C.dim, marginTop: 2 }}>{rec.reasonTag}{rec.fundability != null ? ` · fund ${rec.fundability}` : ""}</div>
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: 34, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em", marginTop: 8 }}>
-              {p.hits.length}
-            </div>
-            <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4 }}>{p.pitch}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {worklist.length > 0 && (
