@@ -265,55 +265,9 @@ function SmithDiscover({ project, onImportRows, flash }) {
           {savedN > 0
             ? <div style={{ fontSize: 11.5, color: C.green }}>Saved {savedN} to {project?.name || "this project"} ✓ — find them in your list, enriching now.</div>
             : <Btn variant="primary" size="sm" onClick={save}>Save {picked.size} to {project?.name || "project"}</Btn>}
-          <div style={{ fontSize: 10, color: C.dim2, lineHeight: 1.5 }}>AWS plays grounded in Alloy's brain (Smith Playbook · BOX · AWS docs). Sizes &amp; signals are AI estimates for prioritisation — Alloy verifies domain, cloud &amp; size after saving.</div>
+          <div style={{ fontSize: 10, color: C.dim2, lineHeight: 1.5 }}>AWS plays reflect the live AWS programs. Sizes &amp; signals are AI estimates for prioritisation — Alloy verifies domain, cloud &amp; size after saving.</div>
         </div>
       )}
-    </div>
-  );
-}
-// Smith's Brain tab — see what Alloy knows (ingested AWS docs + playbook) and query it directly.
-function SmithKnowledge() {
-  const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [results, setResults] = useState(null);
-  const [docs, setDocs] = useState([]);
-  const fld = { width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
-  useEffect(() => { kbList().then(setDocs).catch(() => {}); }, []);
-  async function ask() {
-    if (!q.trim()) return;
-    setBusy(true); setResults(null);
-    try { setResults(await kbSearch(q.trim(), 8)); } catch { setResults([]); }
-    finally { setBusy(false); }
-  }
-  const totalChunks = docs.reduce((s, d) => s + (d.chunks || 0), 0);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Alloy's brain — Smith grounds his AWS answers in this. Ask it anything about AWS funding, plays, services or migration.</div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input style={fld} placeholder="e.g. how does ISV WMP funding work?" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") ask(); }} />
-        <Btn variant="primary" size="sm" onClick={ask} disabled={busy}>{busy ? <Spinner size={12} /> : "Ask"}</Btn>
-      </div>
-      {results && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 300, overflowY: "auto" }}>
-          {results.length === 0 && <div style={{ fontSize: 11.5, color: C.dim2 }}>Nothing in the brain matched — try different words.</div>}
-          {results.map((r, i) => (
-            <div key={i} style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 4, padding: "7px 9px" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".03em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>{r.title}{r.page ? ` · p.${r.page}` : ""}</div>
-              <div style={{ fontSize: 11.5, color: C.dim, marginTop: 3, lineHeight: 1.5 }}>{String(r.content).slice(0, 320).trim()}…</div>
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ marginTop: 2, borderTop: `1px solid ${C.line}`, paddingTop: 8 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.dim2, fontFamily: FONT_HEAD, marginBottom: 5 }}>In the brain {totalChunks ? `· ${totalChunks.toLocaleString()} passages` : ""}</div>
-        {docs.length === 0 && <div style={{ fontSize: 11, color: C.dim2 }}>Loading…</div>}
-        {docs.map((d) => (
-          <div key={d.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: C.dim, padding: "2px 0" }}>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.kind === "playbook" ? "🧠 " : "📄 "}{d.title}</span>
-            <span style={{ color: C.dim2, flexShrink: 0 }}>{(d.chunks || 0).toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -3742,7 +3696,6 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
           <span style={{ fontSize: 14 }}>🔨</span>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>AWS Migration Kit</span>
-          <span style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "0 5px" }}>brain-grounded</span>
         </div>
         <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 9 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong> — a 7-R assessment, a DMS/SCT plan, then the ACE opportunity + PoC pre-approval. You review &amp; submit. Output lands in <strong>Ask Smith</strong> below ↓</div>
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -5345,13 +5298,16 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
       {(() => {
         const kitTarget = [...projCompanies].filter((c) => c.domain).sort((a, b) => (b.employees || 0) - (a.employees || 0))[0] || projCompanies[0];
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap", background: "linear-gradient(135deg, rgba(255,122,26,0.12), rgba(255,176,46,0.05))", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "12px 16px", marginBottom: 22 }}>
-            <span style={{ fontSize: 20 }}>🔨</span>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>New — Smith builds the MAP “Assess” kit on any account</div>
-              <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 2 }}>Open an account → <strong style={{ color: C.accent }}>AWS Migration Kit</strong> → a 7-R assessment, DMS/SCT plan, then the ACE opportunity + PoC pre-approval — drafted &amp; grounded in Alloy's brain. You review &amp; submit.</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "13px 18px", marginBottom: 22 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0, boxShadow: "0 2px 8px rgba(255,122,26,0.25)" }}>🔨</div>
+            <div style={{ flex: 1, minWidth: 230 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Build a MAP “Assess” kit in one click</span>
+                <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".1em", color: "#fff", background: C.accent, borderRadius: 3, padding: "2px 6px" }}>NEW</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 3 }}>Smith drafts the 7-R assessment, the DMS/SCT plan, and the AWS funding paperwork (ACE + PoC) for any account. You review &amp; submit.</div>
             </div>
-            {kitTarget && <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(kitTarget.id)}>Try it on {kitTarget.name.length > 22 ? kitTarget.name.slice(0, 22) + "…" : kitTarget.name} →</Btn>}
+            {kitTarget && <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(kitTarget.id)}>Try it on {kitTarget.name.length > 20 ? kitTarget.name.slice(0, 20) + "…" : kitTarget.name} →</Btn>}
           </div>
         );
       })()}
@@ -7542,7 +7498,7 @@ export default function Forge() {
               </div>
               {/* tabs — Chat / FAQ / Contact (ABK-style self-serve) */}
               <div style={{ display: "flex", gap: 2, marginBottom: 12, borderBottom: `1px solid ${C.line}` }}>
-                {[["chat", "Chat"], ["discover", "Lists"], ["brain", "Brain"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
+                {[["chat", "Chat"], ["discover", "Lists"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
                   <button key={k} onClick={() => setSmithTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${smithTab === k ? C.accent : "transparent"}`, color: smithTab === k ? C.accent : C.dim, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", fontFamily: FONT_HEAD, cursor: "pointer", padding: "3px 11px 8px" }}>{lbl}</button>
                 ))}
               </div>
@@ -7564,7 +7520,6 @@ export default function Forge() {
                 </>
               )}
               {smithTab === "discover" && <SmithDiscover project={project} onImportRows={handleImportRows} flash={flash} />}
-              {smithTab === "brain" && <SmithKnowledge />}
               {smithTab === "faq" && <SmithFAQ />}
               {smithTab === "contact" && <SmithContact project={project} flash={flash} />}
             </div>
