@@ -3056,9 +3056,28 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
   const webNote = web
     ? `\n\nWEB SEARCH IS ON: for questions about what's new / recent signals at a COMPANY (funding, leadership change, hiring, product, cloud move), use web_search and cite what you find. Research the COMPANY for B2B context only — not private detail on individuals. If search returns nothing solid, say so; never fabricate a signal.`
     : "";
-  const focusNote = focusCompany
-    ? `\n\nFOCUS ACCOUNT (the rep is on this card right now — default to it unless they name another): ${focusCompany.name}${focusCompany.domain ? " (" + focusCompany.domain + ")" : ""}${focusCompany.industry ? ", " + focusCompany.industry : ""}.`
-    : "";
+  // Focus account: feed Smith the deal's REAL state (stage, contacts, funding track/score, next
+  // step, current cloud) so his advice is grounded in where the deal actually is — not just a name.
+  const focusNote = (() => {
+    if (!focusCompany) return "";
+    const fc = focusCompany;
+    const fcContacts = (contacts || []).filter((x) => x.company_id === fc.id);
+    const fe = trackMap[fc.id] || {};
+    const PLAYN = { MAP: "Migrate (MAP)", MAP_MODERNIZE: "Modernize", POC: "GenAI (POC)", GREENFIELD_PGP: "Greenfield (PGP)", ISV_WMP: "Marketplace" };
+    const cName = (c) => c.name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "contact";
+    const bits = [
+      fc.domain ? `domain ${fc.domain}` : null,
+      fc.industry || null,
+      (fc.employees === 0 || fc.employees) ? `${fc.employees} employees` : null,
+      fc.city || null,
+      (fc.cloud_provider && fc.cloud_provider !== "unknown") ? `current cloud ${String(fc.cloud_provider).toUpperCase()}` : null,
+      fc.stage ? `stage: ${STAGE_LABEL[fc.stage] || fc.stage}` : null,
+      fe.primary_track ? `funding play ${PLAYN[fe.primary_track] || fe.primary_track}${fe.fundability_score != null ? ` (fundability ${fe.fundability_score}${fe.confidence ? "/" + fe.confidence : ""})` : ""}` : null,
+      fc.next_action ? `next step on file: "${fc.next_action}"` : null,
+      fcContacts.length ? `${fcContacts.length} contact${fcContacts.length > 1 ? "s" : ""}: ${fcContacts.slice(0, 3).map((c) => `${cName(c)}${c.title ? " (" + c.title + ")" : ""}`).join(", ")}` : "no contacts on the card yet",
+    ].filter(Boolean);
+    return `\n\nFOCUS ACCOUNT (the rep is on this card right now — default to it unless they name another, and ground your advice in this account's real state):\n${fc.name} — ${bits.join("; ")}.`;
+  })();
   // Include BOX knowledge only when the topic touches it (saves tokens otherwise).
   const boxNote = /\bbox\b|business outcome|agentic|ai competency|multi.?partner|packaged solution|lob|line.of.business|milestone|mdf|co-?sell|marketplace|wmp|mpopp/i.test(question + " " + convo)
     ? `\n\n${SMITH_BOX_KB}`
