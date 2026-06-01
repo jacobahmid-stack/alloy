@@ -29,32 +29,45 @@ const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // mol
 let _smithFaceN = 0;
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
+  const HAIR = "#3A2718", BEARD = "#4A3320", SKIN = "#EBB184";
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" style={{ display: "block", flexShrink: 0 }} role="img" aria-label={title || "Smith"}>
       <defs>
         <linearGradient id={u + "g"} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FF7A1A" /><stop offset="1" stopColor="#FFB02E" />
+          <stop offset="0" stopColor="#FF8A24" /><stop offset="1" stopColor="#FFC04A" />
         </linearGradient>
         <clipPath id={u + "c"}><circle cx="32" cy="32" r="32" /></clipPath>
       </defs>
       <g clipPath={`url(#${u}c)`}>
         <rect width="64" height="64" fill={`url(#${u}g)`} />
-        {/* leather apron + shoulders (the smith) */}
-        <path d="M11 64 C11 49 22 45 32 45 C42 45 53 49 53 64 Z" fill="#4A3526" />
-        <path d="M25 49 L32 58 L39 49 Z" fill="#6E4C34" />
-        <rect x="28" y="41" width="8" height="9" rx="3" fill="#D7986A" />
-        {/* ears + face */}
-        <circle cx="19.5" cy="31" r="2.6" fill="#E7AD7D" /><circle cx="44.5" cy="31" r="2.6" fill="#E7AD7D" />
-        <ellipse cx="32" cy="30" rx="13" ry="15.5" fill="#E9AF7F" />
-        {/* dark-brown hair, tousled */}
-        <path d="M17.5 29 C15.5 9 30 6.5 32 6.5 C34 6.5 48.5 9 46.5 29 C44.5 19.5 42 16.5 32 16.5 C22 16.5 19.5 19.5 17.5 29 Z" fill="#2C1E12" />
-        {/* 3-day beard along the jaw + chin */}
-        <path d="M19.5 29.5 C19.5 44 26 47.5 32 47.5 C38 47.5 44.5 44 44.5 29.5 C44.5 38.5 40 41.5 32 41.5 C24 41.5 19.5 38.5 19.5 29.5 Z" fill="#33251A" />
-        <path d="M26 35.5 C28.5 38 35.5 38 38 35.5" stroke="#33251A" strokeWidth="3.2" fill="none" strokeLinecap="round" />
-        {/* eyes + brows */}
-        <circle cx="27" cy="30" r="1.8" fill="#241812" /><circle cx="37" cy="30" r="1.8" fill="#241812" />
-        <path d="M23.5 26 C25.5 24.5 28.5 24.5 30 26" stroke="#2C1E12" strokeWidth="1.9" fill="none" strokeLinecap="round" />
-        <path d="M34 26 C35.5 24.5 38.5 24.5 40.5 26" stroke="#2C1E12" strokeWidth="1.9" fill="none" strokeLinecap="round" />
+        {/* leather apron + shoulders */}
+        <path d="M10 64 C10 50 21 45 32 45 C43 45 54 50 54 64 Z" fill="#4A3526" />
+        <path d="M27 46 L32 41 L37 46 L34 56 L30 56 Z" fill="#C9824F" />
+        <rect x="28.5" y="40" width="7" height="8" rx="3" fill="#D89A6A" />
+        {/* ears */}
+        <circle cx="19.5" cy="32" r="2.7" fill={SKIN} /><circle cx="44.5" cy="32" r="2.7" fill={SKIN} />
+        {/* face */}
+        <ellipse cx="32" cy="30" rx="13" ry="15.5" fill={SKIN} />
+        {/* rosy cheeks (warmth) */}
+        <ellipse cx="24" cy="35" rx="2.6" ry="1.8" fill="#E48B5E" opacity="0.45" />
+        <ellipse cx="40" cy="35" rx="2.6" ry="1.8" fill="#E48B5E" opacity="0.45" />
+        {/* styled hair — a swept quiff with a bit of volume */}
+        <path d="M18 30 C15 12 26 6 32 6 C40 6 48 11 46 30 C44.5 21 41 17 33 17 C32 13 27 13.5 25 16 C21 17 19.5 22 18 30 Z" fill={HAIR} />
+        {/* eyebrows — relaxed, friendly lift */}
+        <path d="M23.5 25.5 C25.5 24 28.5 24 30.5 25.2" stroke={HAIR} strokeWidth="2" fill="none" strokeLinecap="round" />
+        <path d="M33.5 25.2 C35.5 24 38.5 24 40.5 25.5" stroke={HAIR} strokeWidth="2" fill="none" strokeLinecap="round" />
+        {/* eyes with a highlight (life) */}
+        <circle cx="27" cy="29.5" r="2.1" fill="#241812" /><circle cx="37" cy="29.5" r="2.1" fill="#241812" />
+        <circle cx="27.8" cy="28.8" r="0.7" fill="#fff" opacity="0.9" /><circle cx="37.8" cy="28.8" r="0.7" fill="#fff" opacity="0.9" />
+        {/* nose */}
+        <path d="M32 31 L31 35 C31 35.8 33 35.8 33 35" stroke="#C9824F" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        {/* SMILE — warm, slight teeth */}
+        <path d="M26.5 37.5 C29 41 35 41 37.5 37.5 C35 39.2 29 39.2 26.5 37.5 Z" fill="#fff" opacity="0.92" />
+        <path d="M26 37 C29 41 35 41 38 37" stroke="#3A2418" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+        {/* mustache */}
+        <path d="M26 35.8 C28.5 37.4 35.5 37.4 38 35.8" stroke={BEARD} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+        {/* 3-day beard framing the jaw (stubble, leaves the smile open) */}
+        <path d="M19.5 31 C19.5 45 26 48 32 48 C38 48 44.5 45 44.5 31 C44 39 41 43 38.5 39 C35.5 41 28.5 41 25.5 39 C23 43 20 39 19.5 31 Z" fill={BEARD} opacity="0.92" />
       </g>
     </svg>
   );
@@ -4803,12 +4816,7 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: variant === "hero" ? 10 : 8 }}>
-      {variant === "rail" && greeting && (
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <SmithFace size={28} />
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>
-        </div>
-      )}
+      {variant === "rail" && greeting && <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>}
       {card(top, true)}
       {rest.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: variant === "hero" ? "repeat(auto-fit, minmax(190px, 1fr))" : "1fr", gap: 8 }}>
@@ -4861,21 +4869,21 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
   // --- AWS PLAYS - the sales motions, each = an AWS funding program. Counts read the REAL
   // funding-engine track (primary_track), so "Modernize" = genuinely on-AWS deals, not every AWS card. ---
   const PLAYS = [
-    { key: "migrate",   track: "MAP",            label: "Migrate",   prog: "MAP",            accent: C.accent,
+    { key: "migrate",   track: "MAP",            label: "Migrate",   prog: "MAP",       accent: C.accent,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP"),
       pitch: "Move to AWS, co-funded" },
-    { key: "modernize", track: "MAP_MODERNIZE",  label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
+    { key: "modernize", track: "MAP_MODERNIZE",  label: "Modernize", prog: "MAP Mod",   accent: C.teal,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP_MODERNIZE"),
       pitch: "On AWS — optimize & expand" },
-    { key: "genai",     track: "POC",            label: "GenAI",     prog: "POC credits",    accent: C.violet,
+    { key: "genai",     track: "POC",            label: "GenAI",     prog: "POC",       accent: C.violet,
       hits: projCompanies.filter((c) => trackOf(c) === "POC"),
       pitch: "AWS-funded GenAI pilot" },
-    { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "Partner-led",    accent: C.blue,
+    { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "PGP",       accent: C.blue,
       hits: projCompanies.filter((c) => trackOf(c) === "GREENFIELD_PGP"),
       pitch: "Net-new build on AWS" },
-    { key: "resell",    track: "RESELL",         label: "Resell",    prog: "ARR · own bill", accent: C.amber,
+    { key: "resell",    track: "RESELL",         label: "Resell",    prog: "ARR",       accent: C.amber,
       hits: projCompanies.filter((c) => !!(c.aws_detected || c.cloud_provider === "aws")),
-      pitch: "Already on AWS — win the billing relationship for recurring margin" },
+      pitch: "On AWS — win the billing relationship for margin" },
   ];
   // funding-native KPIs
   const FUNDABLE = new Set(["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP"]);
@@ -4961,22 +4969,25 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
               title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
               onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
               style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 3, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+              {/* header row — single line so every number sits at the same height */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
                 <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
-                <span style={{ fontSize: 9, color: C.dim2, fontWeight: 600, letterSpacing: ".03em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
+                <span style={{ fontSize: 9, color: C.dim2, fontWeight: 600, letterSpacing: ".03em", whiteSpace: "nowrap" }}>{p.prog}</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 8 }}>
                 <span style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
                 <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
               </div>
+              {/* pitch — fixed 2-line slot so the pitch row aligns across every tile */}
+              <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, minHeight: 30, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.pitch}</div>
               {p.track === "RESELL" && (() => {
                 const ests = p.hits.map(estResellSpend).filter(Boolean);
                 if (!ests.length) return null;
                 const mo = ests.reduce((s, e) => s + e.monthly, 0), arr = ests.reduce((s, e) => s + e.arr, 0);
-                return <div style={{ fontSize: 10.5, color: C.amber, fontWeight: 600, marginTop: 5, lineHeight: 1.35 }}>~{fmtSEK(mo)}/mo book · ARR ~{fmtSEK(arr)}/yr <span style={{ color: C.dim2, fontWeight: 400 }}>({ests.length} sized)</span></div>;
+                return <div style={{ fontSize: 10.5, color: C.amber, fontWeight: 600, marginTop: 4, lineHeight: 1.35 }}>~{fmtSEK(mo)}/mo book · ARR ~{fmtSEK(arr)}/yr <span style={{ color: C.dim2, fontWeight: 400 }}>({ests.length} sized)</span></div>;
               })()}
-              <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, flex: 1 }}>{p.pitch}</div>
-              {/* Smith's pick for this play — the "who to work first", folded into the tile */}
+              <div style={{ flex: 1 }} />
+              {/* Smith's pick — "who to work first", bottom-aligned across all tiles */}
               {rec && rec.company && (
                 <div onClick={(e) => { e.stopPropagation(); onOpen && onOpen(rec.company.id); }}
                   style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}`, cursor: "pointer" }}>
