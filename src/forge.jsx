@@ -3089,7 +3089,22 @@ Current state (hypothesis) · target-state AWS architecture (name the services) 
 ## What to validate next
 The real discovery that turns this into a funded plan: inventory + dependency mapping, measured TCO (Cloudamize/ADS), the IT/cloud decision-maker, and the FTR. Be concrete.
 Be concise and concrete — a rep is reading. No hype.`;
-async function migrationAssessment({ company, project }) {
+// Measured variant — used when the rep imports real AWS discovery data (ADS / Migration Hub /
+// Migration Evaluator export). Same structure as the hypothesis prompt, but it USES the real numbers.
+const MIGRATION_ASSESS_MEASURED_SYS = `You are Smith, an AWS migration solutions architect for an AWS partner. You HAVE measured discovery data for this account (from AWS Application Discovery Service / Migration Hub / Migration Evaluator) — provided below. Produce a MEASURED migration assessment a rep takes to the customer and into a MAP "Assess" funding case.
+USE THE REAL DATA: base the 7-R dispositions on the ACTUAL inventory; right-size AWS targets from the ACTUAL CPU/RAM/disk/utilization (show your sizing logic); estimate the AWS run-rate/TCO from the real specs and state your assumptions (instance families, region eu-north-1, pricing basis, on-demand vs 1-yr). Give real counts ("12 of 40 servers"). This is MEASURED — do NOT hedge what the data covers; only flag genuine gaps the data omits (app-level dependencies, licensing, peak windows, non-server costs). NEVER invent rows that aren't in the data. Cite AWS-specific recommendations from the KNOWLEDGE BASE as [source p.N]; refer to the import as [discovery].
+Output GitHub-flavoured markdown, exactly these sections:
+## 1. Portfolio assessment — the 7 R's (measured)
+A table | Workload / server | Disposition | Why (from the data) | AWS target (right-sized) | built from the ACTUAL inventory. If there are many rows, group by tier/role with counts and call out the notable ones.
+## 2. Database migration outline (DMS / SCT)
+From the databases found in the data → AWS targets; homogeneous (DMS) vs heterogeneous (SCT + DMS); the assess → convert → full-load + CDC → validate → cutover sequence.
+## 3. MAP-Assess business case (the fundable artifact)
+Measured current state · target-state AWS architecture · migration waves (use dependency groupings if the data has them) · estimated net-new AWS run-rate/ARR computed FROM the data (show the math + assumptions) · business outcomes & KPIs · funding ask (MAP / ISV-WMP, partner-led) · 30/60/90 plan.
+## Gaps & assumptions
+What the data doesn't cover and what to confirm before submission.
+Be concise and concrete — a rep is reading. No hype. End: "Estimates derived from the imported discovery data — confirm pricing in the AWS Pricing Calculator before submission."`;
+async function migrationAssessment({ company, project, inventory }) {
+  const measured = !!(inventory && String(inventory).trim());
   const queries = [
     "7 Rs application portfolio assessment rehost replatform refactor retire retain repurchase relocate disposition",
     "AWS DMS Database Migration Service homogeneous heterogeneous Schema Conversion Tool SCT full load CDC cutover",
@@ -3107,8 +3122,9 @@ Revenue (kSEK): ${(company.revenue_ksek === 0 || company.revenue_ksek) ? company
 Current cloud: ${company.cloud_provider || "unknown"}${company.aws_detected ? " (AWS detected)" : ""}
 Location: ${[company.city, company.country].filter(Boolean).join(", ") || "unknown"}
 Partner: ${project?.partner?.name || project?.name || "AWS partner"}`;
-  const user = `${ctx}\n\nALLOY KNOWLEDGE BASE (ground AWS specifics in this; cite [source p.N]):\n${ground || "(no KB hits — rely on general AWS best practice and say so)"}\n\nDraft the discovery-stage migration assessment now.`;
-  return await callClaude({ task: "migration_assessment", system: MIGRATION_ASSESS_SYS, user, maxTokens: 3000 });
+  const invBlock = measured ? `\n\nMEASURED DISCOVERY DATA (AWS ADS / Migration Hub / Migration Evaluator export — use these REAL numbers, right-size from them, compute the TCO from them):\n${String(inventory).slice(0, 30000)}` : "";
+  const user = `${ctx}${invBlock}\n\nALLOY KNOWLEDGE BASE (ground AWS specifics in this; cite [source p.N]):\n${ground || "(no KB hits — rely on general AWS best practice and say so)"}\n\nDraft the ${measured ? "MEASURED" : "discovery-stage"} migration assessment now.`;
+  return await callClaude({ task: "migration_assessment", system: measured ? MIGRATION_ASSESS_MEASURED_SYS : MIGRATION_ASSESS_SYS, user, maxTokens: measured ? 3600 : 3000 });
 }
 
 // Smith Funding Paperwork — Alloy's OWN agent step (no third-party tool): turns an account + its
@@ -3697,9 +3713,10 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
           <span style={{ fontSize: 14 }}>🔨</span>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>AWS Migration Kit</span>
         </div>
-        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 9 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong> — a 7-R assessment, a DMS/SCT plan, then the ACE opportunity + PoC pre-approval. You review &amp; submit. Output lands in <strong>Ask Smith</strong> below ↓</div>
+        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 9 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong> — a 7-R assessment, a DMS/SCT plan, then the ACE opportunity + PoC pre-approval. Import an AWS discovery export (ADS / Migration Hub) to refine it on <strong>measured</strong> data. You review &amp; submit. Output lands in <strong>Ask Smith</strong> below ↓</div>
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
           <Btn variant="primary" size="sm" onClick={() => setSmithAction("assess")}>📋 Migration assessment</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => setSmithAction("measured")}>📊 Refine with measured data</Btn>
           <Btn variant="ghost" size="sm" onClick={() => setSmithAction("paperwork")}>📝 Funding paperwork</Btn>
         </div>
       </div>
@@ -4940,6 +4957,26 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't draft the assessment: " + (e?.message || e) }]);
     } finally { setBusy(false); }
   }
+  // Refine the assessment with imported AWS discovery data (ADS / Migration Hub / Migration Evaluator
+  // export). Reads the attached file(s) as measured inventory; nudges to attach if none.
+  async function assessMeasured() {
+    if (!focusCompany || busy) return;
+    const inv = (files || []).map((f) => f.text || "").join("\n\n").trim();
+    if (!inv) {
+      setMsgs((m) => [...m, { role: "smith", text: "Attach your AWS discovery export first — an **ADS / Migration Hub / Migration Evaluator** CSV (use 📎 Attach below), then hit “Refine with measured data” again. I'll re-run the 7-R, right-sizing and TCO on the real inventory." }]);
+      return;
+    }
+    const next = [...msgs, { role: "user", text: `📊 Refine ${focusCompany.name}'s assessment with measured data (${files.length} file${files.length > 1 ? "s" : ""})` }];
+    setMsgs(next); setBusy(true);
+    try {
+      const out = await migrationAssessment({ company: focusCompany, project, inventory: inv });
+      const reply = { role: "smith", text: (out || "").trim() || "Couldn't refine it — try again." };
+      setMsgs((m) => [...m, reply]);
+      if (onPersist) { try { onPersist([...next, reply]); } catch { /* best-effort */ } }
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "smith", text: "Couldn't refine the assessment: " + (e?.message || e) }]);
+    } finally { setBusy(false); }
+  }
   // One-click: draft the AWS funding paperwork (ACE opp + PoC pre-approval), reusing the latest
   // assessment in the thread for scope. Alloy's own funding agent — drafts only; the rep submits.
   async function paperwork() {
@@ -4989,6 +5026,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   useEffect(() => {
     if (!actionSeed) return;
     if (actionSeed === "assess") assess();
+    else if (actionSeed === "measured") assessMeasured();
     else if (actionSeed === "paperwork") paperwork();
     onActionDone && onActionDone();
     /* eslint-disable-next-line */
