@@ -3968,7 +3968,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const PLAYS = [
     { key: "migrate",   track: "MAP",            label: "Migrate",   prog: "MAP",            accent: C.accent,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP"),
-      pitch: "On Azure/GCP → move to AWS, AWS co-funds it" },
+      pitch: "Existing estate on Azure/GCP/on-prem → move to AWS, AWS co-funds it" },
     { key: "modernize", track: "MAP_MODERNIZE",  label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP_MODERNIZE"),
       pitch: "Already on AWS → optimize, resell, expand" },
@@ -3977,7 +3977,7 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
       pitch: "AI/data use case → AWS funds a GenAI pilot" },
     { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "Partner-led",    accent: C.blue,
       hits: projCompanies.filter((c) => trackOf(c) === "GREENFIELD_PGP"),
-      pitch: "No cloud yet → net-new build on AWS" },
+      pitch: "No estate to migrate → net-new build on AWS (Partner-led)" },
   ];
   // funding-native KPIs
   const FUNDABLE = new Set(["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP"]);
