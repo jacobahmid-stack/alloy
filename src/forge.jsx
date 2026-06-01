@@ -3042,7 +3042,7 @@ function OutcomePanel({ company, flash }) {
    (Component kept as CoPilotPanel / enrichment key copilot_qual to avoid orphaning
    saved data; only the user-facing name is "Smith".)
    ---------------------------------------------------------------------------- */
-function CoPilotPanel({ company, contacts, onAddContact, onUpdate, flash }) {
+function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flash }) {
   const [fit, setFit] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -3338,6 +3338,26 @@ function CoPilotPanel({ company, contacts, onAddContact, onUpdate, flash }) {
           </>
         );
       })()}
+
+      {/* Account-scoped Smith chat: attach this account's docs, work them, save back to the card */}
+      <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+      <SmithChat
+        project={project}
+        projCompanies={[company]}
+        trackMap={fit ? { [company.id]: fit } : {}}
+        contacts={(contacts || []).filter((c) => c.company_id === company.id)}
+        recs={[]}
+        focusCompany={company}
+        onOpen={() => {}}
+        onSaveToCard={async (id, kind, text, viaWeb) => {
+          const key = kind === "draft" ? "smith_drafts" : "smith_research";
+          const enr = company.enrichment || {};
+          const entry = { at: new Date().toISOString(), text, ...(kind === "research" ? { web: !!viaWeb } : {}) };
+          const list = [entry, ...(Array.isArray(enr[key]) ? enr[key] : [])].slice(0, 20);
+          await onUpdate(company.id, { enrichment: { ...enr, [key]: list } });
+        }}
+        flash={flash}
+      />
     </Collapsible>
   );
 }
@@ -3499,7 +3519,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 
       {/* Smith (Alloy's AWS sales co-worker) - the single AWS box: fundability score + funding brief,
           next-best-action, qualification, co-sell. (Funding-fit folded in here 2026-05-31.) */}
-      <CoPilotPanel company={company} contacts={myContacts} onAddContact={onAddContact} onUpdate={onUpdate} flash={flash} />
+      <CoPilotPanel company={company} project={project} contacts={myContacts} onAddContact={onAddContact} onUpdate={onUpdate} flash={flash} />
 
       {/* outcome capture - predicted vs actual (the closed-loop moat) */}
       <OutcomePanel company={company} flash={flash} />
