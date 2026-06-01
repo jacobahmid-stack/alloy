@@ -1813,6 +1813,7 @@ const C = {
   dim: "#54514A",       // --ink-mid (mer kontrast)
   dim2: "#5E5A53",      // --ink-dim (darkened to clear WCAG AA ~4.7:1 on cream)
   accent: "#B83D0C",    // --accent, rost (punchigare)
+  accentDark: "#E2622A",// accent for SMALL text on dark surfaces — AA ~5.4:1 on #141310 (plain accent is only ~3:1)
   lime: "#B83D0C",      // alias -> accent (gamla referenser)
   limeSoft: "rgba(184,61,12,0.12)",
   limeDim: "#97320B",
@@ -1821,15 +1822,15 @@ const C = {
   darkRule: "#3F3D3A",
   darkText: "#C2BEB5",
   darkMuted: "#8C8880",
-  darkLabel: "#87827A",
+  darkLabel: "#9A958C",   // lifted from #87827A -> AA ~5.7:1 on dark (was 4.87, felt dim)
   // semantiska (mer mättade för färg & kontrast)
-  green: "#3F8A2E",
-  amber: "#C77D11",
+  green: "#357A26",       // darkened from #3F8A2E -> AA ~5.0:1 on cream (was 4.13)
+  amber: "#946410",       // darkened from #C77D11 -> AA ~4.7:1 on cream (was 3.17)
   red: "#C13715",
   blue: "#2F6FAE",
   teal: "#1F8A78",
   violet: "#6A3FA0",
-  gold: "#C77D11",
+  gold: "#946410",        // alias of amber (same readable gold)
   pink: "#B83D0C",      // alias -> accent
 };
 const FONT_DISPLAY = "'DM Serif Display', Georgia, serif";   // serif, ofta kursiv
@@ -3036,7 +3037,7 @@ SMITH'S CURRENT PICKS:
 ${recLines || "(none)"}
 
 The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Modernize(MAP-Modernize, already on AWS → optimize/resell/expand), GenAI(POC credits, net-new GenAI pilot), Greenfield(PGP/Partner-led, net-new build), Marketplace(ISV-WMP).`;
-  const convo = (history || []).slice(-6).map((m) => `${m.role === "user" ? "REP" : "SMITH"}: ${m.text}`).join("\n");
+  const convo = (history || []).slice(-8).map((m) => `${m.role === "user" ? "REP" : "SMITH"}: ${m.text}`).join("\n");
   const webNote = web
     ? `\n\nWEB SEARCH IS ON: for questions about what's new / recent signals at a COMPANY (funding, leadership change, hiring, product, cloud move), use web_search and cite what you find. Research the COMPANY for B2B context only — not private detail on individuals. If search returns nothing solid, say so; never fabricate a signal.`
     : "";
@@ -3378,9 +3379,9 @@ function FundingFitPanel({ company, flash }) {
    ---------------------------------------------------------------------------- */
 const OUTCOME_META = {
   pending:      { label: "In progress",  color: "#6E6962" },
-  won:          { label: "Won",          color: "#3F8A2E" },
+  won:          { label: "Won",          color: "#357A26" },
   lost:         { label: "Lost",         color: "#C13715" },
-  stalled:      { label: "Stalled",      color: "#C77D11" },
+  stalled:      { label: "Stalled",      color: "#946410" },
   disqualified: { label: "Disqualified", color: "#6E6962" },
   no_decision:  { label: "No decision",  color: "#6E6962" },
 };
@@ -5038,6 +5039,8 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy]);
   const suggestions = files.length
     ? ["Pull the action items + owners out of this", "Summarize this for a sales call", "Draft an email from this"]
+    : focusCompany
+    ? [`What's the AWS play for ${focusCompany.name}?`, `Draft an opener to ${focusCompany.name}`, `What should I validate before pitching ${focusCompany.name}?`]
     : ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
@@ -5327,9 +5330,22 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
           </div>
         )}
         <div style={{ fontSize: 13, color: C.dim, marginTop: briefDismissed ? 3 : 0 }}>
-          {project.name} · {projCompanies.length} companies · {worklist.length > 0
-            ? <><strong style={{ color: C.accent }}>{worklist.length}</strong> need follow-up today</>
-            : "no follow-ups due. Pick a play below"}
+          {project.name} · {projCompanies.length} companies
+        </div>
+        {/* signal strip — the day's state of play, always visible (welcoming + signals first).
+            Zero values recede (muted) so the live numbers are what catch the eye. */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
+          {[
+            { n: worklist.length, label: worklist.length === 1 ? "needs you today" : "need you today", color: overdue.length ? C.red : C.accent },
+            { n: fundingQualified, label: "funding-qualified", color: C.green },
+            { n: bookedNow.length, label: bookedNow.length === 1 ? "meeting booked" : "meetings booked", color: C.blue },
+            { n: won.length, label: "won", color: C.violet },
+          ].map((s, i) => (
+            <span key={i} style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontSize: 20, fontWeight: 400, color: s.n ? s.color : C.dim2, fontFamily: FONT_DISPLAY, lineHeight: 1 }}>{s.n}</span>
+              <span style={{ fontSize: 11.5, color: C.dim }}>{s.label}</span>
+            </span>
+          ))}
         </div>
       </div>
 
@@ -5361,14 +5377,14 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Your plays today</span>
         <span style={{ fontSize: 11, color: C.dim2 }}>count, and who Smith says to work first</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 26 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 26 }}>
         {PLAYS.map((p) => {
           const rec = smithRecs.find((r) => r.track === p.track);
           return (
             <div key={p.key}
               title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
               onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
-              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 3, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column" }}>
+              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.hits.length ? p.accent : C.line2}`, borderRadius: 3, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column", opacity: p.hits.length ? 1 : 0.6, transition: "opacity .15s" }}>
               {/* header row — single line so every number sits at the same height */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
                 <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
@@ -7373,7 +7389,7 @@ export default function Forge() {
               return (
                 <button key={p.id} onClick={() => { setActiveProject(p.id); setSelected(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: isA ? "#1E1C18" : "transparent", border: "none", borderTop: i === 0 ? "none" : `1px solid ${C.darkRule}`, padding: "11px 13px", color: isA ? "#F1ECE3" : C.darkText, fontSize: 13, fontFamily: FONT_BODY, cursor: "pointer", textAlign: "left" }}>
                   <span>{p.name}</span>
-                  <span style={{ fontFamily: FONT_HEAD, fontSize: 10, color: isA ? C.accent : C.darkMuted }}>{cnt || "\u00b7"}</span>
+                  <span style={{ fontFamily: FONT_HEAD, fontSize: 10, color: isA ? C.accentDark : C.darkMuted }}>{cnt || "\u00b7"}</span>
                 </button>
               );
             })}
@@ -7401,7 +7417,7 @@ export default function Forge() {
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
             </div>
             <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
-              Powered by <span style={{ color: C.accent }}>AWS</span>
+              Powered by <span style={{ color: C.accentDark }}>AWS</span>
             </div>
           </div>
         </aside>
