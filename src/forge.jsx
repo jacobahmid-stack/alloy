@@ -138,17 +138,40 @@ function SmithFAQ() {
     </div>
   );
 }
-function SmithContact({ project }) {
-  const row = { fontSize: 12.5, color: C.text, lineHeight: 1.6 };
+const FORJ_EMAILS = ["jacob.ahmid@gmail.com", "jacob@forj.se"];
+function SmithContact({ project, flash }) {
+  const [from, setFrom] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const fld = { width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
+  const mailtoUrl = () => `mailto:${FORJ_EMAILS.join(",")}?subject=${encodeURIComponent("Alloy — message" + (project?.name ? " · " + project.name : ""))}&body=${encodeURIComponent(msg + (from ? "\n\n— " + from : ""))}`;
+  async function send() {
+    if (!msg.trim()) { setStatus("Type a message first."); return; }
+    const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
+    const base = (cfg.url || "").replace(/\/+$/, ""); const ak = cfg.anonKey || "";
+    if (!base) { window.location.href = mailtoUrl(); return; }
+    setBusy(true); setStatus("");
+    try {
+      const r = await fetch(base + "/functions/v1/forj-notify", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ak, apikey: ak }, body: JSON.stringify({ from, message: msg, context: project?.name || "" }) });
+      const j = await r.json().catch(() => ({}));
+      if (j && j.ok && j.channels && j.channels.length) { setStatus("Sent to Forj via " + j.channels.join(" + ") + " ✓"); setMsg(""); flash && flash("Message sent to Forj"); }
+      else { window.location.href = mailtoUrl(); setStatus("Opening your email app to " + FORJ_EMAILS.join(" & ") + "…"); }
+    } catch { window.location.href = mailtoUrl(); }
+    finally { setBusy(false); }
+  }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Need a human? Reach the {MAKER} team — we build and run {BRAND} with you.</div>
-      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 4, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={row}><strong>Email</strong> · <a href="mailto:jacob.ahmid@gmail.com" style={{ color: C.blue, textDecoration: "none" }}>jacob.ahmid@gmail.com</a></div>
-        {project?.partner?.name && <div style={row}><strong>Partner</strong> · {project.partner.name}</div>}
-        <div style={row}><strong>Programs</strong> · AWS MAP · POC GenAI credits · Greenfield PGP · Marketplace</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Reach a human at {MAKER} — message goes to our <strong>Slack</strong> + <strong>email</strong>.</div>
+      <input style={fld} placeholder="Your name or email (optional)" value={from} onChange={(e) => setFrom(e.target.value)} />
+      <textarea style={{ ...fld, resize: "vertical", minHeight: 64 }} rows={3} placeholder="What do you need?" value={msg} onChange={(e) => setMsg(e.target.value)} />
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Btn variant="primary" size="sm" onClick={send} disabled={busy}>{busy ? <Spinner size={12} /> : null} {busy ? "Sending…" : "Send to Forj"}</Btn>
+        <a href={mailtoUrl()} style={{ fontSize: 11.5, color: C.blue, textDecoration: "none" }}>or open email ✉</a>
       </div>
-      <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>{POWERED_BY}. Smith runs on AWS.</div>
+      {status && <div style={{ fontSize: 11.5, color: C.green }}>{status}</div>}
+      <div style={{ fontSize: 11, color: C.dim2, lineHeight: 1.5, marginTop: 2 }}>{FORJ_EMAILS.join(" · ")}{project?.partner?.name ? ` · ${project.partner.name}` : ""}</div>
+      <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>{POWERED_BY}.</div>
     </div>
   );
 }
@@ -7218,7 +7241,7 @@ export default function Forge() {
                 </>
               )}
               {smithTab === "faq" && <SmithFAQ />}
-              {smithTab === "contact" && <SmithContact project={project} />}
+              {smithTab === "contact" && <SmithContact project={project} flash={flash} />}
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker, forging the pipeline" className="smith-launch"
