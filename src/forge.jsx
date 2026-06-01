@@ -1493,7 +1493,7 @@ const C = {
   text: "#1A1916",      // --ink (mörkare)
   ink: "#1A1916",
   dim: "#54514A",       // --ink-mid (mer kontrast)
-  dim2: "#6E6962",      // --ink-dim (mer kontrast)
+  dim2: "#5E5A53",      // --ink-dim (darkened to clear WCAG AA ~4.7:1 on cream)
   accent: "#B83D0C",    // --accent, rost (punchigare)
   lime: "#B83D0C",      // alias -> accent (gamla referenser)
   limeSoft: "rgba(184,61,12,0.12)",
@@ -4691,16 +4691,16 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
   const PLAYS = [
     { key: "migrate",   track: "MAP",            label: "Migrate",   prog: "MAP",            accent: C.accent,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP"),
-      pitch: "Existing estate on Azure/GCP/on-prem → move to AWS, AWS co-funds it" },
+      pitch: "Move to AWS, co-funded" },
     { key: "modernize", track: "MAP_MODERNIZE",  label: "Modernize", prog: "MAP Modernize",  accent: C.teal,
       hits: projCompanies.filter((c) => trackOf(c) === "MAP_MODERNIZE"),
-      pitch: "Already on AWS → optimize, resell, expand" },
+      pitch: "On AWS — optimize & expand" },
     { key: "genai",     track: "POC",            label: "GenAI",     prog: "POC credits",    accent: C.violet,
       hits: projCompanies.filter((c) => trackOf(c) === "POC"),
-      pitch: "AI/data use case → AWS funds a GenAI pilot" },
+      pitch: "AWS-funded GenAI pilot" },
     { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "Partner-led",    accent: C.blue,
       hits: projCompanies.filter((c) => trackOf(c) === "GREENFIELD_PGP"),
-      pitch: "No estate to migrate → net-new build on AWS (Partner-led)" },
+      pitch: "Net-new build on AWS" },
   ];
   // funding-native KPIs
   const FUNDABLE = new Set(["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP"]);
