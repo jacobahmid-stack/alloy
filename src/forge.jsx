@@ -27,47 +27,49 @@ const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // mol
 // Smith's FACE — a bearded craftsman (dark brown hair, 3-day beard) on the forge glow. Hand-drawn
 // flat SVG so he reads as a character at any size. Self-contained circular avatar.
 let _smithFaceN = 0;
+// Smith — modelled on Jacob's reference portrait: dark swept-up hair (faded sides), thick brows,
+// brown eyes, a full groomed beard, a warm closed smile, white tee, soft light-blue backdrop.
+// Hand-drawn flat SVG (a stylised likeness). For the EXACT portrait, drop the image at
+// src/smith.png and swap this for an <img>.
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
-  const HAIR = "#3A2718", BEARD = "#4A3320", SKIN = "#EBB184";
+  const HAIR = "#2E2014", BEARD = "#2E2014", SKIN = "#E9B488", LIP = "#C16B52";
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" style={{ display: "block", flexShrink: 0 }} role="img" aria-label={title || "Smith"}>
       <defs>
         <linearGradient id={u + "g"} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FF8A24" /><stop offset="1" stopColor="#FFC04A" />
+          <stop offset="0" stopColor="#DCE9F5" /><stop offset="1" stopColor="#F0F6FC" />
         </linearGradient>
         <clipPath id={u + "c"}><circle cx="32" cy="32" r="32" /></clipPath>
       </defs>
       <g clipPath={`url(#${u}c)`}>
         <rect width="64" height="64" fill={`url(#${u}g)`} />
-        {/* leather apron + shoulders */}
-        <path d="M10 64 C10 50 21 45 32 45 C43 45 54 50 54 64 Z" fill="#4A3526" />
-        <path d="M27 46 L32 41 L37 46 L34 56 L30 56 Z" fill="#C9824F" />
-        <rect x="28.5" y="40" width="7" height="8" rx="3" fill="#D89A6A" />
+        {/* white t-shirt + neck */}
+        <path d="M12 64 C12 51 22 47 32 47 C42 47 52 51 52 64 Z" fill="#F3F5F7" />
+        <path d="M26 47.5 C27.5 51 36.5 51 38 47.5 L36 47 C34.5 49 29.5 49 28 47 Z" fill="#D8DEE4" />
+        <path d="M27 42 h10 v6 c0 3 -10 3 -10 0 Z" fill="#DDA079" />
         {/* ears */}
-        <circle cx="19.5" cy="32" r="2.7" fill={SKIN} /><circle cx="44.5" cy="32" r="2.7" fill={SKIN} />
+        <circle cx="19.6" cy="33" r="2.8" fill={SKIN} /><circle cx="44.4" cy="33" r="2.8" fill={SKIN} />
         {/* face */}
-        <ellipse cx="32" cy="30" rx="13" ry="15.5" fill={SKIN} />
-        {/* rosy cheeks (warmth) */}
-        <ellipse cx="24" cy="35" rx="2.6" ry="1.8" fill="#E48B5E" opacity="0.45" />
-        <ellipse cx="40" cy="35" rx="2.6" ry="1.8" fill="#E48B5E" opacity="0.45" />
-        {/* styled hair — a swept quiff with a bit of volume */}
-        <path d="M18 30 C15 12 26 6 32 6 C40 6 48 11 46 30 C44.5 21 41 17 33 17 C32 13 27 13.5 25 16 C21 17 19.5 22 18 30 Z" fill={HAIR} />
-        {/* eyebrows — relaxed, friendly lift */}
-        <path d="M23.5 25.5 C25.5 24 28.5 24 30.5 25.2" stroke={HAIR} strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d="M33.5 25.2 C35.5 24 38.5 24 40.5 25.5" stroke={HAIR} strokeWidth="2" fill="none" strokeLinecap="round" />
-        {/* eyes with a highlight (life) */}
-        <circle cx="27" cy="29.5" r="2.1" fill="#241812" /><circle cx="37" cy="29.5" r="2.1" fill="#241812" />
-        <circle cx="27.8" cy="28.8" r="0.7" fill="#fff" opacity="0.9" /><circle cx="37.8" cy="28.8" r="0.7" fill="#fff" opacity="0.9" />
+        <path d="M20 28 C20 16 25 11 32 11 C39 11 44 16 44 28 C44 38 39 45 32 45 C25 45 20 38 20 28 Z" fill={SKIN} />
+        {/* dark hair — swept-up quiff with volume, tapered (faded) sides */}
+        <path d="M19.5 30 C18 24 18.5 21 20 19 C19.5 14 23 9 28 8 C30.5 6.5 38 6.5 41.5 10 C45.5 11.5 47 16 45.5 21 C46.5 24 46 27.5 44.8 30 C44.5 22 42 18.5 36 17.5 C33 13.5 25.5 14.5 23.5 19 C21 21 20 25 20.6 30 Z" fill={HAIR} />
+        <path d="M23.5 18.5 C27 13.5 36 13.5 40 17.5 C36 14.5 27.5 14.5 23.5 18.5 Z" fill="#3C2A18" />
+        {/* thick eyebrows */}
+        <path d="M23 25 C25.5 23.2 29 23.4 31 24.8 L30.5 26 C28.5 24.8 25.5 24.7 23.3 26.2 Z" fill="#241A10" />
+        <path d="M33 24.8 C35 23.4 38.5 23.2 41 25 L40.7 26.2 C38.5 24.7 35.5 24.8 33.5 26 Z" fill="#241A10" />
+        {/* brown eyes with highlight */}
+        <ellipse cx="27" cy="29.5" rx="2.4" ry="2" fill="#fff" /><ellipse cx="37" cy="29.5" rx="2.4" ry="2" fill="#fff" />
+        <circle cx="27.2" cy="29.6" r="1.5" fill="#7A5230" /><circle cx="36.8" cy="29.6" r="1.5" fill="#7A5230" />
+        <circle cx="27.2" cy="29.6" r="0.7" fill="#2A1B10" /><circle cx="36.8" cy="29.6" r="0.7" fill="#2A1B10" />
+        <circle cx="27.8" cy="28.9" r="0.5" fill="#fff" /><circle cx="37.4" cy="28.9" r="0.5" fill="#fff" />
         {/* nose */}
-        <path d="M32 31 L31 35 C31 35.8 33 35.8 33 35" stroke="#C9824F" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-        {/* SMILE — warm, slight teeth */}
-        <path d="M26.5 37.5 C29 41 35 41 37.5 37.5 C35 39.2 29 39.2 26.5 37.5 Z" fill="#fff" opacity="0.92" />
-        <path d="M26 37 C29 41 35 41 38 37" stroke="#3A2418" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        {/* mustache */}
-        <path d="M26 35.8 C28.5 37.4 35.5 37.4 38 35.8" stroke={BEARD} strokeWidth="2.6" fill="none" strokeLinecap="round" />
-        {/* 3-day beard framing the jaw (stubble, leaves the smile open) */}
-        <path d="M19.5 31 C19.5 45 26 48 32 48 C38 48 44.5 45 44.5 31 C44 39 41 43 38.5 39 C35.5 41 28.5 41 25.5 39 C23 43 20 39 19.5 31 Z" fill={BEARD} opacity="0.92" />
+        <path d="M32 30 L30.6 34.5 C30.6 35.6 33.4 35.6 33.4 34.5" stroke="#C98A60" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        {/* warm closed smile */}
+        <path d="M27.5 38 C29.5 40.2 34.5 40.2 36.5 38" stroke={LIP} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        {/* full groomed beard — mustache + cheeks + rounded chin, framing the smile */}
+        <path d="M20 30 C20.5 40 23 47 32 49.5 C41 47 43.5 40 44 30 C43 35 40.5 36.5 38.5 36 C39.5 39.5 38.5 42.5 36.5 44.5 C34.5 46.5 29.5 46.5 27.5 44.5 C25.5 42.5 24.5 39.5 25.5 36 C23.5 36.5 21 35 20 30 Z" fill={BEARD} />
+        <path d="M26 35.4 C28.5 37.4 35.5 37.4 38 35.4 C35.5 36.4 28.5 36.4 26 35.4 Z" fill={BEARD} />
       </g>
     </svg>
   );
@@ -4831,6 +4833,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
+  // "Tomorrow" must always push the date FORWARD by a day from where it is now (an item already
+  // dated tomorrow becomes the day after) — otherwise pressing it on an upcoming item is a no-op.
+  const snoozeOneDay = (d) => { const base = d && d > today ? d : today; const x = new Date(base + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
   const fuSort = (a, b) => (a.next_action_at < b.next_action_at ? -1 : 1);
   const fu = projCompanies.filter((c) => c.next_action_at);
   const overdue = fu.filter((c) => c.next_action_at < today).sort(fuSort);
@@ -5018,8 +5023,8 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
                     {c.next_action && <div style={{ fontSize: 12, color: C.dim, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.next_action}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: dayStr(1) })} title="Snooze to tomorrow" style={wbtn}>Tomorrow</button>
-                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: null })} title="Mark done (clear date)" style={wbtn}>Done</button>
+                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: snoozeOneDay(c.next_action_at) })} title="Push one day forward" style={wbtn}>{kind === "upcoming" ? "+1 day" : "Tomorrow"}</button>
+                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: null })} title="Mark done (clear the date)" style={wbtn}>Done</button>
                   </div>
                 </div>
               );
