@@ -2513,6 +2513,74 @@ const AWS_PLAYBOOK = {
 };
 function playbookFor(track) { return AWS_PLAYBOOK[track] || AWS_PLAYBOOK.NONE; }
 
+// ---- SMITH RECOMMENDATION ENGINE (deterministic, $0) ----------------------------------
+// Smith's proactive brain. Given the project's companies + their real funding tracks
+// (trackMap from funding_eligibility) + contacts + activities, pick the single best
+// account to work for EACH fundable play, and arm the rep with why + the opener.
+// Pure function: no LLM, no network. Reused by the dashboard hero AND the floating launcher.
+const SMITH_PLAYS = [
+  { track: "MAP", label: "Migrate", prog: "MAP", accent: "accent" },
+  { track: "MAP_MODERNIZE", label: "Modernize", prog: "MAP Modernize", accent: "teal" },
+  { track: "POC", label: "GenAI", prog: "POC credits", accent: "violet" },
+  { track: "GREENFIELD_PGP", label: "Greenfield", prog: "Partner-led", accent: "blue" },
+];
+function daysSince(iso) {
+  if (!iso) return Infinity;
+  const t = Date.parse(iso);
+  if (!isFinite(t)) return Infinity;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+// Why this account needs the rep now (highest-priority reason wins).
+function smithReason(c, hasContact, lastActDays, stage) {
+  if (!hasContact) return { tag: "no contact", urgency: 3, action: "Find the decision-maker, then open the funding play." };
+  if (stage === "mote_bokat") return { tag: "meeting booked", urgency: 2, action: "Log the outcome + confirm the funding next step." };
+  if (lastActDays >= 30) return { tag: lastActDays === Infinity ? "never worked" : lastActDays + "d cold", urgency: 2, action: "Re-engage before it goes fully cold." };
+  if (phaseOf(stage) === "readiness") return { tag: "ready, not opened", urgency: 1, action: "Open the play — they're qualified and untouched." };
+  return { tag: "in motion", urgency: 0, action: "Advance to the next stage." };
+}
+function smithRecommendations(projCompanies, trackMap, contactSet, activities, opts = {}) {
+  const lastActOf = {};
+  for (const a of (activities || [])) {
+    const d = a && a.company_id;
+    if (!d) continue;
+    const cur = lastActOf[d];
+    if (cur === undefined || (a.created_at || "") > cur) lastActOf[d] = a.created_at || "";
+  }
+  const recs = [];
+  for (const play of SMITH_PLAYS) {
+    const cands = projCompanies
+      .filter((c) => (trackMap[c.id] && trackMap[c.id].primary_track) === play.track)
+      .map((c) => {
+        const fe = trackMap[c.id] || {};
+        const hasContact = contactSet.has(c.id);
+        const lastActDays = daysSince(lastActOf[c.id]);
+        const reason = smithReason(c, hasContact, lastActDays, c.stage);
+        // priority = urgency first, then fundability, then confidence
+        const conf = fe.confidence === "high" ? 2 : fe.confidence === "med" ? 1 : 0;
+        const priority = reason.urgency * 1000 + (fe.fundability_score || 0) + conf;
+        return { company: c, fe, reason, priority, hasContact, lastActDays };
+      })
+      .sort((a, b) => b.priority - a.priority);
+    if (!cands.length) continue;
+    const top = cands[0];
+    const pb = playbookFor(play.track);
+    recs.push({
+      track: play.track, label: play.label, prog: play.prog, accent: play.accent,
+      count: cands.length,
+      company: top.company,
+      fundability: top.fe.fundability_score ?? null,
+      confidence: top.fe.confidence || null,
+      reasonTag: top.reason.tag,
+      action: top.reason.action,
+      opener: pb.leadWith,
+      needyCount: cands.filter((x) => x.reason.urgency >= 2).length,
+    });
+  }
+  // strongest play first (most urgent need, then biggest fundability on the top account)
+  recs.sort((a, b) => (b.needyCount - a.needyCount) || ((b.fundability || 0) - (a.fundability || 0)));
+  return recs;
+}
+
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
 // services a typical migration uses - so there is never a second, contradictory number.
@@ -3924,7 +3992,49 @@ function OrgSearchBar({ onLookup }) {
   );
 }
 
-function Dashboard({ project, projects, companies, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay }) {
+// SmithPanel — renders Smith's per-play recommendations. Used by the dashboard hero
+// (variant="hero") and the floating launcher (variant="rail"). Pure presentation over
+// smithRecommendations(); clicking a rec opens that company card.
+function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
+  if (!recs || !recs.length) {
+    return <div style={{ fontSize: 12.5, color: C.dim2 }}>No fundable plays to recommend yet. Cloud-check + score companies first.</div>;
+  }
+  const top = recs[0];
+  const rest = recs.slice(1);
+  const card = (r, big) => {
+    const accent = C[r.accent] || C.accent;
+    const c = r.company;
+    return (
+      <div key={r.track} onClick={() => onOpen && onOpen(c.id)}
+        style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 2, padding: big ? "13px 15px" : "10px 12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontSize: big ? 10.5 : 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: accent, fontFamily: FONT_HEAD }}>{r.label}</span>
+          <span style={{ fontSize: 9.5, color: C.dim2 }}>{r.count} in play{r.needyCount ? ` · ${r.needyCount} need you` : ""}</span>
+        </div>
+        <div style={{ fontSize: big ? 15 : 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{c.name}</div>
+        <div style={{ fontSize: 11, color: C.dim, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+          <span style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px", fontSize: 10, color: C.dim }}>{r.reasonTag}</span>
+          {r.fundability != null && <span>fundability {r.fundability}{r.confidence ? ` · ${r.confidence}` : ""}</span>}
+        </div>
+        <div style={{ fontSize: big ? 12 : 11.5, color: C.dim, lineHeight: 1.45, marginTop: 2 }}>{r.action}</div>
+        {big && r.opener && <div style={{ fontSize: 11.5, color: C.dim2, lineHeight: 1.45, marginTop: 4, paddingTop: 6, borderTop: `1px solid ${C.line}` }}><span style={{ fontWeight: 600, color: C.dim }}>Open with:</span> {r.opener}</div>}
+      </div>
+    );
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: variant === "hero" ? 10 : 8 }}>
+      {variant === "rail" && greeting && <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT_HEAD }}>{greeting}. Here's where to spend today.</div>}
+      {card(top, true)}
+      {rest.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: variant === "hero" ? "repeat(auto-fit, minmax(190px, 1fr))" : "1fr", gap: 8 }}>
+          {rest.map((r) => card(r, false))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
@@ -3986,6 +4096,13 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
   const hour = new Date().getHours();
   const greeting = hour < 5 ? "Working late" : hour < 11 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // Smith's proactive per-play recommendations (deterministic, $0) — needs the real tracks loaded.
+  const smithContactSet = useMemo(() => new Set((contacts || []).map((x) => x.company_id)), [contacts]);
+  const smithRecs = useMemo(
+    () => smithRecommendations(projCompanies, trackMap, smithContactSet, activities),
+    [projCompanies, trackMap, smithContactSet, activities],
+  );
+
   // per-projekt-statistik för översikten
   const projStats = projects.map((p) => {
     const pc = companies.filter((c) => c.project_id === p.id && c.list_tag !== "archived_shell");
@@ -4013,6 +4130,18 @@ function Dashboard({ project, projects, companies, activities, fundings, onSelec
             : "no follow-ups due. Pick a play below"}
         </div>
       </div>
+
+      {/* SMITH recommends — the single most valuable account to work per play, right now */}
+      {smithRecs.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.text, fontFamily: FONT_HEAD }}>Smith recommends</span>
+            <span style={{ fontSize: 11, color: C.dim2 }}>your best account in each play, right now</span>
+          </div>
+          <SmithPanel recs={smithRecs} onOpen={onOpen} onOpenPlay={onOpenPlay} variant="hero" />
+        </div>
+      )}
 
       {/* AWS PLAYS - the sales motions, each a funding program. Click to work that play's list. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
@@ -5798,6 +5927,30 @@ export default function Forge() {
 
   const selectedCompany = companies.find((c) => c.id === selected);
 
+  // --- SMITH global launcher: reachable from any screen. Recs computed at App level so the
+  // floating panel works on cards/lists/funding too, not just the dashboard. ---
+  const [smithOpen, setSmithOpen] = useState(false);
+  const [smithTracks, setSmithTracks] = useState({});
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        if (typeof sb === "function") {
+          const rows = await sb("funding_eligibility", { query: "?select=company_id,primary_track,confidence,fundability_score" });
+          if (live && Array.isArray(rows)) { const m = {}; for (const r of rows) m[r.company_id] = r; setSmithTracks(m); }
+        }
+      } catch { /* empty -> launcher shows the "score first" empty state */ }
+    })();
+    return () => { live = false; };
+  }, [companies.length]);
+  const smithLauncherRecs = useMemo(() => {
+    const pc = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell");
+    const cset = new Set((contacts || []).map((x) => x.company_id));
+    return smithRecommendations(pc, smithTracks, cset, activities);
+  }, [companies, activeProject, contacts, smithTracks, activities]);
+  const smithHour = new Date().getHours();
+  const smithGreeting = smithHour < 5 ? "Working late" : smithHour < 11 ? "Good morning" : smithHour < 17 ? "Good afternoon" : "Good evening";
+
   const NAV = [
     { key: "dashboard", label: "Dashboard", icon: "chart" },
     { key: "today", label: "Today", icon: "phone" },
@@ -5985,7 +6138,7 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} />
+          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
         ) : nav === "hot" ? (
@@ -6011,6 +6164,34 @@ export default function Forge() {
           </div>
         </div>
       </div>
+
+      {/* SMITH floating launcher — reachable from every screen */}
+      {session && (
+        <>
+          {smithOpen && (
+            <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent }} />
+                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.text, fontFamily: FONT_HEAD }}>Smith</span>
+                  <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
+                </div>
+                <button onClick={() => setSmithOpen(false)} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+              </div>
+              <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
+                onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
+                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
+            </div>
+          )}
+          <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
+            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: C.ink, color: C.cream, border: `2px solid ${C.accent}`, cursor: "pointer", boxShadow: "0 6px 20px rgba(20,19,16,.28)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 17, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0) > 0 && !smithOpen && (
+              <span style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: C.accent, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.bg}` }}>{smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0)}</span>
+            )}
+            S
+          </button>
+        </>
+      )}
 
       {/* toast */}
       {toast && (
