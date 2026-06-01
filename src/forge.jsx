@@ -2581,6 +2581,41 @@ function smithRecommendations(projCompanies, trackMap, contactSet, activities, o
   return recs;
 }
 
+// Build a compact, grounded CONTEXT block for Smith's chat from the real loaded data, then
+// ask claude-proxy (task smith_chat). Read-only: Smith advises, never acts. Returns text.
+async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs }) {
+  const contactSet = new Set((contacts || []).map((x) => x.company_id));
+  const byTrack = {};
+  for (const c of projCompanies) { const t = (trackMap[c.id] && trackMap[c.id].primary_track) || "NONE"; (byTrack[t] = byTrack[t] || []).push(c); }
+  const PLAY_NAME = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace", NONE: "No play" };
+  const counts = Object.entries(byTrack).map(([t, arr]) => `${PLAY_NAME[t] || t}: ${arr.length}`).join(", ");
+  // top accounts per play by fundability (cap so we stay well under input limits)
+  const topPerPlay = Object.entries(byTrack).map(([t, arr]) => {
+    const top = arr
+      .map((c) => ({ c, fe: trackMap[c.id] || {} }))
+      .sort((a, b) => (b.fe.fundability_score || 0) - (a.fe.fundability_score || 0))
+      .slice(0, 8)
+      .map(({ c, fe }) => `${c.name} (fund ${fe.fundability_score ?? "?"}${fe.confidence ? "/" + fe.confidence : ""}${contactSet.has(c.id) ? "" : ", no contact"}${c.stage ? ", " + (STAGE_LABEL[c.stage] || c.stage) : ""})`)
+      .join("; ");
+    return `${PLAY_NAME[t] || t} [${arr.length}]: ${top}`;
+  }).join("\n");
+  const recLines = (recs || []).map((r) => `- ${r.label}: work ${r.company.name} (${r.reasonTag}; ${r.action})`).join("\n");
+  const context =
+`CONTEXT (the rep's real pipeline — ground every answer in this; do not invent companies/numbers):
+PARTNER: ${project?.partner?.name || project?.name || "AWS partner"}
+PROJECT: ${project?.name} — ${projCompanies.length} active companies.
+PLAY COUNTS: ${counts}
+TOP ACCOUNTS PER PLAY:
+${topPerPlay}
+SMITH'S CURRENT PICKS:
+${recLines || "(none)"}
+
+The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Modernize(MAP-Modernize, already on AWS → optimize/resell/expand), GenAI(POC credits, net-new GenAI pilot), Greenfield(PGP/Partner-led, net-new build), Marketplace(ISV-WMP).`;
+  const convo = (history || []).slice(-6).map((m) => `${m.role === "user" ? "REP" : "SMITH"}: ${m.text}`).join("\n");
+  const user = `${context}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — concise, concrete, grounded in the context above.`;
+  return await callClaude({ user, task: "smith_chat", maxTokens: 700 });
+}
+
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
 // services a typical migration uses - so there is never a second, contradictory number.
@@ -3446,7 +3481,7 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
 /* ============================================================================
    DASHBOARD
    ============================================================================ */
-function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze, flash }) {
+function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen, onOutcome, onSnooze, flash }) {
   const today = dayStr(0);
   const score = (c) => (c.score ?? 0) * 10 + (c.leadanalysis?.score ?? 0);
   const proj = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
@@ -3455,6 +3490,33 @@ function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze,
   const dueToday = dated.filter((c) => c.next_action_at === today).sort((a, b) => score(b) - score(a));
   const ready = proj.filter((c) => !c.next_action_at && (phaseOf(c.stage) === "readiness" || c.stage === "kontaktad")).sort((a, b) => score(b) - score(a)).slice(0, 15);
   const total = overdue.length + dueToday.length;
+
+  // --- SMITH day-to-day nudges (deterministic, $0) ---
+  const contactSet = useMemo(() => new Set((contacts || []).map((x) => x.company_id)), [contacts]);
+  const tMap = trackMap || {};
+  // Smith's per-play picks (top account in each fundable play that needs work now).
+  const smithPicks = useMemo(
+    () => smithRecommendations(proj, tMap, contactSet, activities),
+    [proj, tMap, contactSet, activities],
+  );
+  // Stale / going-cold detection: last activity per company.
+  const lastActOf = useMemo(() => {
+    const m = {};
+    for (const a of (activities || [])) { const d = a && a.company_id; if (!d) continue; if (m[d] === undefined || (a.created_at || "") > m[d]) m[d] = a.created_at || ""; }
+    return m;
+  }, [activities]);
+  const stale = useMemo(() => {
+    const out = [];
+    for (const c of proj) {
+      if (c.stage === "vunnen" || c.stage === "forlorad") continue;
+      // (1) meeting booked but no outcome logged for 3d+  (2) in-motion deal cold 30d+
+      const last = lastActOf[c.id];
+      const days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : Infinity;
+      if (c.stage === "mote_bokat" && days >= 3) out.push({ c, why: "Meeting booked, no outcome logged in " + (days === Infinity ? "a while" : days + "d") + " — log it or re-book.", days: days === Infinity ? 9999 : days });
+      else if (phaseOf(c.stage) === "pipeline" && days >= 30) out.push({ c, why: (days === Infinity ? "No logged activity" : days + "d cold") + " — re-engage before it dies.", days: days === Infinity ? 9999 : days });
+    }
+    return out.sort((a, b) => b.days - a.days).slice(0, 12);
+  }, [proj, lastActOf]);
   const toneColor = { dim: C.dim, blue: C.blue, green: C.green, red: C.red };
   const outcomeBtn = (tone) => ({ background: "transparent", border: `1px solid ${C.line2}`, color: toneColor[tone] || C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY });
   const snoozeBtn = { background: "transparent", border: `1px solid ${C.line}`, color: C.dim2, borderRadius: 2, padding: "6px 9px", fontSize: 11, cursor: "pointer", fontFamily: FONT_BODY };
@@ -3543,6 +3605,62 @@ function TodayQueue({ project, companies, contacts, onOpen, onOutcome, onSnooze,
           {triBusy ? <Spinner size={13} /> : <Icon name="spark" size={13} color={C.accent} />} {triBusy ? "Prioritising…" : "Prioritise today (agent)"}
         </button>
       </div>
+
+      {/* SMITH SAYS — deterministic per-play picks, $0, always on (above the optional LLM agent) */}
+      {smithPicks.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent }} />
+            <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.dim, fontFamily: FONT_BODY }}>Smith says — work these first</h3>
+            <Pill color={C.accent}>{smithPicks.length}</Pill>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {smithPicks.map((r) => {
+              const accent = C[r.accent] || C.accent;
+              return (
+                <div key={r.track} onClick={() => onOpen(r.company.id)} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 2, padding: "12px 14px", cursor: "pointer", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 74 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: accent, fontFamily: FONT_HEAD }}>{r.label}</div>
+                    {r.fundability != null && <div style={{ fontSize: 11, color: C.dim2, marginTop: 2 }}>fund {r.fundability}</div>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{r.company.name}</span>
+                      <span style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "1px 6px", fontSize: 10, color: C.dim }}>{r.reasonTag}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: C.dim, marginTop: 3, lineHeight: 1.45 }}>{r.action}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* GOING COLD — stale-deal reminders */}
+      {stale.length > 0 && (
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
+            <Dot color={C.amber} />
+            <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: C.dim, fontFamily: FONT_BODY }}>Going cold</h3>
+            <Pill color={C.amber}>{stale.length}</Pill>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {stale.map(({ c, why }) => (
+              <div key={c.id} onClick={() => onOpen(c.id)} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 2, padding: "11px 14px", cursor: "pointer", display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{c.name}</span>
+                    <Pill color={STATUS_COLOR[c.stage]} bg={C.panel2}><Dot color={STATUS_COLOR[c.stage]} />{STAGE_LABEL[c.stage]}</Pill>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.dim, marginTop: 3 }}>{why}</div>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); onSnooze(c.id, 1); }} style={snoozeBtn}>+1d</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {triage && triage.length > 0 && (
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
@@ -3950,15 +4068,27 @@ function ActivityFeed({ companies, activities }) {
 
 // Paste a Swedish org number -> open the existing card or create a new lead from the SCB
 // registry. onLookup(orgnr) is provided by Forge (handles existing-match + create + enrich).
-function OrgSearchBar({ onLookup }) {
+// SmithCommandBar — one universal bar (replaces the old org-number-only search).
+// Auto-detects intent: mostly-digits => SCB org lookup/create; text => live company-name
+// search over loaded companies (jump straight to the card); "ask Smith" opens the chat.
+function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [focused, setFocused] = useState(false);
   const digits = q.replace(/\D/g, "");
-  const valid = digits.length === 10 || digits.length === 12;
+  const looksOrg = digits.length >= 8 && digits.length / Math.max(q.length, 1) > 0.6; // mostly digits
+  const validOrg = digits.length === 10 || digits.length === 12;
+  const term = lc(q.trim());
+  const matches = useMemo(() => {
+    if (!term || looksOrg || term.length < 2) return [];
+    return (companies || [])
+      .filter((c) => lc(c.name).includes(term) || lc(c.domain).includes(term))
+      .slice(0, 7);
+  }, [companies, term, looksOrg]);
 
-  async function go() {
-    if (!valid || busy) return;
+  async function orgGo() {
+    if (!validOrg || busy) return;
     setBusy(true); setMsg("");
     try {
       const r = await onLookup(q);
@@ -3968,26 +4098,111 @@ function OrgSearchBar({ onLookup }) {
     } catch (e) { setMsg("Lookup failed: " + (e?.message || e)); }
     finally { setBusy(false); }
   }
+  function onEnter() {
+    if (looksOrg) return orgGo();
+    if (matches.length) { onOpen(matches[0].id); setQ(""); return; }
+    if (q.trim()) onAskSmith && onAskSmith(q.trim()); // free text → Smith chat
+  }
 
+  const showDrop = focused && !looksOrg && matches.length > 0;
   return (
-    <div style={{ background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 3, padding: "12px 14px", marginBottom: 22 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <Icon name="search" size={15} color={C.dim2} />
+    <div style={{ position: "relative", marginBottom: 22 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "4px 6px 4px 12px" }}>
+        <Icon name="search" size={16} color={C.dim2} />
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); setMsg(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") go(); }}
-          placeholder="Open a company by organisation number, e.g. 556012-5790"
-          inputMode="numeric"
-          style={{ flex: 1, minWidth: 200, background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "10px 12px", color: C.text, fontSize: 13.5, fontFamily: FONT_MONO, outline: "none" }}
+          onKeyDown={(e) => { if (e.key === "Enter") onEnter(); if (e.key === "Escape") setQ(""); }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 150)}
+          placeholder="Search a company, paste an org-number to add from SCB, or ask Smith…"
+          style={{ flex: 1, minWidth: 200, background: "transparent", border: "none", padding: "9px 4px", color: C.text, fontSize: 13.5, fontFamily: FONT_BODY, outline: "none" }}
         />
-        <Btn variant="dark" onClick={go} disabled={!valid || busy}>
-          {busy ? <Spinner color={C.cream} /> : <Icon name="search" size={14} color={C.cream} />} {busy ? "Looking up…" : "Open / create"}
-        </Btn>
+        {looksOrg ? (
+          <Btn variant="dark" onClick={orgGo} disabled={!validOrg || busy}>
+            {busy ? <Spinner color={C.cream} /> : <Icon name="search" size={14} color={C.cream} />} {busy ? "Looking up…" : "Open / create"}
+          </Btn>
+        ) : q.trim() && !matches.length ? (
+          <Btn variant="dark" onClick={() => onAskSmith && onAskSmith(q.trim())}>
+            <Icon name="spark" size={14} color={C.accent} /> Ask Smith
+          </Btn>
+        ) : null}
       </div>
-      <div style={{ fontSize: 11.5, color: msg.startsWith("Lookup failed") || msg.startsWith("No company") ? C.red : C.dim2, marginTop: msg ? 7 : 0, maxHeight: msg ? 30 : 0, overflow: "hidden", transition: "all .15s", lineHeight: 1.4 }}>
-        {msg}
+      {showDrop && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 3, boxShadow: "0 8px 28px rgba(20,19,16,.14)", zIndex: 30, overflow: "hidden" }}>
+          {matches.map((c) => (
+            <div key={c.id} onMouseDown={() => { onOpen(c.id); setQ(""); }} style={{ padding: "10px 13px", cursor: "pointer", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 500, color: C.text }}>{c.name}</span>
+              {c.cloud_provider && <Pill color={c.cloud_provider === "aws" ? C.accent : C.dim2}>{String(c.cloud_provider).toUpperCase()}</Pill>}
+              <span style={{ flex: 1 }} />
+              {(c.industry || c.domain) && <span style={{ fontSize: 11, color: C.dim2 }}>{(c.industry || c.domain).slice(0, 30)}</span>}
+            </div>
+          ))}
+          <div onMouseDown={() => onAskSmith && onAskSmith(q.trim())} style={{ padding: "9px 13px", cursor: "pointer", fontSize: 12, color: C.dim, display: "flex", alignItems: "center", gap: 8, background: C.panel2 }}>
+            <Icon name="spark" size={13} color={C.accent} /> Ask Smith: “{q.trim()}”
+          </div>
+        </div>
+      )}
+      {msg && <div style={{ fontSize: 11.5, color: msg.startsWith("Lookup failed") || msg.startsWith("No company") ? C.red : C.dim2, marginTop: 7, lineHeight: 1.4 }}>{msg}</div>}
+    </div>
+  );
+}
+
+// SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
+// real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
+// question passed from the command bar's "Ask Smith".
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen }) {
+  const [msgs, setMsgs] = useState([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const scrollRef = useRef(null);
+  async function send(text) {
+    const q = (text != null ? text : input).trim();
+    if (!q || busy) return;
+    setInput("");
+    const next = [...msgs, { role: "user", text: q }];
+    setMsgs(next); setBusy(true);
+    try {
+      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs });
+      setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing." }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
+    } finally { setBusy(false); }
+  }
+  // fire the seeded question once
+  useEffect(() => { if (seed) { send(seed); onClearSeed && onClearSeed(); } /* eslint-disable-next-line */ }, [seed]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy]);
+  const suggestions = ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2, marginBottom: 8, fontFamily: FONT_HEAD }}>Ask Smith</div>
+      {msgs.length > 0 && (
+        <div ref={scrollRef} style={{ maxHeight: 230, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+          {msgs.map((m, i) => (
+            <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", background: m.role === "user" ? C.ink : C.panel, color: m.role === "user" ? C.cream : C.text, border: m.role === "user" ? "none" : `1px solid ${C.line}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
+          ))}
+          {busy && <div style={{ alignSelf: "flex-start", color: C.dim2, fontSize: 12, display: "flex", alignItems: "center", gap: 7, padding: "4px 2px" }}><Spinner size={12} /> Smith is thinking…</div>}
+        </div>
+      )}
+      {msgs.length === 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+          {suggestions.map((s) => (
+            <button key={s} onClick={() => send(s)} style={{ textAlign: "left", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 6, padding: "8px 11px", fontSize: 12, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>{s}</button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          rows={1}
+          placeholder="Ask about your pipeline…"
+          style={{ flex: 1, resize: "none", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", maxHeight: 90 }}
+        />
+        <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.ink, color: C.cream, border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
       </div>
+      <div style={{ fontSize: 10, color: C.dim2, marginTop: 6 }}>Smith advises from your live pipeline. He won't send or change anything.</div>
     </div>
   );
 }
@@ -4034,7 +4249,7 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
   );
 }
 
-function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay }) {
+function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay, onAskSmith }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
@@ -4119,8 +4334,11 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
   return (
     <div>
-      {/* welcome hero - greeting + the AWS plays that make this project worth working */}
-      <div style={{ marginBottom: 24 }}>
+      {/* universal command bar — search company / add by org-nr / ask Smith */}
+      {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
+
+      {/* welcome hero - greeting */}
+      <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
           {greeting}.
         </div>
@@ -4143,26 +4361,25 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         </div>
       )}
 
-      {/* AWS PLAYS - the sales motions, each a funding program. Click to work that play's list. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+      {/* AWS PLAYS - one horizontal row (4 cols). Each = a funding program; click to work its list. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 26 }}>
         {PLAYS.map((p) => (
           <div key={p.key}
             title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
             onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
-            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "16px 18px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default" }}>
+            style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 2, padding: "14px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD }}>{p.label}</span>
               <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em" }}>{p.prog}</span>
             </div>
-            <div style={{ fontSize: 38, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em", marginTop: 10 }}>
+            <div style={{ fontSize: 34, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em", marginTop: 8 }}>
               {p.hits.length}
             </div>
-            <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 8, lineHeight: 1.4 }}>{p.pitch}</div>
+            <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4 }}>{p.pitch}</div>
           </div>
         ))}
       </div>
 
-      {onOrgLookup && <OrgSearchBar onLookup={onOrgLookup} />}
       {worklist.length > 0 && (
         <Section title="Today & overdue" icon="target">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4230,24 +4447,20 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         </div>
       </Section>
 
-      <Section title={`Dashboard - ${project.name}`} icon="chart">
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      {/* AT A GLANCE — funding KPIs + goals in one compact strip (merged from Metrics + Goals) */}
+      <Section title="At a glance" icon="chart">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
           <Metric label="Funding-qualified" value={fundingQualified} icon="tag" accent={C.accent} />
           <Metric label="Meetings booked" value={bookedNow.length} icon="calendar" accent={C.green} />
           <Metric label="Qualified (MEDDIC)" value={meddicQualified} icon="target" accent={C.blue} />
           <Metric label="Won" value={won.length} icon="spark" accent={C.violet} />
-        </div>
-      </Section>
-
-      <Section title="Goals" icon="target">
-        <div style={{ display: "flex", gap: 12 }}>
-          <div style={{ flex: 1, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: C.dim, marginBottom: 6 }}>Week</div>
-            <div style={{ fontSize: 22, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedNow.filter((c) => isThisWeek(c.updated_at)).length} / {project.goal_week}</div>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "13px 16px" }}>
+            <div style={{ fontSize: 11, color: C.dim2, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Goal · week</div>
+            <div style={{ fontSize: 21, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedNow.filter((c) => isThisWeek(c.updated_at)).length} <span style={{ fontSize: 13, color: C.dim2 }}>/ {project.goal_week}</span></div>
           </div>
-          <div style={{ flex: 1, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "16px 18px" }}>
-            <div style={{ fontSize: 12, color: C.dim, marginBottom: 6 }}>Month</div>
-            <div style={{ fontSize: 22, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedThisMonth} / {project.goal_month}</div>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "13px 16px" }}>
+            <div style={{ fontSize: 11, color: C.dim2, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Goal · month</div>
+            <div style={{ fontSize: 21, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedThisMonth} <span style={{ fontSize: 13, color: C.dim2 }}>/ {project.goal_month}</span></div>
           </div>
         </div>
       </Section>
@@ -5930,6 +6143,7 @@ export default function Forge() {
   // --- SMITH global launcher: reachable from any screen. Recs computed at App level so the
   // floating panel works on cards/lists/funding too, not just the dashboard. ---
   const [smithOpen, setSmithOpen] = useState(false);
+  const [smithSeed, setSmithSeed] = useState(""); // text passed from the command bar's "Ask Smith"
   const [smithTracks, setSmithTracks] = useState({});
   useEffect(() => {
     let live = true;
@@ -6138,9 +6352,9 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} />
+          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); }} />
         ) : nav === "today" ? (
-          <TodayQueue project={project} companies={companies} contacts={contacts} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
+          <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} flash={flash} />
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
@@ -6181,6 +6395,15 @@ export default function Forge() {
               <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
                 onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
                 onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
+              <SmithChat
+                project={project}
+                projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
+                trackMap={smithTracks}
+                contacts={contacts}
+                recs={smithLauncherRecs}
+                seed={smithSeed}
+                onClearSeed={() => setSmithSeed("")}
+                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} />
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
