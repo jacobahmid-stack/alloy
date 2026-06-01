@@ -2594,7 +2594,7 @@ Never: emoji spam, "As an AI", "Great question!", fake urgency, marketing fluff,
 Integrity: you ADVISE, you don't act. You'd never send or file something in the rep's name — out of respect, not limitation. You draft; they send. Say so when relevant ("I drafted it — you send it").`;
 
 // ask claude-proxy (task smith_chat). Read-only: Smith advises, never acts. Returns text.
-async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web }) {
+async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web, focusCompany }) {
   const contactSet = new Set((contacts || []).map((x) => x.company_id));
   const byTrack = {};
   for (const c of projCompanies) { const t = (trackMap[c.id] && trackMap[c.id].primary_track) || "NONE"; (byTrack[t] = byTrack[t] || []).push(c); }
@@ -2626,7 +2626,10 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
   const webNote = web
     ? `\n\nWEB SEARCH IS ON: for questions about what's new / recent signals at a COMPANY (funding, leadership change, hiring, product, cloud move), use web_search and cite what you find. Research the COMPANY for B2B context only — not private detail on individuals. If search returns nothing solid, say so; never fabricate a signal.`
     : "";
-  const user = `${SMITH_VOICE}\n\n${context}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
+  const focusNote = focusCompany
+    ? `\n\nFOCUS ACCOUNT (the rep is on this card right now — default to it unless they name another): ${focusCompany.name}${focusCompany.domain ? " (" + focusCompany.domain + ")" : ""}${focusCompany.industry ? ", " + focusCompany.industry : ""}.`
+    : "";
+  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
   const tools = web ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : undefined;
   return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
@@ -2995,7 +2998,7 @@ function CoPilotPanel({ company, contacts, onAddContact, onUpdate, flash }) {
   const [fit, setFit] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false });
+  const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false, notes: true });
   const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
   const [finding, setFinding] = useState(false);
   const [findNote, setFindNote] = useState("");
@@ -3249,6 +3252,44 @@ function CoPilotPanel({ company, contacts, onAddContact, onUpdate, flash }) {
           <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>Filing to Partner Central is done by a human in ACE (Alloy assembles the inputs; automated write-back is gated on the AWS IAM identity).</div>
         </div>
       )}
+
+      {/* SMITH'S NOTES — research + drafts saved from the chat, persisted on the card */}
+      {(() => {
+        const research = (company.enrichment && company.enrichment.smith_research) || [];
+        const drafts = (company.enrichment && company.enrichment.smith_drafts) || [];
+        if (!research.length && !drafts.length) return null;
+        const delEntry = (key, idx) => {
+          const enr = company.enrichment || {};
+          const list = (enr[key] || []).filter((_, i) => i !== idx);
+          onUpdate(company.id, { enrichment: { ...enr, [key]: list } });
+        };
+        const noteBlock = (key, items, label) => items.length === 0 ? null : (
+          <div style={{ marginBottom: 8 }}>
+            <div style={sub}>{label} · {items.length}</div>
+            {items.map((it, idx) => (
+              <div key={idx} style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "9px 11px", marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: C.dim2, fontFamily: FONT_MONO }}>{(it.at || "").slice(0, 10)}{it.web ? " · web" : ""}</span>
+                  <button onClick={() => delEntry(key, idx)} title="Delete" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
+                </div>
+                <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{it.text}</div>
+              </div>
+            ))}
+          </div>
+        );
+        return (
+          <>
+            <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
+            {secHead("notes", "Smith's notes", `${research.length + drafts.length} saved`)}
+            {open.notes && (
+              <div style={{ paddingLeft: 20 }}>
+                {noteBlock("smith_research", research, "Research")}
+                {noteBlock("smith_drafts", drafts, "Drafts")}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </Collapsible>
   );
 }
@@ -4166,12 +4207,13 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [web, setWeb] = useState(false);
   const [copied, setCopied] = useState(-1);
+  const [saved, setSaved] = useState(-1);
   const scrollRef = useRef(null);
   async function send(text, opts = {}) {
     const q = (text != null ? text : input).trim();
@@ -4181,8 +4223,8 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
     const next = [...msgs, { role: "user", text: q }];
     setMsgs(next); setBusy(useWeb ? "web" : true);
     try {
-      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb });
-      setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing." }]);
+      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb, focusCompany });
+      setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing.", web: useWeb }]);
     } catch (e) {
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
     } finally { setBusy(false); }
@@ -4190,6 +4232,15 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   function copy(text, i) {
     try { navigator.clipboard.writeText(text); setCopied(i); flash && flash("Copied to clipboard"); setTimeout(() => setCopied(-1), 1500); }
     catch { flash && flash("Copy failed — select the text manually"); }
+  }
+  // Is this reply an email/outreach draft (-> drafts) or research/notes (-> research)?
+  const isDraft = (t) => /subject:|^\s*hej\b|best regards|venlig|mvh|kind regards/im.test(t || "");
+  async function saveToCard(text, i) {
+    if (!focusCompany || !onSaveToCard) return;
+    try {
+      await onSaveToCard(focusCompany.id, isDraft(text) ? "draft" : "research", text, web);
+      setSaved(i); flash && flash("Saved to " + focusCompany.name); setTimeout(() => setSaved(-1), 1800);
+    } catch (e) { flash && flash("Save failed: " + (e?.message || e)); }
   }
   // fire the seeded question once
   useEffect(() => { if (seed) { send(seed); onClearSeed && onClearSeed(); } /* eslint-disable-next-line */ }, [seed]);
@@ -4211,9 +4262,16 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
             <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "90%" }}>
               <div style={{ background: m.role === "user" ? C.ink : C.panel, color: m.role === "user" ? C.cream : C.text, border: m.role === "user" ? "none" : `1px solid ${C.line}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
               {m.role === "smith" && m.text.length > 90 && (
-                <button onClick={() => copy(m.text, i)} style={{ marginTop: 3, background: "transparent", border: "none", color: copied === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
-                  <Icon name="copy" size={11} color={copied === i ? C.green : C.dim2} /> {copied === i ? "Copied" : "Copy"}
-                </button>
+                <div style={{ display: "flex", gap: 12, marginTop: 3 }}>
+                  <button onClick={() => copy(m.text, i)} style={{ background: "transparent", border: "none", color: copied === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
+                    <Icon name="copy" size={11} color={copied === i ? C.green : C.dim2} /> {copied === i ? "Copied" : "Copy"}
+                  </button>
+                  {focusCompany && onSaveToCard && (
+                    <button onClick={() => saveToCard(m.text, i)} title={"Save to " + focusCompany.name + "'s card"} style={{ background: "transparent", border: "none", color: saved === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
+                      <Icon name="download" size={11} color={saved === i ? C.green : C.dim2} /> {saved === i ? "Saved" : "Save to card"}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -6146,6 +6204,17 @@ export default function Forge() {
     setCompanies((p) => p.map((c) => (c.id === id ? { ...c, ...merged } : c)));
     await db.updateCompany(id, merged);
   }, []);
+  // Smith saves a chat reply to a company card: research -> enrichment.smith_research[],
+  // draft -> enrichment.smith_drafts[]. Newest first, capped so the jsonb stays small.
+  const saveSmithToCard = useCallback(async (companyId, kind, text, viaWeb) => {
+    const co = companies.find((c) => c.id === companyId);
+    if (!co) throw new Error("company not loaded");
+    const key = kind === "draft" ? "smith_drafts" : "smith_research";
+    const enr = co.enrichment || {};
+    const entry = { at: now(), text, ...(kind === "research" ? { web: !!viaWeb } : {}) };
+    const list = [entry, ...(Array.isArray(enr[key]) ? enr[key] : [])].slice(0, 20);
+    await updateCompany(companyId, { enrichment: { ...enr, [key]: list } });
+  }, [companies, updateCompany]);
   const runAwsBatch = useCallback(async () => {
     const targets = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell" && c.domain && !c.cloud_provider);
     if (!targets.length) { flash("No companies to check - all already classified or lack a domain"); return; }
@@ -6504,7 +6573,8 @@ export default function Forge() {
                 recs={smithLauncherRecs}
                 seed={smithSeed}
                 onClearSeed={() => setSmithSeed("")}
-                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} flash={flash} />
+                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} flash={flash}
+                focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
