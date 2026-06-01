@@ -202,23 +202,44 @@ async function probe(domain: string) {
   const assets = await assetSignals(domain);
   for (const a of assets) { const p = a.split(":")[0]; if (providers[p] !== undefined) providers[p] += 0.5; }
 
-  // Decide the single best provider. Compute clouds beat a bare Cloudflare/other.
-  const compute = ["aws", "gcp", "azure"] as const;
+  // --- APEX classification: anchor the verdict on the REAL site host (apex + www), not a stray
+  // subdomain or page asset that merely sits in a cloud range. A compute-cloud call is only
+  // "high" when the apex host's OWN IP/ASN agrees. Kills the false-positive class (e.g. a
+  // Vitec-hosted site that had one AWS-range asset and read as "AWS · high"). ---
+  const apexIps = new Set<string>();
+  for (const h of [domain, "www." + domain]) (await resolveA(h)).forEach((ip) => apexIps.add(ip));
+  const apexT: Record<string, number> = { aws: 0, gcp: 0, azure: 0, cloudflare: 0, other: 0 };
+  for (const ip of apexIps) {
+    const aws = awsServices(ip);
+    if (aws.length) { apexT.aws++; aws.forEach((s) => services.add(s)); }
+    else { const asn = await asnOf(ip); if (asn) asns.add(asn); const p = asn ? (ASN_PROVIDER[asn] || "other") : "other"; apexT[p] = (apexT[p] || 0) + 1; }
+  }
+  const apexBest = (["aws", "gcp", "azure", "cloudflare", "other"] as const).map((p) => [p, apexT[p]] as const).sort((a, b) => b[1] - a[1])[0];
+  const apexClass: string = apexBest && apexBest[1] >= 1 ? apexBest[0] : "unknown";
+
+  // --- Decide. The apex host's own ASN must AGREE for a confident compute-cloud verdict. ---
+  const compute = ["aws", "gcp", "azure"];
+  const footBest = compute.map((p) => [p, providers[p]] as const).sort((a, b) => b[1] - a[1])[0];
   let provider = "none", confidence = "none";
-  const best = compute.map((p) => [p, providers[p]] as const).sort((a, b) => b[1] - a[1])[0];
-  if (best && best[1] >= 1) {
-    provider = best[0];
-    confidence = best[1] >= 2 ? "high" : "medium";
-  } else if (providers.cloudflare >= 1) {
-    provider = "cloudflare"; confidence = "low"; // CF likely fronts a hidden origin
-  } else if (providers.other >= 1) {
-    provider = "other"; confidence = "low";
-  } else if (assets.length) {
-    provider = assets[0].split(":")[0]; confidence = "low";
+  if (compute.includes(apexClass)) {
+    provider = apexClass; confidence = "high";                 // the real site host IS on the cloud — solid
+  } else if (apexClass === "other") {
+    provider = "other"; confidence = "low";                    // real non-hyperscaler host — do NOT let subdomain/asset noise override it
+  } else if (apexClass === "cloudflare") {
+    // apex is proxied → origin genuinely hidden. A compute footprint on non-proxied subdomains
+    // is the likely origin, but it's INFERRED → cap at medium, and only when it's strong.
+    if (footBest && footBest[1] >= 1) { provider = footBest[0]; confidence = (footBest[1] >= 2 && services.size > 0) ? "medium" : "low"; }
+    else { provider = "cloudflare"; confidence = "low"; }
+  } else {
+    // apex unresolved/unknown — fall back to the footprint, but NEVER "high".
+    if (footBest && footBest[1] >= 1) { provider = footBest[0]; confidence = footBest[1] >= 2 ? "medium" : "low"; }
+    else if (providers.cloudflare >= 1) { provider = "cloudflare"; confidence = "low"; }
+    else if (providers.other >= 1) { provider = "other"; confidence = "low"; }
+    else if (assets.length) { provider = assets[0].split(":")[0]; confidence = "low"; }
   }
 
   return {
-    domain, provider, confidence,
+    domain, provider, confidence, apex_class: apexClass,
     providers, asns: [...asns], services: [...services], assets,
     checked_hosts: hostList.length, ct_count: ct.length,
   };

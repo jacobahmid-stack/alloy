@@ -586,18 +586,22 @@ async function detectCloudSmart(domain, onProgress) {
   let aws_detected = !!r.aws_detected;
   let signals = (r.signals || []).join(", ") || (r.cdn ? "Behind " + r.cdn : "");
   let confidence = aws_detected ? "high" : "";
-  if (["cloudflare", "other", "unknown"].includes(provider) && !aws_detected) {
+  // Escalate to the deep origin-hunt ONLY when the apex is genuinely PROXIED (Cloudflare) or
+  // unresolved — i.e. there's a hidden origin to find. A resolved real host ("other", e.g. a CMS
+  // vendor like Vitec) IS the host, so we trust it and never override it with a stray subdomain or
+  // page-asset that happens to sit in a cloud range (that was the AWS false-positive class).
+  if (["cloudflare", "unknown"].includes(provider) && !aws_detected) {
     if (onProgress) onProgress("Apex behind " + (r.cdn || "a proxy") + " — digging for the hidden origin…");
     try {
       const deep = await detectCloudDeep(domain);
       if (deep && ["aws", "gcp", "azure"].includes(deep.provider) && deep.confidence && deep.confidence !== "none") {
         provider = deep.provider;
         aws_detected = deep.provider === "aws";
-        confidence = deep.confidence;
+        confidence = deep.confidence === "high" ? "medium" : deep.confidence; // inferred hidden origin — never claim "high"
         const ev = [];
         if (deep.services && deep.services.length) ev.push(deep.services.join("/"));
         if (deep.asns && deep.asns.length) ev.push("ASN " + deep.asns.slice(0, 3).join(","));
-        signals = `${deep.provider.toUpperCase()} origin behind ${r.cdn || "proxy"} · ${deep.confidence} confidence` + (ev.length ? ` (CT evidence: ${ev.join("; ")})` : "");
+        signals = `${deep.provider.toUpperCase()} origin inferred behind ${r.cdn || "proxy"} · ${confidence} confidence` + (ev.length ? ` (CT evidence: ${ev.join("; ")})` : "");
       } else if (deep) {
         const n = deep.ct_count || 0;
         signals = (signals ? signals + " · " : "") + `deep scan: no cloud origin exposed (${n} CT subdomain${n === 1 ? "" : "s"} checked)`;
