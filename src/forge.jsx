@@ -3600,6 +3600,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
   const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
   const [finding, setFinding] = useState(false);
   const [findNote, setFindNote] = useState("");
+  const [smithAction, setSmithAction] = useState(null); // triggers Smith's assessment/paperwork agent below
 
   useEffect(() => {
     let live = true;
@@ -3734,6 +3735,21 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
           <Btn variant="dark" size="sm" onClick={rescore} disabled={busy}>{busy ? <Spinner /> : <Icon name="tag" size={13} color={C.cream} />} {busy ? "Scoring…" : "Score funding fit"}</Btn>
         </div>
       ))}
+
+      {/* AWS MIGRATION KIT — prominent entry to Smith's assessment + funding-paperwork agent.
+          Drafts land in the Ask Smith thread below (grounded in Alloy's brain). */}
+      <div style={{ background: "linear-gradient(135deg, rgba(255,122,26,0.10), rgba(255,176,46,0.05))", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "11px 13px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <span style={{ fontSize: 14 }}>🔨</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>AWS Migration Kit</span>
+          <span style={{ fontSize: 10, color: C.dim2, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "0 5px" }}>brain-grounded</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginBottom: 9 }}>Smith drafts the MAP “Assess” artifacts for <strong>{company.name}</strong> — a 7-R assessment, a DMS/SCT plan, then the ACE opportunity + PoC pre-approval. You review &amp; submit. Output lands in <strong>Ask Smith</strong> below ↓</div>
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+          <Btn variant="primary" size="sm" onClick={() => setSmithAction("assess")}>📋 Migration assessment</Btn>
+          <Btn variant="ghost" size="sm" onClick={() => setSmithAction("paperwork")}>📝 Funding paperwork</Btn>
+        </div>
+      </div>
 
       {/* 1 — FUNDING BRIEF (meeting prep) */}
       {secHead("brief", "Funding brief", "what to say in the room")}
@@ -3909,6 +3925,8 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         contacts={(contacts || []).filter((c) => c.company_id === company.id)}
         recs={[]}
         focusCompany={company}
+        actionSeed={smithAction}
+        onActionDone={() => setSmithAction(null)}
         onOpen={() => {}}
         initialMsgs={(company.enrichment && company.enrichment.smith_thread) || []}
         onPersist={(thread) => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), smith_thread: thread.slice(-30) } })}
@@ -4899,7 +4917,7 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles, onSetNextStep, tall }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles, onSetNextStep, tall, actionSeed, onActionDone }) {
   // initialMsgs/onPersist: when given (card-scoped chat), the thread persists to the account
   // (enrichment.smith_thread); when absent (launcher), the chat is ephemeral.
   // savedFiles/onSaveFiles: card-scoped — pre-load the account's saved files + persist new ones.
@@ -5014,6 +5032,14 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   }
   // fire the seeded question once
   useEffect(() => { if (seed) { send(seed); onClearSeed && onClearSeed(); } /* eslint-disable-next-line */ }, [seed]);
+  // Triggered by the card's "AWS Migration Kit" buttons — run the assessment / paperwork agent.
+  useEffect(() => {
+    if (!actionSeed) return;
+    if (actionSeed === "assess") assess();
+    else if (actionSeed === "paperwork") paperwork();
+    onActionDone && onActionDone();
+    /* eslint-disable-next-line */
+  }, [actionSeed]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy]);
   const suggestions = files.length
     ? ["Pull the action items + owners out of this", "Summarize this for a sales call", "Draft an email from this"]
@@ -5036,18 +5062,6 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
         </button>
         <input ref={fileRef} type="file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.eml,.vtt,.srt" onChange={onPickFiles} style={{ display: "none" }} />
       </div>
-      {focusCompany && (
-        <div style={{ marginBottom: 9, display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <button onClick={assess} disabled={!!busy} title={`Draft a discovery-stage migration assessment for ${focusCompany.name} — 7 R's + DMS/SCT outline + MAP-Assess case, grounded in Alloy's brain`}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD, letterSpacing: ".03em", opacity: busy ? 0.55 : 1 }}>
-            {busy === true ? <Spinner size={11} /> : <span>📋</span>} Migration assessment
-          </button>
-          <button onClick={paperwork} disabled={!!busy} title={`Draft the AWS funding paperwork (ACE opportunity + PoC pre-approval) for ${focusCompany.name}, from its assessment — Alloy drafts, you submit`}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD, letterSpacing: ".03em", opacity: busy ? 0.55 : 1 }}>
-            {busy === true ? <Spinner size={11} /> : <span>📝</span>} Funding paperwork
-          </button>
-        </div>
-      )}
       {files.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
           {files.map((f) => (
@@ -5326,6 +5340,21 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
+
+      {/* Highlight: Smith's AWS Migration Kit (assessment + funding paperwork) — discoverable from the dashboard */}
+      {(() => {
+        const kitTarget = [...projCompanies].filter((c) => c.domain).sort((a, b) => (b.employees || 0) - (a.employees || 0))[0] || projCompanies[0];
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap", background: "linear-gradient(135deg, rgba(255,122,26,0.12), rgba(255,176,46,0.05))", border: `1px solid ${C.accent}`, borderRadius: 6, padding: "12px 16px", marginBottom: 22 }}>
+            <span style={{ fontSize: 20 }}>🔨</span>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>New — Smith builds the MAP “Assess” kit on any account</div>
+              <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 2 }}>Open an account → <strong style={{ color: C.accent }}>AWS Migration Kit</strong> → a 7-R assessment, DMS/SCT plan, then the ACE opportunity + PoC pre-approval — drafted &amp; grounded in Alloy's brain. You review &amp; submit.</div>
+            </div>
+            {kitTarget && <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(kitTarget.id)}>Try it on {kitTarget.name.length > 22 ? kitTarget.name.slice(0, 22) + "…" : kitTarget.name} →</Btn>}
+          </div>
+        );
+      })()}
 
       {/* AWS PLAYS — one row, one source of truth: each tile = how many + WHO to work next
           (Smith's pick folded in) + why. Replaces the old duplicated "Smith recommends" section. */}
