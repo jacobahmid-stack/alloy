@@ -27,13 +27,18 @@ const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // mol
 // Smith's FACE — a bearded craftsman (dark brown hair, 3-day beard) on the forge glow. Hand-drawn
 // flat SVG so he reads as a character at any size. Self-contained circular avatar.
 let _smithFaceN = 0;
-// Smith — modelled on Jacob's reference portrait: dark swept-up hair (faded sides), thick brows,
-// brown eyes, a full groomed beard, a warm closed smile, white tee, soft light-blue backdrop.
-// Hand-drawn flat SVG (a stylised likeness). For the EXACT portrait, drop the image at
-// src/smith.png and swap this for an <img>.
+// Smith's avatar. PREFERS the real portrait: drop the image at public/smith.png and it's used
+// everywhere automatically (no code change). Until then, falls back to a hand-drawn SVG blacksmith
+// — dark swept hair, brown eyes, a medium (2–3 week) beard + mustache, raising a cross-peen hammer.
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
-  const HAIR = "#2E2014", BEARD = "#2E2014", SKIN = "#E9B488", LIP = "#C16B52";
+  const [imgOk, setImgOk] = useState(true);
+  const src = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/") + "smith.png";
+  if (imgOk) {
+    return <img src={src} width={size} height={size} alt={title || "Smith"} onError={() => setImgOk(false)}
+      style={{ display: "block", flexShrink: 0, borderRadius: "50%", objectFit: "cover", background: "#DCE9F5" }} />;
+  }
+  const HAIR = "#2E2014", BEARD = "#3A2818", SKIN = "#E9B488", LIP = "#C16B52", STEEL = "#9AA1A8", STEELD = "#6E757C", WOOD = "#A9743B";
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" style={{ display: "block", flexShrink: 0 }} role="img" aria-label={title || "Smith"}>
       <defs>
@@ -44,32 +49,39 @@ function SmithFace({ size = 24, title }) {
       </defs>
       <g clipPath={`url(#${u}c)`}>
         <rect width="64" height="64" fill={`url(#${u}g)`} />
-        {/* white t-shirt + neck */}
-        <path d="M12 64 C12 51 22 47 32 47 C42 47 52 51 52 64 Z" fill="#F3F5F7" />
-        <path d="M26 47.5 C27.5 51 36.5 51 38 47.5 L36 47 C34.5 49 29.5 49 28 47 Z" fill="#D8DEE4" />
-        <path d="M27 42 h10 v6 c0 3 -10 3 -10 0 Z" fill="#DDA079" />
-        {/* ears */}
-        <circle cx="19.6" cy="33" r="2.8" fill={SKIN} /><circle cx="44.4" cy="33" r="2.8" fill={SKIN} />
-        {/* face */}
-        <path d="M20 28 C20 16 25 11 32 11 C39 11 44 16 44 28 C44 38 39 45 32 45 C25 45 20 38 20 28 Z" fill={SKIN} />
-        {/* dark hair — swept-up quiff with volume, tapered (faded) sides */}
-        <path d="M19.5 30 C18 24 18.5 21 20 19 C19.5 14 23 9 28 8 C30.5 6.5 38 6.5 41.5 10 C45.5 11.5 47 16 45.5 21 C46.5 24 46 27.5 44.8 30 C44.5 22 42 18.5 36 17.5 C33 13.5 25.5 14.5 23.5 19 C21 21 20 25 20.6 30 Z" fill={HAIR} />
-        <path d="M23.5 18.5 C27 13.5 36 13.5 40 17.5 C36 14.5 27.5 14.5 23.5 18.5 Z" fill="#3C2A18" />
-        {/* thick eyebrows */}
-        <path d="M23 25 C25.5 23.2 29 23.4 31 24.8 L30.5 26 C28.5 24.8 25.5 24.7 23.3 26.2 Z" fill="#241A10" />
-        <path d="M33 24.8 C35 23.4 38.5 23.2 41 25 L40.7 26.2 C38.5 24.7 35.5 24.8 33.5 26 Z" fill="#241A10" />
-        {/* brown eyes with highlight */}
-        <ellipse cx="27" cy="29.5" rx="2.4" ry="2" fill="#fff" /><ellipse cx="37" cy="29.5" rx="2.4" ry="2" fill="#fff" />
-        <circle cx="27.2" cy="29.6" r="1.5" fill="#7A5230" /><circle cx="36.8" cy="29.6" r="1.5" fill="#7A5230" />
-        <circle cx="27.2" cy="29.6" r="0.7" fill="#2A1B10" /><circle cx="36.8" cy="29.6" r="0.7" fill="#2A1B10" />
-        <circle cx="27.8" cy="28.9" r="0.5" fill="#fff" /><circle cx="37.4" cy="28.9" r="0.5" fill="#fff" />
+        {/* white tee + neck */}
+        <path d="M6 64 C6 53 16 49 30 49 C44 49 54 53 54 64 Z" fill="#F3F5F7" />
+        <rect x="25" y="44" width="10" height="6" rx="3" fill="#DDA079" />
+        {/* ears + face */}
+        <circle cx="18.2" cy="31" r="2.6" fill={SKIN} /><circle cx="41.8" cy="31" r="2.6" fill={SKIN} />
+        <path d="M19 26 C19 15 23 11 30 11 C37 11 41 15 41 26 C41 35 37 42 30 42 C23 42 19 35 19 26 Z" fill={SKIN} />
+        {/* dark swept hair, faded sides */}
+        <path d="M18.5 28 C17 22 17.5 19 19 17 C18.5 12 22 8 27 7.5 C29.5 6 36 6 39 9.5 C43 11 44 15.5 42.5 20 C43.5 23 43 26 42 28 C41.5 21 39.5 17.5 34 16.5 C31 13 24.5 14 22.5 18 C20 20 19 24 19.5 28 Z" fill={HAIR} />
+        {/* thick brows */}
+        <path d="M21.5 24.5 C23.5 23 26.5 23.2 28.5 24.4 L28 25.6 C26 24.5 23.5 24.4 21.8 25.7 Z" fill="#241A10" />
+        <path d="M31.5 24.4 C33.5 23.2 36.5 23 38.5 24.5 L38.2 25.7 C36.5 24.4 34 24.5 32 25.6 Z" fill="#241A10" />
+        {/* brown eyes */}
+        <ellipse cx="25.5" cy="28.5" rx="2.2" ry="1.8" fill="#fff" /><ellipse cx="34.5" cy="28.5" rx="2.2" ry="1.8" fill="#fff" />
+        <circle cx="25.7" cy="28.6" r="1.3" fill="#7A5230" /><circle cx="34.3" cy="28.6" r="1.3" fill="#7A5230" />
+        <circle cx="25.7" cy="28.6" r="0.6" fill="#241510" /><circle cx="34.3" cy="28.6" r="0.6" fill="#241510" />
+        <circle cx="26.1" cy="27.9" r="0.45" fill="#fff" /><circle cx="34.9" cy="27.9" r="0.45" fill="#fff" />
         {/* nose */}
-        <path d="M32 30 L30.6 34.5 C30.6 35.6 33.4 35.6 33.4 34.5" stroke="#C98A60" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+        <path d="M30 29 L28.7 33 C28.7 34 31.3 34 31.3 33" stroke="#C98A60" strokeWidth="1.1" fill="none" strokeLinecap="round" />
         {/* warm closed smile */}
-        <path d="M27.5 38 C29.5 40.2 34.5 40.2 36.5 38" stroke={LIP} strokeWidth="1.8" fill="none" strokeLinecap="round" />
-        {/* full groomed beard — mustache + cheeks + rounded chin, framing the smile */}
-        <path d="M20 30 C20.5 40 23 47 32 49.5 C41 47 43.5 40 44 30 C43 35 40.5 36.5 38.5 36 C39.5 39.5 38.5 42.5 36.5 44.5 C34.5 46.5 29.5 46.5 27.5 44.5 C25.5 42.5 24.5 39.5 25.5 36 C23.5 36.5 21 35 20 30 Z" fill={BEARD} />
-        <path d="M26 35.4 C28.5 37.4 35.5 37.4 38 35.4 C35.5 36.4 28.5 36.4 26 35.4 Z" fill={BEARD} />
+        <path d="M26 36.5 C28 38.4 32.5 38.4 34.5 36.5" stroke={LIP} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+        {/* mustache + medium (2-3 week) beard along jaw & chin */}
+        <path d="M24.5 34 C27 35.6 33 35.6 35.5 34" stroke={BEARD} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        <path d="M19 29 C19.5 37 22 42 30 44 C38 42 40.5 37 41 29 C40 33 38 34.5 36.5 34 C37 37 36 39.5 34 41 C32 42.5 28 42.5 26 41 C24 39.5 23 37 23.5 34 C22 34.5 20 33 19 29 Z" fill={BEARD} />
+        {/* raised cross-peen hammer (handle + flat face + peen wedge) */}
+        <g transform="rotate(20 47 28)">
+          <rect x="45.4" y="13" width="3.2" height="22" rx="1.6" fill={WOOD} />
+          <rect x="39" y="8.5" width="16" height="6.5" rx="1.4" fill={STEEL} />
+          <rect x="39" y="8.5" width="4.5" height="6.5" rx="1.4" fill={STEELD} />
+          <path d="M55 8.5 L59 10 L59 13.5 L55 15 Z" fill={STEELD} />
+        </g>
+        {/* fist gripping the handle */}
+        <ellipse cx="46.5" cy="33" rx="4.2" ry="4.8" fill={SKIN} />
+        <path d="M43 30 q3.5 -2 7 0" stroke="#C98A60" strokeWidth="0.9" fill="none" />
       </g>
     </svg>
   );
