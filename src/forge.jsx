@@ -3117,6 +3117,46 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
   return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
 
+// Smith Migration Assessment — turns a qualified account into the artifacts the MAP "Assess" phase
+// (and AWS funding) wants: a 7-R portfolio hypothesis, a DMS/SCT database-migration outline, and a
+// MAP-Assess business-case skeleton. Grounded in Alloy's brain (the ingested AWS delivery docs).
+// HONEST BY DESIGN: discovery-stage hypotheses to validate with the customer — NOT a measured
+// inventory. It never fabricates a real server list or precise TCO; it frames, flags, and points to
+// the real discovery (e.g. a Cloudamize/agent scan) for measured numbers.
+const MIGRATION_ASSESS_SYS = `You are Smith, an AWS migration solutions architect for an AWS partner. From the ACCOUNT context + the ALLOY KNOWLEDGE BASE excerpts, draft a DISCOVERY-STAGE migration assessment a rep can take to the customer and use to open a MAP "Assess" funding case.
+ABSOLUTE HONESTY: you do NOT have the customer's real inventory, dependencies, or measured costs. Everything is a reasoned HYPOTHESIS based on the company's industry, size, and known cloud posture + AWS best practice. Never invent a specific server/app inventory or precise TCO figures. State assumptions explicitly, use ranges, mark every estimate as "estimate — validate", and note that measured numbers require a discovery scan (e.g. Cloudamize / AWS ADS). Ground every AWS-specific recommendation in the provided KNOWLEDGE BASE and cite it as [source p.N]; if it isn't there and you're unsure, say so.
+Output GitHub-flavoured markdown with exactly these sections:
+## 1. Portfolio assessment — the 7 R's (hypothesis)
+One line on what this is (a hypothesis to validate). Then a markdown table | Workload (typical for this company) | Disposition (Retire/Retain/Rehost/Relocate/Repurchase/Replatform/Refactor) | Why | AWS target | covering the application categories a company like this typically runs. Keep it to the most likely 6–10 rows.
+## 2. Database migration outline (DMS / SCT)
+Likely source databases (hypothesis) → AWS targets (Aurora/RDS). State homogeneous (DMS only) vs heterogeneous (SCT for schema + DMS for data) per case. Give the standard sequence: assess with SCT → convert schema → DMS full-load + CDC → validate → cutover. Cite the DMS/SCT sources.
+## 3. MAP-Assess business case (the fundable artifact)
+Current state (hypothesis) · target-state AWS architecture (name the services) · migration waves · estimated net-new AWS run-rate/ARR (range, flagged estimate) · business outcomes & KPIs · the funding ask (MAP/ISV-WMP, partner-led) · 30/60/90 plan.
+## What to validate next
+The real discovery that turns this into a funded plan: inventory + dependency mapping, measured TCO (Cloudamize/ADS), the IT/cloud decision-maker, and the FTR. Be concrete.
+Be concise and concrete — a rep is reading. No hype.`;
+async function migrationAssessment({ company, project }) {
+  const queries = [
+    "7 Rs application portfolio assessment rehost replatform refactor retire retain repurchase relocate disposition",
+    "AWS DMS Database Migration Service homogeneous heterogeneous Schema Conversion Tool SCT full load CDC cutover",
+    "MAP Assess phase business case current state target architecture TCO migration waves funding",
+  ];
+  const hitsArr = await Promise.all(queries.map((q) => kbSearch(q, 5).catch(() => [])));
+  const seen = new Set();
+  const ground = hitsArr.flat().filter((h) => { const k = (h.title || "") + (h.page || ""); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 14).map((h) => `[${h.title}${h.page ? " p." + h.page : ""}] ${String(h.content).slice(0, 500)}`).join("\n\n");
+  const ctx = `ACCOUNT
+Name: ${company.name}${company.domain ? ` (${company.domain})` : ""}
+Industry: ${company.industry || "unknown"}
+Employees: ${(company.employees === 0 || company.employees) ? company.employees : "unknown"}
+Revenue (kSEK): ${(company.revenue_ksek === 0 || company.revenue_ksek) ? company.revenue_ksek : "unknown"}
+Current cloud: ${company.cloud_provider || "unknown"}${company.aws_detected ? " (AWS detected)" : ""}
+Location: ${[company.city, company.country].filter(Boolean).join(", ") || "unknown"}
+Partner: ${project?.partner?.name || project?.name || "AWS partner"}`;
+  const user = `${ctx}\n\nALLOY KNOWLEDGE BASE (ground AWS specifics in this; cite [source p.N]):\n${ground || "(no KB hits — rely on general AWS best practice and say so)"}\n\nDraft the discovery-stage migration assessment now.`;
+  return await callClaude({ task: "migration_assessment", system: MIGRATION_ASSESS_SYS, user, maxTokens: 3000 });
+}
+
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
 // services a typical migration uses - so there is never a second, contradictory number.
@@ -4879,6 +4919,20 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
     } finally { setBusy(false); }
   }
+  // One-click: draft a discovery-stage migration assessment for the focused account (brain-grounded).
+  async function assess() {
+    if (!focusCompany || busy) return;
+    const next = [...msgs, { role: "user", text: `📋 Draft a migration assessment for ${focusCompany.name}` }];
+    setMsgs(next); setBusy(true);
+    try {
+      const out = await migrationAssessment({ company: focusCompany, project });
+      const reply = { role: "smith", text: (out || "").trim() || "Couldn't draft it — try again." };
+      setMsgs((m) => [...m, reply]);
+      if (onPersist) { try { onPersist([...next, reply]); } catch { /* best-effort */ } }
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "smith", text: "Couldn't draft the assessment: " + (e?.message || e) }]);
+    } finally { setBusy(false); }
+  }
   // clear the persisted account thread
   function clearThread() { setMsgs([]); if (onPersist) { try { onPersist([]); } catch {} } }
   // Turn a Smith reply into the account's next step (human-approved, one click). Picks the
@@ -4930,6 +4984,14 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
         </button>
         <input ref={fileRef} type="file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.eml,.vtt,.srt" onChange={onPickFiles} style={{ display: "none" }} />
       </div>
+      {focusCompany && (
+        <div style={{ marginBottom: 9 }}>
+          <button onClick={assess} disabled={!!busy} title={`Draft a discovery-stage migration assessment for ${focusCompany.name} — 7 R's + DMS/SCT outline + MAP-Assess case, grounded in Alloy's brain`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD, letterSpacing: ".03em", opacity: busy ? 0.55 : 1 }}>
+            {busy === true ? <Spinner size={11} /> : <span>📋</span>} Migration assessment
+          </button>
+        </div>
+      )}
       {files.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
           {files.map((f) => (

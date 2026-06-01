@@ -5,9 +5,17 @@ const DIR = "C:/Users/jacob/AppData/Local/Temp/alloy_kb";
 const BASE = "https://nvjizahtcqgmfhiodtej.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52aml6YWh0Y3FnbWZoaW9kdGVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk0NDMsImV4cCI6MjA5NTU2NTQ0M30.G0gf0z0wg9RQqsyZcEBXPYJ1YVeTe_NOULtDAEI2xEA";
 const DOCS = [
-  { id: "aws-prescriptive-guidance", title: "AWS Prescriptive Guidance", kind: "aws-doc" },
-  { id: "aws-partner-central-gs", title: "AWS Partner Central — Getting Started", kind: "aws-doc" },
-  { id: "aws-partnercentral-selling-api", title: "AWS Partner Central — Selling (ACE / co-sell)", kind: "aws-doc" },
+  { id: "aws-dms", title: "AWS Database Migration Service (DMS)", kind: "aws-doc" },
+  { id: "aws-sct", title: "AWS Schema Conversion Tool (SCT)", kind: "aws-doc" },
+  { id: "aws-app2container-java", title: "App2Container — Containerize Java apps", kind: "aws-doc" },
+  { id: "aws-modernization-assessing", title: "Modernization — Assessing Applications", kind: "aws-doc" },
+  { id: "aws-app-portfolio-assessment", title: "Application Portfolio Assessment Guide", kind: "aws-doc" },
+  { id: "aws-apa-strategy", title: "Strategy — Application Portfolio Assessment for Migration", kind: "aws-doc" },
+  { id: "aws-data-strategy", title: "AWS Data Strategy", kind: "aws-doc" },
+  { id: "aws-oca-framework", title: "Organizational Change Acceleration — Align Leaders", kind: "aws-doc" },
+  { id: "aws-cloudformation", title: "AWS CloudFormation — User Guide", kind: "aws-doc" },
+  { id: "aws-inspector", title: "Amazon Inspector — User Guide", kind: "aws-doc" },
+  { id: "aws-payment-cryptography", title: "AWS Payment Cryptography — User Guide", kind: "aws-doc" },
 ];
 const CHUNK = 1800, OVERLAP = 150, BATCH = 60, EMBED = false; // FTS-only bulk (in-runtime embed is CPU-capped ~6/call)
 const dropLine = (l) => {
