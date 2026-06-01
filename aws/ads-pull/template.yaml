@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Alloy ads-pull — a cross-account reader for AWS Application Discovery Service.
+  Alloy POSTs {roleArn, externalId, region}; the function assumes the customer's
+  read-only role and returns ADS inventory for the measured migration assessment.
+
+Parameters:
+  AlloySharedSecret:
+    Type: String
+    NoEcho: true
+    Description: Secret Alloy sends in the x-alloy-secret header (generate a long random string).
+
+Resources:
+  AdsPullFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: alloy-ads-pull
+      Runtime: nodejs20.x
+      Handler: index.handler
+      CodeUri: ./
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          ALLOY_SHARED_SECRET: !Ref AlloySharedSecret
+      Policies:
+        - Statement:
+            # Only allow assuming customer cross-account roles that follow your naming convention.
+            # Tighten this to the exact role ARNs / pattern you hand customers.
+            - Sid: AssumeCustomerDiscoveryRoles
+              Effect: Allow
+              Action: sts:AssumeRole
+              Resource: "arn:aws:iam::*:role/alloy-ads-*"
+      FunctionUrlConfig:
+        AuthType: NONE   # guarded by the shared secret; switch to AWS_IAM once Alloy signs requests
+
+Outputs:
+  FunctionUrl:
+    Description: Invoke URL — give this to Alloy (POST with the x-alloy-secret header).
+    Value: !GetAtt AdsPullFunctionUrl.FunctionUrl
+  ExecutionRoleArn:
+    Description: >
+      The Lambda execution role ARN. The CUSTOMER's cross-account role trust policy
+      must name THIS as the trusted Principal (see README / Alloy-ADS-DirectPull-v2.md).
+    Value: !GetAtt AdsPullFunctionRole.Arn
