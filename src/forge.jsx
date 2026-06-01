@@ -1132,25 +1132,37 @@ const DEFAULT_PROJECTS = [
       name: "Novalo Technologies",
       domain: "novalo.se",
       brief:
-        "Nordic AWS Advanced Tier partner with Service Delivery designations for " +
-        "Lambda, API Gateway, DynamoDB and CloudFormation. Edge: hands-on " +
-        "implementation and continuous optimization - helps product teams take ideas " +
-        "to production-ready systems. Offers two Fast Tracks: AI Fast Track (14 " +
-        "days, idea to production AI solution) and Migration Jump Start (21 days, " +
-        "executable migration plan). Strong on cost optimization as an entry point. Sells " +
-        "senior specialists without delivery overhead, shared ownership, long-term " +
-        "tuning - NOT one-off recommendations or pure advisory. " +
-        "AWS status (May 2026): both CloudOps and Automotive Competency applications " +
-        "submitted - unlocking ~$20,000 in AWS funding soon plus leverage for AWS Originated " +
-        "opportunities (opens AWS co-sell and co-funding). CloudOps now covers " +
-        "the Observability & Monitoring, FinOps and Operations subcategories. " +
-        "Solution catalog (AWS Partner Solutions, Professional Service): Novalo GenAI Journey " +
-        "(GenAI idea to production) and Novalo Migrate (migration). Sales angle: AWS-funded " +
-        "engagements, FinOps/cost control as entry, GenAI for AI-mature prospects. " +
-        "Next milestone: 1-2 customer references required for AI Competency, which together unlock " +
-        "~$70,000 in AWS funding. After that the BOX program opens to build an own SaaS " +
-        "service with $290,000 funding - a fast-growing funding runway into " +
-        "autumn 2026 and a strong entry for AWS co-funded engagements and co-sell.",
+        "Nordic AWS Advanced Tier partner. Service Delivery designations for Lambda, " +
+        "API Gateway, DynamoDB and CloudFormation. Sells hands-on implementation and " +
+        "continuous optimization by senior specialists (no delivery overhead, no agency " +
+        "markup); shared-ownership model, long-term tuning.\n\n" +
+        "AWS Competency status (2026): two applications submitted with deep evidence. " +
+        "CloudOps Competency across all five categories (Cloud Governance, Cloud Financial " +
+        "Management, Monitoring & Observability, Operations Management, Resilience) on a " +
+        "Control Tower / Landing Zone / multi-account, IaC + GitOps practice with a " +
+        "documented TCO and workload-health KPI methodology. Automotive Competency " +
+        "(Product Engineering, Software-Defined Vehicle, Autonomous Mobility, Digital " +
+        "Customer Experience). Reference engagement: Volvo Group (eHorizon predictive-data " +
+        "serverless pipeline). Competency approval unlocks AWS-originated co-sell + " +
+        "co-funded opportunities.\n\n" +
+        "Two Fast Tracks: AI Fast Track (14 days, idea to production AI) and Migration " +
+        "Jump Start (21 days, executable migration plan). Published AWS Partner Solutions: " +
+        "Novalo GenAI Journey and Novalo Migrate.\n\n" +
+        "BOX program runway (Business Outcomes Xcelerator, 2026, targets Line-of-Business " +
+        "buyers, not CTO/CIO, with a packaged repeatable solution): Enhanced Standard BOX " +
+        "up to $140K (multi-partner), AWS AI Competency BOX up to $290K (multi-partner, " +
+        "needs AWS AI Competency), Agentic AI Competency BOX up to $345K (single-partner " +
+        "allowed, must use Bedrock AgentCore). Milestone ladder: $20K feasibility, then " +
+        "$50-80K MVP + business plan, then $50K LOB MDF + co-sell. Stackable with MPLS / " +
+        "POC funding. After BOX: ISV-A co-sell, MPOPP private-offer incentives, WMP " +
+        "(10-15% of post-migration AWS ARR as credits).\n\n" +
+        "ICP: Nordic mid-market & enterprise with cloud waste, stalled AI initiatives, or " +
+        "complex migrations needing senior execution.\n\n" +
+        "Sales angle: lead with a FinOps savings analysis or a Fast Track workshop; " +
+        "position AWS co-funding for qualified CloudOps/Automotive accounts post-Competency; " +
+        "reach a Line-of-Business buyer for the BOX motion.\n\n" +
+        "Do NOT pitch: staff augmentation, offshore teams, cookie-cutter frameworks, long " +
+        "discovery phases, or AI hype without a production commitment.",
     },
     goal_week: 1,
     goal_month: 5,
@@ -2593,6 +2605,19 @@ Always: name the account + the number that matters + one concrete next move. Fla
 Never: emoji spam, "As an AI", "Great question!", fake urgency, marketing fluff, or inventing a company/number/contact you don't have. If you don't know, say so and say how to find out.
 Integrity: you ADVISE, you don't act. You'd never send or file something in the rep's name — out of respect, not limitation. You draft; they send. Say so when relevant ("I drafted it — you send it").`;
 
+// BOX program knowledge — the AWS Business Outcomes Xcelerator (2026), from the official deck.
+// Given to Smith so he can coach the BOX motion accurately. Facts only; never inflate.
+const SMITH_BOX_KB = `AWS BOX PROGRAM KNOWLEDGE (Business Outcomes Xcelerator, 2026 — coach this accurately, never inflate the numbers):
+- What BOX funds: a PACKAGED, REPEATABLE solution that delivers a business outcome for many customers — NOT one-off projects, POCs, or custom builds.
+- Buyer: a LINE-OF-BUSINESS buyer (CEO/CFO/COO/Head of Manufacturing/VP Sales) — explicitly NOT CTO/CIO. Coaching reps to reach LOB is the point.
+- Three tracks (funding assumes 1 solution/partner/year):
+  • Enhanced Standard BOX — up to $140K. Multi-partner (2+ partners contribute complementary build, not one-builds-one-resells). 1 partner must be Validated+.
+  • AWS AI Competency BOX (New 2026) — up to $290K. Multi-partner + the AWS AI (Generative AI) Competency. Milestone 4 GenAI prod-ready funding needs AWS ARR with >=25% SageMaker/Bedrock/Amazon Q (or >=10% + Data Foundation services).
+  • Agentic AI Competency BOX (New 2026) — up to $345K. SINGLE partner allowed. Solution must use Bedrock AgentCore. Needs the Agentic AI Competency.
+- Milestone ladder (all tracks): M1 Feasibility Study $20K (cash+credits) -> M2 MVP + Joint Business Plan + FTR + 5 ACE opps $50K (AI) / $80K (Agentic) -> M3 fully-funded LOB lead-gen campaign (70+ SQLs) + $50K LOB MDF -> M4 co-sell + GenAI prod-ready funding. Stackable with MPLS, Innovation Sandbox, POC funding.
+- After BOX (grow/sell): ISV-A (ISV co-sell, AM quota retirement), MPOPP (private-offer incentive, 1-2% of TCV as customer credits), WMP (migrate customer SaaS to AWS, credits for 10-15% of post-migration AWS ARR), Specializations (87% of customers rank them top-3 in partner selection).
+- For Novalo specifically: closest fit is the AWS AI Competency BOX (needs the AI Competency + a co-build partner) or, solo, the Agentic AI Competency BOX via Bedrock AgentCore. Their submitted CloudOps + Automotive competencies open co-sell now; BOX is the packaged-solution play on top.`;
+
 // ask claude-proxy (task smith_chat). Read-only: Smith advises, never acts. Returns text.
 async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web, focusCompany }) {
   const contactSet = new Set((contacts || []).map((x) => x.company_id));
@@ -2629,7 +2654,11 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
   const focusNote = focusCompany
     ? `\n\nFOCUS ACCOUNT (the rep is on this card right now — default to it unless they name another): ${focusCompany.name}${focusCompany.domain ? " (" + focusCompany.domain + ")" : ""}${focusCompany.industry ? ", " + focusCompany.industry : ""}.`
     : "";
-  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
+  // Include BOX knowledge only when the topic touches it (saves tokens otherwise).
+  const boxNote = /\bbox\b|business outcome|agentic|ai competency|multi.?partner|packaged solution|lob|line.of.business|milestone|mdf|co-?sell|marketplace|wmp|mpopp/i.test(question + " " + convo)
+    ? `\n\n${SMITH_BOX_KB}`
+    : "";
+  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${boxNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
   const tools = web ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : undefined;
   return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
