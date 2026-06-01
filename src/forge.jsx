@@ -3301,11 +3301,12 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         </div>
       )}
 
-      {/* SMITH'S NOTES — research + drafts saved from the chat, persisted on the card */}
+      {/* SMITH'S NOTES — research, drafts + attached files saved from the chat, persisted on the card */}
       {(() => {
         const research = (company.enrichment && company.enrichment.smith_research) || [];
         const drafts = (company.enrichment && company.enrichment.smith_drafts) || [];
-        if (!research.length && !drafts.length) return null;
+        const sfiles = (company.enrichment && company.enrichment.smith_files) || [];
+        if (!research.length && !drafts.length && !sfiles.length) return null;
         const delEntry = (key, idx) => {
           const enr = company.enrichment || {};
           const list = (enr[key] || []).filter((_, i) => i !== idx);
@@ -3325,12 +3326,27 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
             ))}
           </div>
         );
+        const fileBlock = sfiles.length === 0 ? null : (
+          <div style={{ marginBottom: 8 }}>
+            <div style={sub}>Files · {sfiles.length}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {sfiles.map((f, idx) => (
+                <span key={idx} title={`${(f.chars || 0).toLocaleString()} chars · ${(f.at || "").slice(0, 10)}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.panel2, border: `1px solid ${C.line2}`, borderLeft: `2px solid ${C.accent}`, borderRadius: 4, padding: "3px 8px", fontSize: 11, color: C.text, maxWidth: 220 }}>
+                  <Icon name="download" size={11} color={C.accent} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <button onClick={() => delEntry("smith_files", idx)} title="Remove file" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
         return (
           <>
             <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
-            {secHead("notes", "Smith's notes", `${research.length + drafts.length} saved`)}
+            {secHead("notes", "Smith's notes", `${research.length + drafts.length + sfiles.length} saved`)}
             {open.notes && (
               <div style={{ paddingLeft: 20 }}>
+                {fileBlock}
                 {noteBlock("smith_research", research, "Research")}
                 {noteBlock("smith_drafts", drafts, "Drafts")}
               </div>
@@ -3352,6 +3368,14 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         onOpen={() => {}}
         initialMsgs={(company.enrichment && company.enrichment.smith_thread) || []}
         onPersist={(thread) => onUpdate(company.id, { enrichment: { ...(company.enrichment || {}), smith_thread: thread.slice(-30) } })}
+        savedFiles={(company.enrichment && company.enrichment.smith_files) || []}
+        onSaveFiles={(attached) => {
+          const enr = company.enrichment || {};
+          const existing = Array.isArray(enr.smith_files) ? enr.smith_files : [];
+          const byName = new Map(existing.map((f) => [f.name, f]));
+          for (const f of attached) byName.set(f.name, { name: f.name, text: (f.text || "").slice(0, 50000), chars: f.chars || (f.text || "").length, at: new Date().toISOString() });
+          onUpdate(company.id, { enrichment: { ...enr, smith_files: [...byName.values()].slice(-8) } });
+        }}
         onSaveToCard={async (id, kind, text, viaWeb) => {
           const key = kind === "draft" ? "smith_drafts" : "smith_research";
           const enr = company.enrichment || {};
@@ -4278,16 +4302,17 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash, focusCompany, onSaveToCard, initialMsgs, onPersist, savedFiles, onSaveFiles }) {
   // initialMsgs/onPersist: when given (card-scoped chat), the thread persists to the account
   // (enrichment.smith_thread); when absent (launcher), the chat is ephemeral.
+  // savedFiles/onSaveFiles: card-scoped — pre-load the account's saved files + persist new ones.
   const [msgs, setMsgs] = useState(() => Array.isArray(initialMsgs) ? initialMsgs : []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [web, setWeb] = useState(false);
   const [copied, setCopied] = useState(-1);
   const [saved, setSaved] = useState(-1);
-  const [files, setFiles] = useState([]); // [{name, text, chars}]
+  const [files, setFiles] = useState(() => Array.isArray(savedFiles) ? savedFiles.map((f) => ({ name: f.name, text: f.text || "", chars: f.chars || (f.text || "").length })) : []);
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
   // Text-extractable types Smith can read in-browser today. PDF/Office/images need server
@@ -4321,6 +4346,8 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
     const fileTag = attached.length ? ` 📎 ${attached.length}` : "";
     const next = [...msgs, { role: "user", text: q + fileTag }];
     setMsgs(next); setBusy(useWeb ? "web" : true);
+    // card-scoped: persist any attached files to the account so they're retrievable later
+    if (onSaveFiles && attached.length) { try { onSaveFiles(attached); } catch { /* best-effort */ } }
     try {
       const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb, focusCompany, files: attached });
       const reply = { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing.", web: useWeb };
