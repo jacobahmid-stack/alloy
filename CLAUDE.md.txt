@@ -1,0 +1,16 @@
+## UPDATE (latest session) — origin-detect done, drift fixed
+- `normalize_company_cloud` trigger INSTALLED (before insert/update on companies):
+  lowercases cloud_provider; pins 'aws' when aws_detected & provider null/unknown;
+  leaves cloudflare/gcp/azure/other intact. DB drift cleaned: aws_detected = cloud='aws' = 212, no uppercase left.
+- `aws-origin-detect` DEPLOYED (v1, ACTIVE). Free AWS-behind-Cloudflare detector
+  (crt.sh → DoH → AWS ip-ranges + HTML asset fingerprint). Report-only by default;
+  `{apply:true}` writes positives back. Selects cloud_provider='cloudflare' rows; logs every scan to `origin_scan_results`.
+  Modes: `{limit,offset}` (DB rows) or `{domains:[...]}` (ad-hoc). Invoke server-side via pg_net.
+- **Cloudflare sweep DONE:** 78 cloudflare-fronted rows scanned → 17 were AWS behind Cloudflare
+  (7 high / 7 medium / 3 low). All 17 applied → cloud_provider='aws' (aws_signals = "AWS origin (conf) w/ Cloudflare — …").
+  AWS prospects 194 → 211 → 212. **Residual = 61 cloudflare rows the free method couldn't crack = the exact BuiltWith target.**
+
+## TODO — updated
+- DONE: aws-origin-detect deploy/validate/sweep. (Remove from pending.)
+- Still pending in Claude Code (source in the other thread): web-fetch, claude-proxy hardening (+STRICT_TASKS), prompt-dedup, forge.jsx agent inlining.
+- BuiltWith key → builtwith cron runs against the 61 residual cloudflare rows = measures BuiltWith's real added value.

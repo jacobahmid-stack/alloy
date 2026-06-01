@@ -21,7 +21,7 @@ const BRAND = "ALLOY";           // the platform
 const MAKER = "Forj";            // the company behind it
 const BRAND_FULL = "ALLOY by FORJ";
 const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
-const POWERED_BY = "Powered by Novalo Technologies on AWS";  // build-partner credit, shown discreetly
+const POWERED_BY = "Powered by AWS";  // public credit (AWS-sanctioned badge). Novalo build-partner credit kept private.
 const SMITH_EMOJI = "🔨";  // Smith is the blacksmith who works the Forj — warm craftsman. One line to restyle his avatar everywhere.
 const SMITH_AV_BG = "linear-gradient(135deg, #FF7A1A 0%, #FFB02E 100%)";  // molten-forge glow — brighter than the burnt-orange accent so the hammer pops
 // Smith's FACE — a bearded craftsman (dark brown hair, 3-day beard) on the forge glow. Hand-drawn
@@ -138,39 +138,34 @@ function SmithFAQ() {
     </div>
   );
 }
-const FORJ_EMAILS = ["jacob.ahmid@gmail.com", "jacob@forj.se"];
 function SmithContact({ project, flash }) {
   const [from, setFrom] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const fld = { width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
-  const mailtoUrl = () => `mailto:${FORJ_EMAILS.join(",")}?subject=${encodeURIComponent("Alloy — message" + (project?.name ? " · " + project.name : ""))}&body=${encodeURIComponent(msg + (from ? "\n\n— " + from : ""))}`;
   async function send() {
     if (!msg.trim()) { setStatus("Type a message first."); return; }
     const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
     const base = (cfg.url || "").replace(/\/+$/, ""); const ak = cfg.anonKey || "";
-    if (!base) { window.location.href = mailtoUrl(); return; }
+    if (!base) { setStatus("Can't reach the server right now."); return; }
     setBusy(true); setStatus("");
     try {
-      const r = await fetch(base + "/functions/v1/forj-notify", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ak, apikey: ak }, body: JSON.stringify({ from, message: msg, context: project?.name || "" }) });
+      const r = await fetch(base + "/functions/v1/forj-notify", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ak, apikey: ak }, body: JSON.stringify({ from, message: msg, context: project?.name || "", page: (typeof location !== "undefined" ? location.hash : "") }) });
       const j = await r.json().catch(() => ({}));
-      if (j && j.ok && j.channels && j.channels.length) { setStatus("Sent to Forj via " + j.channels.join(" + ") + " ✓"); setMsg(""); flash && flash("Message sent to Forj"); }
-      else { window.location.href = mailtoUrl(); setStatus("Opening your email app to " + FORJ_EMAILS.join(" & ") + "…"); }
-    } catch { window.location.href = mailtoUrl(); }
+      if (j && j.ok) { setStatus("Sent to the Forj team ✓ — we'll get back to you."); setMsg(""); setFrom(""); flash && flash("Message sent to Forj"); }
+      else setStatus("Couldn't send just now — please try again.");
+    } catch { setStatus("Couldn't send just now — please try again."); }
     finally { setBusy(false); }
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Reach a human at {MAKER} — message goes to our <strong>Slack</strong> + <strong>email</strong>.</div>
+      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Reach a human at {MAKER} — your message goes straight to the team.</div>
       <input style={fld} placeholder="Your name or email (optional)" value={from} onChange={(e) => setFrom(e.target.value)} />
       <textarea style={{ ...fld, resize: "vertical", minHeight: 64 }} rows={3} placeholder="What do you need?" value={msg} onChange={(e) => setMsg(e.target.value)} />
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Btn variant="primary" size="sm" onClick={send} disabled={busy}>{busy ? <Spinner size={12} /> : null} {busy ? "Sending…" : "Send to Forj"}</Btn>
-        <a href={mailtoUrl()} style={{ fontSize: 11.5, color: C.blue, textDecoration: "none" }}>or open email ✉</a>
-      </div>
+      <Btn variant="primary" size="sm" onClick={send} disabled={busy}>{busy ? <Spinner size={12} /> : null} {busy ? "Sending…" : "Send to Forj"}</Btn>
       {status && <div style={{ fontSize: 11.5, color: C.green }}>{status}</div>}
-      <div style={{ fontSize: 11, color: C.dim2, lineHeight: 1.5, marginTop: 2 }}>{FORJ_EMAILS.join(" · ")}{project?.partner?.name ? ` · ${project.partner.name}` : ""}</div>
+      {project?.partner?.name && <div style={{ fontSize: 11, color: C.dim2, lineHeight: 1.5, marginTop: 2 }}>{project.partner.name}</div>}
       <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>{POWERED_BY}.</div>
     </div>
   );
@@ -7080,7 +7075,7 @@ export default function Forge() {
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
             </div>
             <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
-              Powered by <span style={{ color: C.darkText }}>Novalo Technologies</span> on <span style={{ color: C.accent }}>AWS</span>
+              Powered by <span style={{ color: C.accent }}>AWS</span>
             </div>
           </div>
         </aside>
