@@ -85,15 +85,18 @@ function classify(company: any, scan: any, cfg: any) {
       primary = "MAP_MODERNIZE"; ruleConf = "med";
       rationale.push(`Already on AWS + modern data stack (band ${band}) → MAP modernize candidate`);
     } else {
-      primary = "NONE"; ruleConf = "med";
-      rationale.push(`Pure AWS, no migration/expansion signal (band ${band ?? "?"}) → evaluate later`);
+      // Already on AWS with no extra AI/data signal is STILL the core partner play:
+      // optimize / FinOps / resell / expand on the existing AWS estate (MAP modernize).
+      // (Previously scored NONE, which wrongly hid every existing AWS customer.)
+      primary = "MAP_MODERNIZE"; ruleConf = "med";
+      rationale.push(`Already on AWS → optimize / FinOps / resell / expand on existing estate (MAP modernize)`);
     }
   } else if (cp === "cloudflare") {
     if (scan && scan.verdict === "aws") {
       migration_source = "aws";
-      primary = (band !== null && band >= 3) ? "MAP_MODERNIZE" : "NONE"; ruleConf = "med";
-      rationale.push(`AWS origin behind Cloudflare (${scan.confidence}) → already on AWS`);
-      if (primary === "MAP_MODERNIZE") secondary.push("POC");
+      primary = "MAP_MODERNIZE"; ruleConf = "med";
+      rationale.push(`AWS origin behind Cloudflare (${scan.confidence}) → already on AWS → optimize / resell / expand (MAP modernize)`);
+      if (band !== null && band >= 3) secondary.push("POC");
     } else if (scan && scan.verdict === "none") {
       migration_source = "unknown"; primary = "MAP"; ruleConf = "low";
       rationale.push(`Behind Cloudflare, no AWS origin found → non-AWS origin likely, MAP candidate (low conf)`);

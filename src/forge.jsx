@@ -4181,9 +4181,26 @@ function PipelineView({ project, companies, onOpen, onStage }) {
 /* ============================================================================
    FÖRETAGSLISTA
    ============================================================================ */
-function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch }) {
+function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, playFilter, setPlayFilter }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
   const [mineOnly, setMineOnly] = useState(false);
+  // When a dashboard play tile is clicked, playFilter holds a primary_track (e.g. "MAP_MODERNIZE").
+  // Fetch the real funding tracks so the list shows exactly the companies behind that tile's count.
+  const [trackMap, setTrackMap] = useState({});
+  useEffect(() => {
+    if (!playFilter) return;
+    let live = true;
+    (async () => {
+      try {
+        if (typeof sb === "function") {
+          const rows = await sb("funding_eligibility", { query: "?select=company_id,primary_track" });
+          if (live && Array.isArray(rows)) { const m = {}; for (const r of rows) m[r.company_id] = r.primary_track; setTrackMap(m); }
+        }
+      } catch { /* leave empty -> filter shows nothing rather than wrong rows */ }
+    })();
+    return () => { live = false; };
+  }, [playFilter]);
+  const PLAY_LABEL = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", ISV_WMP: "Marketplace", GREENFIELD_PGP: "Greenfield", NONE: "No play" };
   const missingDomain = projCompanies.filter((c) => !c.domain).length;
   const uncheckedAws = projCompanies.filter((c) => c.domain && !c.cloud_provider).length;
   const counts = {
@@ -4200,6 +4217,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
   const filtered = useMemo(() => {
     const q = lc(query);
     return projCompanies.filter((c) => {
+      if (playFilter && trackMap[c.id] !== playFilter) return false;
       if (tab === "leads" && phaseOf(c.stage) !== "readiness") return false;
       if (tab === "booked" && c.stage !== "mote_bokat") return false;
       if (tab === "won" && c.stage !== "vunnen") return false;
@@ -4207,7 +4225,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
       if (!q) return true;
       return lc(c.name).includes(q) || lc(c.industry).includes(q) || lc(c.city).includes(q);
     });
-  }, [projCompanies, query, tab, mineOnly, me]);
+  }, [projCompanies, query, tab, mineOnly, me, playFilter, trackMap]);
 
   const [sort, setSort] = useState("icp");
   const [cloudFilter, setCloudFilter] = useState("all");
@@ -4271,6 +4289,13 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
             border: `1px solid ${mineOnly ? C.accent : C.line}`, borderRadius: 2, padding: "8px 15px",
             fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY, marginLeft: "auto",
           }}>Mine</button>
+        )}
+        {playFilter && setPlayFilter && (
+          <button onClick={() => setPlayFilter(null)} title="Clear play filter" style={{
+            background: C.ink, color: C.cream, border: `1px solid ${C.ink}`, borderRadius: 2, padding: "8px 15px",
+            fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY, marginLeft: me ? 8 : "auto",
+            display: "flex", alignItems: "center", gap: 7,
+          }}>Play: {PLAY_LABEL[playFilter] || playFilter} <span style={{ opacity: 0.7 }}>✕</span></button>
         )}
       </div>
       <input
