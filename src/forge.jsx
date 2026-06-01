@@ -914,8 +914,8 @@ async function findDecisionMakers(company) {
   ].filter(Boolean).join("\n");
   const user =
     "Find the key people to contact at this Swedish company for selling cloud/AWS services:\n" + facts +
-    "\n\nUse web search. Prioritise whoever owns a cloud/IT decision (VD/CEO, CTO, IT-chef, Head of Digital). Max 4 people. " +
-    "For each person, ALSO search LinkedIn (query '<name> " + (company.name || "") + " linkedin' or site:linkedin.com/in) and return their personal profile URL as https://www.linkedin.com/in/<slug> — finding the LinkedIn is a primary goal, the rep uses it to reach them. Only return a profile URL you actually saw and that matches this exact person; never invent a slug; leave linkedin empty if you truly can't find it. " +
+    "\n\nUse web search. PRIORITISE IT & digitalisation stakeholders, decision-makers and champions FIRST — CIO, CTO, IT-chef, Head of Digital/Digitaliseringschef, Head of Engineering/Cloud/Platform, Head of Data/AI — they own the cloud/AWS decision; include a technical champion if you find one; only then the commercial owner (VD/CEO). Max 4 people. " +
+    "For each person, ALWAYS search LinkedIn by default (query '<name> " + (company.name || "") + " linkedin' or site:linkedin.com/in) and return their personal profile URL as https://www.linkedin.com/in/<slug> — the LinkedIn is a primary goal, the rep uses it to reach them. Only return a profile URL you actually saw and that matches this exact person; never invent a slug; leave linkedin empty if you truly can't find it. " +
     'Respond ONLY with JSON:\n{"people":[{"name":"<full name>","title":"<role>","linkedin":"<https://linkedin.com/in/... or empty>","email":"<likely business email or empty>","email_is_guess":true,"why":"<max 12 words why this person>"}]}';
   const tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
   const text = await callClaude({ user, tools, maxTokens: 900, task: "find_contacts" });
@@ -2657,6 +2657,10 @@ const SMITH_PLAYS = [
   { track: "MAP_MODERNIZE", label: "Modernize", prog: "MAP Modernize", accent: "teal" },
   { track: "POC", label: "GenAI", prog: "POC credits", accent: "violet" },
   { track: "GREENFIELD_PGP", label: "Greenfield", prog: "Partner-led", accent: "blue" },
+  // Resell = a COMMERCIAL overlay (not a funding track): the accounts already consuming AWS where
+  // the partner can win the billing relationship → recurring ARR margin, stickiness, account control.
+  // Predicate-based (on AWS), so it intentionally overlaps Modernize — same accounts, different motion.
+  { track: "RESELL", label: "Resell", prog: "ARR · own the bill", accent: "amber", predicate: (c) => !!(c.aws_detected || c.cloud_provider === "aws") },
 ];
 function daysSince(iso) {
   if (!iso) return Infinity;
@@ -2683,12 +2687,15 @@ function smithRecommendations(projCompanies, trackMap, contactSet, activities, o
   const recs = [];
   for (const play of SMITH_PLAYS) {
     const cands = projCompanies
-      .filter((c) => (trackMap[c.id] && trackMap[c.id].primary_track) === play.track)
+      .filter((c) => play.predicate ? play.predicate(c) : ((trackMap[c.id] && trackMap[c.id].primary_track) === play.track))
       .map((c) => {
         const fe = trackMap[c.id] || {};
         const hasContact = contactSet.has(c.id);
         const lastActDays = daysSince(lastActOf[c.id]);
         const reason = smithReason(c, hasContact, lastActDays, c.stage);
+        if (play.track === "RESELL") reason.action = hasContact
+          ? "Pitch managed AWS resale — take the bill for recurring margin + stickiness."
+          : "Find the IT/procurement owner, then pitch managed AWS resale (ARR + account control).";
         // priority = urgency first, then fundability, then confidence
         const conf = fe.confidence === "high" ? 2 : fe.confidence === "med" ? 1 : 0;
         const priority = reason.urgency * 1000 + (fe.fundability_score || 0) + conf;
@@ -4783,6 +4790,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
     { key: "greenfield",track: "GREENFIELD_PGP", label: "Greenfield",prog: "Partner-led",    accent: C.blue,
       hits: projCompanies.filter((c) => trackOf(c) === "GREENFIELD_PGP"),
       pitch: "Net-new build on AWS" },
+    { key: "resell",    track: "RESELL",         label: "Resell",    prog: "ARR · own bill", accent: C.amber,
+      hits: projCompanies.filter((c) => !!(c.aws_detected || c.cloud_provider === "aws")),
+      pitch: "Already on AWS — win the billing relationship for recurring margin" },
   ];
   // funding-native KPIs
   const FUNDABLE = new Set(["MAP", "MAP_MODERNIZE", "POC", "ISV_WMP", "GREENFIELD_PGP"]);
@@ -4860,20 +4870,20 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Your plays today</span>
         <span style={{ fontSize: 11, color: C.dim2 }}>count, and who Smith says to work first</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 26 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 26 }}>
         {PLAYS.map((p) => {
           const rec = smithRecs.find((r) => r.track === p.track);
           return (
             <div key={p.key}
               title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
               onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
-              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 3, padding: "14px 16px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column" }}>
+              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.accent}`, borderRadius: 3, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: 10, color: C.dim, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
-                <span style={{ fontSize: 9.5, color: p.accent, fontWeight: 700, letterSpacing: ".04em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
+                <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
+                <span style={{ fontSize: 9, color: C.dim2, fontWeight: 600, letterSpacing: ".03em", textAlign: "right", lineHeight: 1.3 }}>{p.prog}</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 8 }}>
-                <span style={{ fontSize: 34, fontWeight: 400, color: p.accent, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
+                <span style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
                 <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
               </div>
               <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, flex: 1 }}>{p.pitch}</div>
@@ -5053,7 +5063,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
     })();
     return () => { live = false; };
   }, [playFilter]);
-  const PLAY_LABEL = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", ISV_WMP: "Marketplace", GREENFIELD_PGP: "Greenfield", NONE: "No play" };
+  const PLAY_LABEL = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", ISV_WMP: "Marketplace", GREENFIELD_PGP: "Greenfield", RESELL: "Resell · on AWS", NONE: "No play" };
   const missingDomain = projCompanies.filter((c) => !c.domain).length;
   const uncheckedAws = projCompanies.filter((c) => c.domain && !c.cloud_provider).length;
   const counts = {
@@ -5066,14 +5076,15 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
   // not the whole project's). When no play filter, it's the whole project.
   const cloudCounts = useMemo(() => {
     const m = { aws: 0, gcp: 0, azure: 0, cloudflare: 0, other: 0, unchecked: 0 };
-    const base = playFilter ? projCompanies.filter((c) => trackMap[c.id] === playFilter) : projCompanies;
+    const inPlay = (c) => playFilter === "RESELL" ? !!(c.aws_detected || c.cloud_provider === "aws") : trackMap[c.id] === playFilter;
+    const base = playFilter ? projCompanies.filter(inPlay) : projCompanies;
     base.forEach((c) => { const p = c.cloud_provider || (c.aws_detected ? "aws" : ""); if (!p) m.unchecked++; else if (m[p] != null) m[p]++; else m.other++; });
     return m;
   }, [projCompanies, playFilter, trackMap]);
   const filtered = useMemo(() => {
     const q = lc(query);
     return projCompanies.filter((c) => {
-      if (playFilter && trackMap[c.id] !== playFilter) return false;
+      if (playFilter && (playFilter === "RESELL" ? !(c.aws_detected || c.cloud_provider === "aws") : trackMap[c.id] !== playFilter)) return false;
       if (tab === "leads" && phaseOf(c.stage) !== "readiness") return false;
       if (tab === "booked" && c.stage !== "mote_bokat") return false;
       if (tab === "won" && c.stage !== "vunnen") return false;
