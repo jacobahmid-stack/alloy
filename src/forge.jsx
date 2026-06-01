@@ -4980,11 +4980,14 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
     booked: projCompanies.filter((c) => c.stage === "mote_bokat").length,
     won: projCompanies.filter((c) => c.stage === "vunnen").length,
   };
+  // Cloud counts reflect the active PLAY filter (so the Migrate view shows Migrate's cloud mix,
+  // not the whole project's). When no play filter, it's the whole project.
   const cloudCounts = useMemo(() => {
     const m = { aws: 0, gcp: 0, azure: 0, cloudflare: 0, other: 0, unchecked: 0 };
-    projCompanies.forEach((c) => { const p = c.cloud_provider || (c.aws_detected ? "aws" : ""); if (!p) m.unchecked++; else if (m[p] != null) m[p]++; else m.other++; });
+    const base = playFilter ? projCompanies.filter((c) => trackMap[c.id] === playFilter) : projCompanies;
+    base.forEach((c) => { const p = c.cloud_provider || (c.aws_detected ? "aws" : ""); if (!p) m.unchecked++; else if (m[p] != null) m[p]++; else m.other++; });
     return m;
-  }, [projCompanies]);
+  }, [projCompanies, playFilter, trackMap]);
   const filtered = useMemo(() => {
     const q = lc(query);
     return projCompanies.filter((c) => {
