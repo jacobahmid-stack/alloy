@@ -21,7 +21,9 @@ const BRAND = "ALLOY";           // the platform
 const MAKER = "Forj";            // the company behind it
 const BRAND_FULL = "ALLOY by FORJ";
 const SLOGAN = "Where pipeline is forged.";  // swap this one line to change the tagline everywhere
-const POWERED_BY = "Powered by Novalo Technologies on AWS Bedrock";  // build-partner credit, shown discreetly
+const POWERED_BY = "Powered by Novalo Technologies on AWS";  // build-partner credit, shown discreetly
+// TODO (post-migration): once Smith's inference actually runs on Amazon Bedrock, add a
+// sharper "Smith runs on Amazon Bedrock" callout ON SMITH (not the footer) — earned, high-value.
 
 // ---- små helpers ----
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -6544,6 +6546,7 @@ export default function Forge() {
   // --- SMITH global launcher: reachable from any screen. Recs computed at App level so the
   // floating panel works on cards/lists/funding too, not just the dashboard. ---
   const [smithOpen, setSmithOpen] = useState(false);
+  const [smithFocus, setSmithFocus] = useState(false); // chat-only mode (hide the rec cards)
   const [smithSeed, setSmithSeed] = useState(""); // text passed from the command bar's "Ask Smith"
   const [smithTracks, setSmithTracks] = useState({});
   useEffect(() => {
@@ -6699,7 +6702,7 @@ export default function Forge() {
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
             </div>
             <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
-              Powered by <span style={{ color: C.darkText }}>Novalo Technologies</span> on <span style={{ color: C.accent }}>AWS Bedrock</span>
+              Powered by <span style={{ color: C.darkText }}>Novalo Technologies</span> on <span style={{ color: C.accent }}>AWS</span>
             </div>
           </div>
         </aside>
@@ -6794,11 +6797,14 @@ export default function Forge() {
                   <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
-                <button onClick={() => setSmithOpen(false)} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button onClick={() => setSmithFocus((v) => !v)} title={smithFocus ? "Show recommendations" : "Focus mode — just chat with Smith"} style={{ background: "transparent", border: "none", color: smithFocus ? C.accent : C.dim2, fontSize: 11, fontWeight: 600, lineHeight: 1, cursor: "pointer", padding: "2px 6px", fontFamily: FONT_BODY }}>{smithFocus ? "Show plays" : "Focus"}</button>
+                  <button onClick={() => { setSmithOpen(false); setSmithFocus(false); }} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
+                </div>
               </div>
-              <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
+              {!smithFocus && <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
                 onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
-                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
+                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />}
               <SmithChat
                 project={project}
                 projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
