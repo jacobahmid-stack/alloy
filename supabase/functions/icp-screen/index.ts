@@ -26,6 +26,13 @@ const SNI_LABEL: Record<string, string> = {
   "58290": "Utgivning av annan programvara",
   "58210": "Utgivning av dataspel",
   "63100": "Databehandling, hosting och webbportaler",
+  "68100": "Köp och försäljning av egna fastigheter",
+  "68201": "Uthyrning av egna/arrenderade bostäder",
+  "68202": "Uthyrning av egna/arrenderade lokaler",
+  "68204": "Andra fastighetsbolag",
+  "68209": "Uthyrning av egna/arrenderade fastigheter",
+  "68320": "Fastighetsförvaltning på uppdrag",
+  "68110": "Köp och försäljning av egna fastigheter",
 };
 
 function pCost(u: any): number {
@@ -52,6 +59,7 @@ Deno.serve(async (req) => {
   const sni: string[] = Array.isArray(b.sni_codes) && b.sni_codes.length ? b.sni_codes.map(String) : Object.keys(SNI_LABEL);
   const minEmp = Math.max(Number(b.min_employees) || 10, 1);
   const source = String(b.source || "Bolagsverket/SCB (Novalo ICP)");
+  const listTag = String(b.list_tag || "novalo-icp");
   const limit = Math.min(Math.max(Number(b.limit) || 6, 1), 8);
   const digit = (b.digit === 0 || b.digit) ? String(b.digit) : null;
   const sb = createClient(url, svc);
@@ -112,11 +120,11 @@ Deno.serve(async (req) => {
     const row: any = {
       id, name: c.name, orgnr: dashed, project_id: project, source,
       country: "SE", city: c.city || null, county: c.lan || null,
-      industry: SNI_LABEL[c.sni_code] || "IT/mjukvara",
+      industry: SNI_LABEL[c.sni_code] || ("SNI " + c.sni_code),
       employees: emp, revenue_ksek: revSek !== null && !Number.isNaN(revSek) ? Math.round(revSek / 1000) : null,
       domain,
       stage: qualified ? "lead" : "archived",
-      list_tag: qualified ? "novalo-icp" : (emp === null ? "size-unknown" : "too-small"),
+      list_tag: qualified ? listTag : (emp === null ? "size-unknown" : "too-small"),
       enrichment: { firmo: { employees: emp, revenue_sek: revSek, confidence: conf, source: fsrc, year: fyear, min_employees: minEmp }, screened: "icp-screen" },
     };
     const { error: ie } = await sb.from("companies").upsert(row, { onConflict: "id", ignoreDuplicates: true });

@@ -47,12 +47,12 @@ Deno.serve(async (req) => {
   let cost = 0, found = 0;
   const results: any[] = [];
   for (const r of rows) {
-    const user = `Company: "${r.name}"${r.city ? `\nCity: ${r.city}` : ""}${r.orgnr ? `\nOrg.nr: ${r.orgnr}` : ""}\nFind this exact Swedish company's official website domain.`;
+    const user = `Company: "${r.name}"${r.city ? `\nCity: ${r.city}` : ""}${r.orgnr ? `\nOrg.nr: ${r.orgnr}` : ""}\nFind this exact Swedish company's official website domain. Check the company's own site first; if unclear, look it up on allabolag.se / ratsit.se / proff.se BY ORG-NR (they often list the company's website/hemsida). Many small Swedish entities genuinely have no website — return empty rather than guess a wrong one.`;
     let dom = "";
     try {
       const pr = await fetch(`${url}/functions/v1/claude-proxy`, {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + anon, apikey: anon },
-        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task: "find_domain", max_tokens: 220, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] }),
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task: "find_domain", max_tokens: 260, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] }),
       });
       const j = await pr.json(); const u = j.usage || {};
       cost += ((u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0)) / 1e6 + (u.output_tokens || 0) / 1e6 * 5 + (((u.server_tool_use || {}).web_search_requests) || 0) * 0.01;
