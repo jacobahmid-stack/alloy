@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     // 1) size gate
     let emp: number | null = null, revSek: number | null = null, conf = "", fsrc = "", fyear = "";
     try {
-      const pr = await proxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`);
+      const pr = await proxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`, 700);
       const j = await pr.json(); cost += pCost(j.usage || {});
       const o = firstJson(j);
       if (o) {
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     let domain: string | null = null;
     if (qualified) {
       try {
-        const dr = await proxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 200);
+        const dr = await proxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 320);
         const dj = await dr.json(); cost += pCost(dj.usage || {});
         const dobj = firstJson(dj);
         let d = String((dobj && dobj.domain) || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase().replace(/[^a-z0-9.\-].*$/, "");
