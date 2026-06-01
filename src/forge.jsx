@@ -170,6 +170,101 @@ function SmithContact({ project, flash }) {
     </div>
   );
 }
+// Smith Discover — ask in plain language for a NEW prospecting list against rules, Smith researches
+// real companies (web search) that fit and returns them to save as leads. System prompt is sent
+// client-side (proxy STRICT_TASKS is off); move it into claude-proxy's TASK_SYSTEM as
+// "discover_prospects" before enabling STRICT_TASKS.
+const DISCOVER_SYS = "You are Smith's prospecting researcher for an AWS partner. Given a natural-language description of a target list, you find REAL companies that match and return them as structured JSON. Use web search to ground every company — only return companies that genuinely exist and plausibly fit; NEVER invent a name, domain, or figure. Interpret the rules precisely: geography (e.g. 'Swedish only' = Swedish-HQ companies), size thresholds (employees/revenue), industry, and any cloud / AI / digitalisation-maturity signals requested. AWS-play guidance: MAP (Migration Acceleration Program) targets customers with substantial EXISTING on-prem or non-AWS-cloud workloads to migrate — so 'MAP-eligible / new money' means sizable companies NOT already all-in on AWS (on-prem, Azure, GCP or hybrid), ideally showing migration or modernisation intent; GenAI-POC = companies with active AI/data initiatives; Resell = companies already consuming AWS. For EACH prospect return: name; domain (registered domain only, no protocol/path, empty if unknown); city; country (ISO-2, e.g. SE); employees_est (integer estimate or null); revenue_msek (estimate in MSEK or null); current_cloud (one of aws|azure|gcp|on-prem|hybrid|unknown); ai_maturity (one of none|emerging|active|advanced); why (<=25 words naming the CONCRETE signals you saw that make it fit); aws_play (one of MAP|MAP-Modernize|GenAI-POC|Greenfield|Resell). Estimates are for prioritisation, not facts — never fabricate precision. Prefer fit and quality over volume; return 8-20 prospects unless the rules are very narrow. Respond ONLY with valid JSON, no other text: {\"interpretation\":\"<one sentence on how you read the rules>\",\"list_name\":\"<short list name>\",\"prospects\":[{\"name\":\"\",\"domain\":\"\",\"city\":\"\",\"country\":\"\",\"employees_est\":null,\"revenue_msek\":null,\"current_cloud\":\"\",\"ai_maturity\":\"\",\"why\":\"\",\"aws_play\":\"\"}]}";
+const DISCOVER_EXAMPLE = "Enterprise prospects eligible for a MAP on AWS — a new-money list. Swedish companies only, 1000 employees and up, with cloud and AI signals and real digitalisation maturity.";
+function SmithDiscover({ project, onImportRows, flash }) {
+  const [request, setRequest] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [data, setData] = useState(null); // { interpretation, list_name, prospects: [...] }
+  const [picked, setPicked] = useState(() => new Set());
+  const [savedN, setSavedN] = useState(0);
+  const fld = { width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
+
+  async function build() {
+    const q = request.trim() || DISCOVER_EXAMPLE;
+    setBusy(true); setError(""); setData(null); setSavedN(0); setPicked(new Set());
+    try {
+      const txt = await callClaude({
+        task: "discover_prospects", system: DISCOVER_SYS,
+        user: `Build a prospecting list from these rules:\n\n${q}\n\nResearch real matching companies and return the JSON now.`,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+        maxTokens: 4096,
+      });
+      const m = txt && txt.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("no_json");
+      const parsed = JSON.parse(m[0]);
+      const list = Array.isArray(parsed.prospects) ? parsed.prospects.filter((p) => p && p.name) : [];
+      if (!list.length) throw new Error("empty");
+      setData({ interpretation: parsed.interpretation || "", list_name: parsed.list_name || "New AWS list", prospects: list });
+      setPicked(new Set(list.map((_, i) => i)));
+    } catch (e) {
+      setError(String(e?.message) === "empty" ? "Smith couldn't find clear matches — try loosening the rules." : "Couldn't build the list just now — try again or rephrase.");
+    } finally { setBusy(false); }
+  }
+
+  function toggle(i) { setPicked((p) => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; }); }
+
+  function save() {
+    if (!data) return;
+    const rows = data.prospects.filter((_, i) => picked.has(i)).map((p) => ({
+      name: p.name, domain: p.domain || "", city: p.city || "", country: p.country || "SE",
+      employees: (p.employees_est === 0 || p.employees_est) ? Number(p.employees_est) : null,
+      company_type: p.aws_play || "", source: "Smith discovery", list_tag: data.list_name,
+      enrichment: { lead_source: "Smith discovery", opportunity: p.aws_play || "", research_notes: p.why || "",
+        why: p.why || "", aws_play: p.aws_play || "", current_cloud: p.current_cloud || "", ai_maturity: p.ai_maturity || "",
+        revenue_msek_est: (p.revenue_msek === 0 || p.revenue_msek) ? Number(p.revenue_msek) : null },
+    }));
+    if (!rows.length) { setError("Pick at least one prospect to save."); return; }
+    onImportRows(rows);
+    setSavedN(rows.length);
+    flash && flash(`Saved ${rows.length} prospects to ${project?.name || "this project"} — enriching…`);
+  }
+
+  const playColor = (p) => p === "Resell" ? C.green : (p === "GenAI-POC" ? C.blue : C.accent);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Tell Smith the rules — he researches a fresh prospect list and you save the ones you want.</div>
+      <textarea style={{ ...fld, resize: "vertical", minHeight: 70 }} rows={4} placeholder={DISCOVER_EXAMPLE} value={request} onChange={(e) => setRequest(e.target.value)} />
+      <Btn variant="primary" size="sm" onClick={build} disabled={busy}>{busy ? <Spinner size={12} /> : null} {busy ? "Researching…" : "Build list"}</Btn>
+      {error && <div style={{ fontSize: 11.5, color: C.red }}>{error}</div>}
+      {data && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, fontStyle: "italic" }}>“{data.interpretation}”</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>{data.list_name}</span>
+            <span style={{ fontSize: 10.5, color: C.dim2 }}>{picked.size}/{data.prospects.length} selected</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
+            {data.prospects.map((p, i) => (
+              <label key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: C.panel2, border: `1px solid ${picked.has(i) ? C.accent : C.line2}`, borderRadius: 4, padding: "7px 9px", cursor: "pointer" }}>
+                <input type="checkbox" checked={picked.has(i)} onChange={() => toggle(i)} style={{ marginTop: 2, accentColor: C.accent }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{p.name}</span>
+                    {p.aws_play && <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "#fff", background: playColor(p.aws_play), borderRadius: 3, padding: "1px 5px" }}>{p.aws_play}</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>
+                    {[(p.employees_est ? `~${Number(p.employees_est).toLocaleString()} emp` : null), p.city || null, (p.current_cloud && p.current_cloud !== "unknown" ? p.current_cloud.toUpperCase() : null), (p.ai_maturity && p.ai_maturity !== "none" ? `AI: ${p.ai_maturity}` : null)].filter(Boolean).join(" · ")}
+                  </div>
+                  {p.why && <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 2, lineHeight: 1.45 }}>{p.why}</div>}
+                </div>
+              </label>
+            ))}
+          </div>
+          {savedN > 0
+            ? <div style={{ fontSize: 11.5, color: C.green }}>Saved {savedN} to {project?.name || "this project"} ✓ — find them in your list, enriching now.</div>
+            : <Btn variant="primary" size="sm" onClick={save}>Save {picked.size} to {project?.name || "project"}</Btn>}
+          <div style={{ fontSize: 10, color: C.dim2, lineHeight: 1.5 }}>Sizes &amp; signals are AI estimates for prioritisation — Alloy verifies domain, cloud &amp; size after saving.</div>
+        </div>
+      )}
+    </div>
+  );
+}
 function dayStr(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -524,7 +619,7 @@ function parseToRecords(text, source) {
    ============================================================================ */
 const MODEL_API = "claude-sonnet-4-5";             // via claude-proxy → real Anthropic API (the only path now)
 
-async function callClaude({ user, tools, maxTokens = 2000, task }) {
+async function callClaude({ user, tools, maxTokens = 2000, task, system }) {
   // Resolve the Claude endpoint. Priority:
   //   1. Explicit override window.__ALLOY_CLAUDE_PROXY__ (full URL), if ever set.
   //   2. The Supabase claude-proxy edge function, whenever Supabase is configured.
@@ -544,6 +639,10 @@ async function callClaude({ user, tools, maxTokens = 2000, task }) {
   };
   if (tools) body.tools = tools;
   if (task) body.task = task;
+  // Custom system prompt — honored by the proxy for tasks without their own server prompt
+  // (current: STRICT_TASKS off). If STRICT_TASKS is enabled, add the task to claude-proxy's
+  // TASK_SYSTEM (Smith Discover uses discover_prospects) so the server prompt takes over.
+  if (system) body.system = system;
   const endpoint = proxy;
   const headers = { "Content-Type": "application/json" };
   if (proxy) {
@@ -6772,7 +6871,7 @@ export default function Forge() {
       ceo: "",
       company_type: r.company_type || "",
       source: r.source || "Registry",
-      list_tag: "",
+      list_tag: r.list_tag || "",
       stage: "lead",
       score: null,
       tier: "",
@@ -6780,7 +6879,7 @@ export default function Forge() {
       aws_signals: "",
       next_action: "",
       notes: "",
-      enrichment: { description: "", aws_value: "", research_notes: "", lead_source: r.source || "Registry", opportunity: "" },
+      enrichment: { description: "", aws_value: "", research_notes: "", lead_source: r.source || "Registry", opportunity: "", ...(r.enrichment || {}) },
       techstack: null, techstack_at: null, leadanalysis: null, leadanalysis_at: null,
       created_at: ts, updated_at: ts, project_id: activeProject,
     }));
@@ -7214,7 +7313,7 @@ export default function Forge() {
               </div>
               {/* tabs — Chat / FAQ / Contact (ABK-style self-serve) */}
               <div style={{ display: "flex", gap: 2, marginBottom: 12, borderBottom: `1px solid ${C.line}` }}>
-                {[["chat", "Chat"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
+                {[["chat", "Chat"], ["discover", "Lists"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
                   <button key={k} onClick={() => setSmithTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${smithTab === k ? C.accent : "transparent"}`, color: smithTab === k ? C.accent : C.dim, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", fontFamily: FONT_HEAD, cursor: "pointer", padding: "3px 11px 8px" }}>{lbl}</button>
                 ))}
               </div>
@@ -7235,6 +7334,7 @@ export default function Forge() {
                     focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
                 </>
               )}
+              {smithTab === "discover" && <SmithDiscover project={project} onImportRows={handleImportRows} flash={flash} />}
               {smithTab === "faq" && <SmithFAQ />}
               {smithTab === "contact" && <SmithContact project={project} flash={flash} />}
             </div>
