@@ -1144,7 +1144,10 @@ const DEFAULT_PROJECTS = [
         "(Product Engineering, Software-Defined Vehicle, Autonomous Mobility, Digital " +
         "Customer Experience). Reference engagement: Volvo Group (eHorizon predictive-data " +
         "serverless pipeline). Competency approval unlocks AWS-originated co-sell + " +
-        "co-funded opportunities.\n\n" +
+        "co-funded opportunities. Delivery rigor (per the competency evidence): formal SOW, " +
+        "RACI with AWS, change-management and customer-satisfaction checkpoints, " +
+        "training-to-independence handover - backs the senior-execution positioning. " +
+        "Entity: Novalo Technologies AB (org-nr 559427-6411).\n\n" +
         "Two Fast Tracks: AI Fast Track (14 days, idea to production AI) and Migration " +
         "Jump Start (21 days, executable migration plan). Published AWS Partner Solutions: " +
         "Novalo GenAI Journey and Novalo Migrate.\n\n" +
@@ -4278,7 +4281,8 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2, fontFamily: FONT_HEAD }}>Ask Smith</span>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Ask Smith</span>
         <span style={{ flex: 1 }} />
         <button onClick={() => setWeb((v) => !v)} title="Let Smith search the web for fresh signals on a company"
           style={{ display: "flex", alignItems: "center", gap: 5, background: web ? C.accent : "transparent", color: web ? "#fff" : C.dim2, border: `1px solid ${web ? C.accent : C.line2}`, borderRadius: 20, padding: "3px 9px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
@@ -4323,7 +4327,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
           placeholder={web ? "Ask Smith to research a prospect…" : "Ask about your pipeline, or draft an email…"}
           style={{ flex: 1, resize: "none", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", maxHeight: 90 }}
         />
-        <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.ink, color: C.cream, border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
+        <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
       </div>
       <div style={{ fontSize: 10, color: C.dim2, marginTop: 6 }}>Smith advises from your live pipeline and drafts for you. He won't send or change anything.</div>
     </div>
@@ -4384,13 +4388,16 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
   const top = recs[0];
   const rest = recs.slice(1);
   const card = (r, big) => {
-    const accent = C[r.accent] || C.accent;
+    const playColor = C[r.accent] || C.accent;
     const c = r.company;
     return (
       <div key={r.track} onClick={() => onOpen && onOpen(c.id)}
-        style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${accent}`, borderRadius: 2, padding: big ? "13px 15px" : "10px 12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }}>
+        style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 2, padding: big ? "13px 15px" : "10px 12px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: big ? 10.5 : 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: accent, fontFamily: FONT_HEAD }}>{r.label}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: playColor, display: "inline-block" }} />
+            <span style={{ fontSize: big ? 10.5 : 9.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: playColor, fontFamily: FONT_HEAD }}>{r.label}</span>
+          </span>
           <span style={{ fontSize: 9.5, color: C.dim2 }}>{r.count} in play{r.needyCount ? ` · ${r.needyCount} need you` : ""}</span>
         </div>
         <div style={{ fontSize: big ? 15 : 13, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{c.name}</div>
@@ -4544,7 +4551,7 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         <div style={{ marginBottom: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.text, fontFamily: FONT_HEAD }}>Smith recommends</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith recommends</span>
             <span style={{ fontSize: 11, color: C.dim2 }}>your best account in each play, right now</span>
           </div>
           <SmithPanel recs={smithRecs} onOpen={onOpen} onOpenPlay={onOpenPlay} variant="hero" />
@@ -6584,11 +6591,11 @@ export default function Forge() {
       {session && (
         <>
           {smithOpen && (
-            <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
+            <div style={{ position: "fixed", bottom: 86, right: 24, width: 380, maxWidth: "calc(100vw - 48px)", maxHeight: "min(70vh, 620px)", overflowY: "auto", background: C.bg, border: `1px solid ${C.line2}`, borderTop: `3px solid ${C.accent}`, borderRadius: 4, boxShadow: "0 12px 40px rgba(20,19,16,.22)", zIndex: 60, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent }} />
-                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.text, fontFamily: FONT_HEAD }}>Smith</span>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith</span>
                   <span style={{ fontSize: 10.5, color: C.dim2 }}>{(project?.name) || ""}</span>
                 </div>
                 <button onClick={() => setSmithOpen(false)} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
