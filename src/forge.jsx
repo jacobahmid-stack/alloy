@@ -2898,7 +2898,9 @@ function resellRevenueSek(company) {
 function estResellSpend(company) {
   if (!(company.aws_detected || company.cloud_provider === "aws")) return null;
   const sector = resellSector(company);
-  const pct = sector === "saas" ? 0.08 : sector === "ecom" ? 0.04 : 0.012;        // cloud spend as % of revenue
+  // cloud spend as % of revenue — calibrated conservative: only pure SaaS spends a big % on cloud
+  // (it's their COGS); for e-com/other, gross revenue is mostly goods/rent, so a small fraction.
+  const pct = sector === "saas" ? 0.05 : sector === "ecom" ? 0.007 : 0.002;
   const sig = (company.aws_signals || "").toLowerCase();
   let mult = 1;                                                                    // service-footprint nudge
   if (/ec2|rds|ecs|eks|globalaccelerator|global accelerator|elasticache|redshift/.test(sig)) mult = 1.35;
