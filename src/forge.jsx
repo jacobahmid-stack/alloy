@@ -296,6 +296,9 @@ function dayStr(offset = 0) {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), da = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${da}`;
 }
+// Active = neither user-removed (list_tag 'archived_shell') nor an importer reject (stage 'archived').
+// Used everywhere companies are shown/counted so rejected SPVs never pollute the pipeline or Smith's context.
+const isActiveCompany = (c) => !!c && isActiveCompany(c) && c.stage !== "archived";
 // Normalize + validate a LinkedIn personal-profile URL. Accepts protocol-less and
 // country-subdomain forms (the model often returns "linkedin.com/in/janheggen"), adds https,
 // and only rejects genuinely fake placeholder slugs. Real numeric suffixes (…-77120143) pass.
@@ -4259,7 +4262,7 @@ function TodayQueue({ project, companies, contacts, activities, trackMap, onOpen
   const [dismissed, setDismissed] = useState(() => new Set());
   const hide = (key) => setDismissed((s) => { const n = new Set(s); n.add(key); return n; });
   const done = (c) => { if (c.next_action_at && onDone) onDone(c.id); hide(c.id); };
-  const proj = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
+  const proj = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const dated = proj.filter((c) => c.next_action_at);
   const overdue = dated.filter((c) => c.next_action_at < today && !dismissed.has(c.id)).sort((a, b) => (a.next_action_at < b.next_action_at ? -1 : 1));
   const dueToday = dated.filter((c) => c.next_action_at === today && !dismissed.has(c.id)).sort((a, b) => score(b) - score(a));
@@ -4485,7 +4488,7 @@ function HotLeads({ projects, companies, onOpen, flash }) {
   const groups = projects.map((p) => ({
     project: p,
     list: companies
-      .filter((c) => c.project_id === p.id && c.aws_detected && c.list_tag !== "archived_shell")
+      .filter((c) => c.project_id === p.id && c.aws_detected && isActiveCompany(c))
       .sort((a, b) => score(b) - score(a)),
   }));
   const totalHot = groups.reduce((n, g) => n + g.list.length, 0);
@@ -5279,7 +5282,7 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
 }
 
 function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay, onAskSmith }) {
-  const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
+  const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
   // "Tomorrow" must always push the date FORWARD by a day from where it is now (an item already
@@ -5373,7 +5376,7 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
   // per-projekt-statistik för översikten
   const projStats = projects.map((p) => {
-    const pc = companies.filter((c) => c.project_id === p.id && c.list_tag !== "archived_shell");
+    const pc = companies.filter((c) => c.project_id === p.id && isActiveCompany(c));
     return {
       ...p,
       total: pc.length,
@@ -5584,7 +5587,7 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
    PIPELINE  -  två faser sida vid sida
    ============================================================================ */
 function PipelineView({ project, companies, onOpen, onStage }) {
-  const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
+  const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   function Column({ stage }) {
     const items = projCompanies.filter((c) => c.stage === stage.key);
     return (
@@ -5630,7 +5633,7 @@ function PipelineView({ project, companies, onOpen, onStage }) {
    FÖRETAGSLISTA
    ============================================================================ */
 function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, playFilter, setPlayFilter }) {
-  const projCompanies = companies.filter((c) => c.project_id === project.id && c.list_tag !== "archived_shell");
+  const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const [mineOnly, setMineOnly] = useState(false);
   // When a dashboard play tile is clicked, playFilter holds a primary_track (e.g. "MAP_MODERNIZE").
   // Fetch the real funding tracks so the list shows exactly the companies behind that tile's count.
@@ -7107,7 +7110,7 @@ export default function Forge() {
     const orgnr = normOrgnr(raw);
     if (orgnr.length < 10) { flash("Enter a 10-digit Swedish organisation number"); return { status: "notfound" }; }
     // 1) Already in the platform? (match on normalized orgnr, any project, skip archived)
-    const hit = companies.find((c) => c.list_tag !== "archived_shell" && normOrgnr(c.orgnr) === orgnr);
+    const hit = companies.find((c) => isActiveCompany(c) && normOrgnr(c.orgnr) === orgnr);
     if (hit) { setNav("dashboard"); setSelected(hit.id); return { status: "existing", name: hit.name, id: hit.id }; }
     // 2) Pull from SCB registry
     let r;
@@ -7228,7 +7231,7 @@ export default function Forge() {
     await updateCompany(companyId, { enrichment: { ...enr, [key]: list } });
   }, [companies, updateCompany]);
   const runAwsBatch = useCallback(async () => {
-    const targets = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell" && c.domain && !c.cloud_provider);
+    const targets = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c) && c.domain && !c.cloud_provider);
     if (!targets.length) { flash("No companies to check - all already classified or lack a domain"); return; }
     setAwsBatch({ running: true, done: 0, total: targets.length, errors: 0, found: 0 });
     let done = 0, errors = 0, found = 0;
@@ -7246,7 +7249,7 @@ export default function Forge() {
     flash(`Cloud check done: ${found} on AWS, ${errors} errors of ${targets.length}`);
   }, [companies, activeProject, updateCompany, flash]);
   const runDomainBatch = useCallback(async () => {
-    const targets = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell" && !c.domain);
+    const targets = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c) && !c.domain);
     if (!targets.length) { flash("No companies need a domain - all in this project already have one"); return; }
     setDomainBatch({ running: true, done: 0, total: targets.length, found: 0, errors: 0 });
     let done = 0, found = 0, errors = 0;
@@ -7355,7 +7358,7 @@ export default function Forge() {
     return () => { live = false; };
   }, [companies.length]);
   const smithLauncherRecs = useMemo(() => {
-    const pc = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell");
+    const pc = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c));
     const cset = new Set((contacts || []).map((x) => x.company_id));
     return smithRecommendations(pc, smithTracks, cset, activities);
   }, [companies, activeProject, contacts, smithTracks, activities]);
@@ -7454,7 +7457,7 @@ export default function Forge() {
           <div style={{ marginTop: 26, border: `1px solid ${C.darkRule}`, flexShrink: 0 }}>
             {projects.map((p, i) => {
               const isA = p.id === activeProject;
-              const cnt = companies.filter((c) => c.project_id === p.id && c.list_tag !== "archived_shell").length;
+              const cnt = companies.filter((c) => c.project_id === p.id && isActiveCompany(c)).length;
               return (
                 <button key={p.id} onClick={() => { setActiveProject(p.id); setSelected(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: isA ? "#1E1C18" : "transparent", border: "none", borderTop: i === 0 ? "none" : `1px solid ${C.darkRule}`, padding: "11px 13px", color: isA ? "#F1ECE3" : C.darkText, fontSize: 13, fontFamily: FONT_BODY, cursor: "pointer", textAlign: "left" }}>
                   <span>{p.name}</span>
@@ -7511,7 +7514,7 @@ export default function Forge() {
           {!selectedCompany && nav === "list" && (
             <div style={{ background: C.dark, display: "flex", flexWrap: "wrap" }}>
               {(() => {
-                const inProj = companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell");
+                const inProj = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c));
                 const cells = [
                   { l: "Leads", v: inProj.length, a: false },
                   { l: "On AWS", v: inProj.filter((c) => c.aws_detected).length, a: true },
@@ -7601,7 +7604,7 @@ export default function Forge() {
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "8px 18px 16px" }}>
                   <SmithChat tall
                     project={project}
-                    projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
+                    projCompanies={companies.filter((c) => c.project_id === activeProject && isActiveCompany(c))}
                     trackMap={smithTracks} contacts={contacts} recs={smithLauncherRecs}
                     seed={smithSeed} onClearSeed={() => setSmithSeed("")}
                     onOpen={(id) => { setSelected(id); setSmithOpen(false); setSmithFocus(false); }} flash={flash}
@@ -7636,7 +7639,7 @@ export default function Forge() {
                     onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
                   <SmithChat
                     project={project}
-                    projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
+                    projCompanies={companies.filter((c) => c.project_id === activeProject && isActiveCompany(c))}
                     trackMap={smithTracks}
                     contacts={contacts}
                     recs={smithLauncherRecs}
