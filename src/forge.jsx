@@ -5737,6 +5737,20 @@ function PartnerEditor({ project, onClose, onSave }) {
   const [rawNotes, setRawNotes] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErr, setAiErr] = useState("");
+  const [pfiles, setPfiles] = useState([]); // attached source docs [{name,text,chars}]
+  const pFileRef = useRef(null);
+  const PTEXT_RX = /\.(txt|md|markdown|csv|tsv|json|log|yaml|yml|xml|html?|eml|vtt|srt)$/i;
+  function onPickPartnerFiles(e) {
+    const picked = [...(e.target.files || [])]; e.target.value = "";
+    for (const file of picked) {
+      if (pfiles.length >= 5) break;
+      if (!PTEXT_RX.test(file.name)) { setAiErr(`Can't read ${file.name} yet — text files only (PDF/Office come with the AWS move)`); continue; }
+      const reader = new FileReader();
+      reader.onload = () => { const full = String(reader.result || ""); setPfiles((fs) => fs.some((x) => x.name === file.name) ? fs : [...fs, { name: file.name, text: full.slice(0, 50000), chars: full.length }]); };
+      reader.readAsText(file);
+    }
+  }
+  const removePartnerFile = (name) => setPfiles((fs) => fs.filter((f) => f.name !== name));
   async function save() {
     setBusy(true);
     try { await onSave({ name: name.trim(), domain: domain.trim(), brief: brief.trim() }); }
@@ -5745,14 +5759,20 @@ function PartnerEditor({ project, onClose, onSave }) {
   async function aiRefine() {
     setAiErr(""); setAiBusy(true);
     try {
+      let filesBlock = "";
+      if (pfiles.length) {
+        let used = 0; const blocks = [];
+        for (const f of pfiles) { if (used >= 50000) break; const body = (f.text || "").slice(0, 50000 - used); used += body.length; blocks.push(`--- FILE: ${f.name} ---\n${body}`); }
+        filesBlock = "\n\nATTACHED SOURCE DOCUMENTS (extract the partner facts from these):\n" + blocks.join("\n\n");
+      }
       const text = await callClaude({
         task: "brief_refine",
         user:
           "PARTNER: " + (name || "") + "\n" +
           "DOMAIN/LINKS: " + (domain || "") + "\n\n" +
           "CURRENT BRIEF:\n" + (brief || "(empty)") + "\n\n" +
-          "NEW RAW NOTES / NEWS (Slack, email, scribbles):\n" + (rawNotes || "(none)") + "\n\n" +
-          "Task: merge the current brief with the new notes into ONE updated, tight brief in English. Keep still-valid facts, weave in the new info, remove duplicates and fluff. Cover: what the partner sells & delivers, packages/Fast Tracks, AWS tier & competencies/status, funding, edge/ICP, sales angle, and what they should NOT pitch. Max ~180 words. Respond with ONLY the brief text - no heading, no explanation.",
+          "NEW RAW NOTES / NEWS (Slack, email, scribbles):\n" + (rawNotes || "(none)") + filesBlock + "\n\n" +
+          "Task: merge the current brief with the new notes AND any attached source documents into ONE updated, tight brief in English. Keep still-valid facts, weave in the new info, remove duplicates and fluff. Cover: what the partner sells & delivers, packages/Fast Tracks, AWS tier & competencies/status, funding, edge/ICP, sales angle, and what they should NOT pitch. Max ~180 words. Respond with ONLY the brief text - no heading, no explanation.",
         maxTokens: 1200,
       });
       const clean = (text || "").trim();
@@ -5778,10 +5798,25 @@ function PartnerEditor({ project, onClose, onSave }) {
         <label style={label}>Domain / links</label>
         <input style={{ ...field, marginBottom: 14 }} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="e.g. alto.se, quattro-by-alto.netlify.app" />
 
-        <label style={label}>Raw notes / news (optional)</label>
-        <textarea style={{ ...field, minHeight: 90, resize: "vertical", lineHeight: 1.5, marginBottom: 8 }} value={rawNotes} onChange={(e) => setRawNotes(e.target.value)} placeholder="Paste a Slack thread, an email or rough notes - Claude distills it into the brief below." />
+        <label style={label}>Raw notes / news, or attach documents (optional)</label>
+        <textarea style={{ ...field, minHeight: 90, resize: "vertical", lineHeight: 1.5, marginBottom: 8 }} value={rawNotes} onChange={(e) => setRawNotes(e.target.value)} placeholder="Paste a Slack thread, an email or rough notes — or attach a doc (e.g. an AWS competency brief, a deck export). Claude distills it into the brief below." />
+        {pfiles.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+            {pfiles.map((f) => (
+              <span key={f.name} title={`${f.chars.toLocaleString()} chars`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.bg, border: `1px solid ${C.line2}`, borderLeft: `2px solid ${C.accent}`, borderRadius: 4, padding: "3px 8px", fontSize: 11, color: C.text, maxWidth: 240 }}>
+                <Icon name="download" size={11} color={C.accent} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                <button onClick={() => removePartnerFile(f.name)} title="Remove" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-          <Btn variant="ghost" size="sm" onClick={aiRefine} disabled={aiBusy || (!rawNotes.trim() && !brief.trim())}>{aiBusy ? "Structuring…" : "Structure into brief with AI"}</Btn>
+          <Btn variant="ghost" size="sm" onClick={aiRefine} disabled={aiBusy || (!rawNotes.trim() && !brief.trim() && !pfiles.length)}>{aiBusy ? "Structuring…" : "Structure into brief with AI"}</Btn>
+          <button onClick={() => pFileRef.current && pFileRef.current.click()} title="Attach a source document for the brief" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", color: pfiles.length ? C.accent : C.dim2, border: `1px solid ${pfiles.length ? C.accent : C.line2}`, borderRadius: 20, padding: "5px 11px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
+            <Icon name="download" size={12} color={pfiles.length ? C.accent : C.dim2} /> Attach{pfiles.length ? ` ${pfiles.length}` : " files"}
+          </button>
+          <input ref={pFileRef} type="file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.eml,.vtt,.srt" onChange={onPickPartnerFiles} style={{ display: "none" }} />
           {aiBusy && <Spinner size={14} />}
           {aiErr && <span style={{ fontSize: 12, color: C.red }}>{aiErr}</span>}
         </div>
