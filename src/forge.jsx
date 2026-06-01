@@ -4324,20 +4324,20 @@ function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onO
   const lines = smithBriefingLines({ greeting, recs, stale, fundingQualified, bookedNow });
   const top = recs[0];
   return (
-    <div style={{ background: C.dark, border: `1px solid ${C.darkRule}`, borderRadius: 4, padding: "16px 18px", marginBottom: 20, position: "relative" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-        <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.ink, border: `2px solid ${C.accent}`, color: C.cream, fontSize: 11, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.darkText, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
+    <div style={{ background: C.cream, border: `1px solid ${C.line}`, borderLeft: `4px solid ${C.accent}`, borderRadius: 4, padding: "16px 20px", marginBottom: 20, position: "relative", boxShadow: "0 1px 3px rgba(20,19,16,0.05)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
+        <span style={{ width: 24, height: 24, borderRadius: "50%", background: C.accent, color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
         <span style={{ flex: 1 }} />
-        <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.darkMuted, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
+        <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {lines.map((l, i) => (
-          <div key={i} style={{ fontSize: i === 0 ? 14.5 : 12.5, color: i === 0 ? C.cream : C.darkText, lineHeight: 1.5, fontFamily: i === 0 ? FONT_DISPLAY : FONT_BODY }}>{l}</div>
+          <div key={i} style={{ fontSize: i === 0 ? 16 : 12.5, color: i === 0 ? C.text : C.dim, lineHeight: 1.5, fontFamily: i === 0 ? FONT_DISPLAY : FONT_BODY }}>{l}</div>
         ))}
       </div>
       {top && (
-        <button onClick={() => onOpen(top.company.id)} style={{ marginTop: 12, background: C.accent, color: "#fff", border: "none", borderRadius: 3, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
+        <button onClick={() => onOpen(top.company.id)} style={{ marginTop: 13, background: C.accent, color: "#fff", border: "none", borderRadius: 3, padding: "9px 15px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
           Work {top.company.name} <span style={{ fontSize: 14 }}>→</span>
         </button>
       )}
@@ -4496,12 +4496,14 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
 
-      {/* welcome hero - greeting */}
+      {/* welcome hero - greeting only when the briefing isn't already greeting above */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
-          {greeting}.
-        </div>
-        <div style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>
+        {briefDismissed && (
+          <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
+            {greeting}.
+          </div>
+        )}
+        <div style={{ fontSize: 13, color: C.dim, marginTop: briefDismissed ? 3 : 0 }}>
           {project.name} · {projCompanies.length} companies · {worklist.length > 0
             ? <><strong style={{ color: C.accent }}>{worklist.length}</strong> need follow-up today</>
             : "no follow-ups due. Pick a play below"}
@@ -6578,9 +6580,9 @@ export default function Forge() {
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
-            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: C.ink, color: C.cream, border: `2px solid ${C.accent}`, cursor: "pointer", boxShadow: "0 6px 20px rgba(20,19,16,.28)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 17, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 61, width: 52, height: 52, borderRadius: "50%", background: C.accent, color: "#fff", border: `2px solid ${C.cream}`, cursor: "pointer", boxShadow: "0 6px 20px rgba(184,61,12,.36)", fontFamily: FONT_HEAD, fontWeight: 700, fontSize: 18, letterSpacing: ".02em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0) > 0 && !smithOpen && (
-              <span style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: C.accent, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.bg}` }}>{smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0)}</span>
+              <span style={{ position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: C.ink, color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.cream}` }}>{smithLauncherRecs.reduce((n, r) => n + (r.needyCount || 0), 0)}</span>
             )}
             S
           </button>
