@@ -61,40 +61,52 @@ Deno.serve(async (req) => {
   if (!cands || !cands.length) return J({ processed: 0, imported: 0, archived: 0, cost_usd: 0, maybe_more: false, done: true });
   if (b.dry_run === true) return J({ batch: cands.length, sample: cands.slice(0, 5).map((c: any) => ({ name: c.name, orgnr: c.orgnr, sni: c.sni_code, city: c.city })) });
 
-  const proxy = (task: string, user: string, max = 240) => fetch(`${url}/functions/v1/claude-proxy`, {
-    method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + anon, apikey: anon },
-    body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task, max_tokens: max, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] }),
-  });
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // Returns the parsed proxy JSON, or null if the call genuinely failed (429/error/network) after
+  // retries. CRITICAL: a null here means "couldn't ask" — the caller must NOT consume the candidate
+  // (a 429 is not evidence a company is unsizeable). Anthropic 429s are the main failure under load.
+  async function callProxy(task: string, user: string, max: number): Promise<any | null> {
+    for (let a = 0; a < 3; a++) {
+      try {
+        const r = await fetch(`${url}/functions/v1/claude-proxy`, {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + anon, apikey: anon },
+          body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task, max_tokens: max, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] }),
+        });
+        if (r.status === 429) { await sleep(2000 * (a + 1) + Math.floor(Math.random() * 900)); continue; }
+        const j = await r.json();
+        if (j && (j.error || j.type === "error")) { await sleep(1500 * (a + 1)); continue; }
+        return j;
+      } catch { await sleep(1500 * (a + 1)); }
+    }
+    return null;
+  }
 
-  let cost = 0, imported = 0, archived = 0;
+  let cost = 0, imported = 0, archived = 0, failed = 0;
   const results: any[] = [];
   for (const c of cands) {
     const dashed = c.orgnr.length === 10 ? `${c.orgnr.slice(0, 6)}-${c.orgnr.slice(6)}` : c.orgnr;
     const id = "se-" + c.orgnr;
     const where = c.city || c.kommun || "Sweden";
-    // 1) size gate
-    let emp: number | null = null, revSek: number | null = null, conf = "", fsrc = "", fyear = "";
-    try {
-      const pr = await proxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`, 700);
-      const j = await pr.json(); cost += pCost(j.usage || {});
-      const o = firstJson(j);
-      if (o) {
-        emp = (o.employees === null || o.employees === undefined) ? null : Number(o.employees);
-        revSek = (o.revenue_sek === null || o.revenue_sek === undefined) ? null : Number(o.revenue_sek);
-        conf = String(o.confidence || ""); fsrc = String(o.source || ""); fyear = String(o.revenue_year || "");
-      }
-    } catch { /* leave nulls -> not inserted, retried next run */ continue; }
+    // 1) size gate — only a DEFINITIVE parsed answer is allowed to consume the candidate.
+    const j = await callProxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`, 700);
+    if (!j) { failed++; results.push({ name: c.name, skipped: "proxy" }); continue; } // 429/err -> leave for next loop
+    cost += pCost(j.usage || {});
+    const o = firstJson(j);
+    if (o === null) { failed++; results.push({ name: c.name, skipped: "nojson" }); continue; } // no parseable answer -> don't consume
+    const emp: number | null = (o.employees === null || o.employees === undefined) ? null : Number(o.employees);
+    const revSek: number | null = (o.revenue_sek === null || o.revenue_sek === undefined) ? null : Number(o.revenue_sek);
+    const conf = String(o.confidence || ""), fsrc = String(o.source || ""), fyear = String(o.revenue_year || "");
 
     const qualified = emp !== null && !Number.isNaN(emp) && emp >= minEmp;
     let domain: string | null = null;
     if (qualified) {
-      try {
-        const dr = await proxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 320);
-        const dj = await dr.json(); cost += pCost(dj.usage || {});
+      const dj = await callProxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 320);
+      if (dj) {
+        cost += pCost(dj.usage || {});
         const dobj = firstJson(dj);
-        let d = String((dobj && dobj.domain) || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase().replace(/[^a-z0-9.\-].*$/, "");
+        const d = String((dobj && dobj.domain) || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase().replace(/[^a-z0-9.\-].*$/, "");
         if (d && d.includes(".")) domain = d;
-      } catch { /* domain optional */ }
+      }
     }
 
     const row: any = {
@@ -112,5 +124,5 @@ Deno.serve(async (req) => {
     results.push({ name: c.name, emp, qualified, domain });
   }
 
-  return J({ processed: cands.length, imported, archived, cost_usd: +cost.toFixed(4), maybe_more: cands.length === limit, results });
+  return J({ processed: cands.length, imported, archived, failed, cost_usd: +cost.toFixed(4), maybe_more: cands.length === limit, results });
 });
