@@ -2622,7 +2622,7 @@ const SMITH_BOX_KB = `AWS BOX PROGRAM KNOWLEDGE (Business Outcomes Xcelerator, 2
 - For Novalo specifically: closest fit is the AWS AI Competency BOX (needs the AI Competency + a co-build partner) or, solo, the Agentic AI Competency BOX via Bedrock AgentCore. Their submitted CloudOps + Automotive competencies open co-sell now; BOX is the packaged-solution play on top.`;
 
 // ask claude-proxy (task smith_chat). Read-only: Smith advises, never acts. Returns text.
-async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web, focusCompany }) {
+async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web, focusCompany, files }) {
   const contactSet = new Set((contacts || []).map((x) => x.company_id));
   const byTrack = {};
   for (const c of projCompanies) { const t = (trackMap[c.id] && trackMap[c.id].primary_track) || "NONE"; (byTrack[t] = byTrack[t] || []).push(c); }
@@ -2661,7 +2661,23 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
   const boxNote = /\bbox\b|business outcome|agentic|ai competency|multi.?partner|packaged solution|lob|line.of.business|milestone|mdf|co-?sell|marketplace|wmp|mpopp/i.test(question + " " + convo)
     ? `\n\n${SMITH_BOX_KB}`
     : "";
-  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${boxNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
+  // Attached files: the rep dropped material for Smith to work — extract tasks, draft, analyze,
+  // author from it. Budget the total so we stay well under the proxy's input cap (~120k chars).
+  let filesNote = "";
+  if (Array.isArray(files) && files.length) {
+    const BUDGET = 60000;
+    let used = 0;
+    const blocks = [];
+    for (const f of files) {
+      if (used >= BUDGET) { blocks.push(`--- ${f.name} (omitted — attachment budget reached) ---`); continue; }
+      const room = BUDGET - used;
+      const body = (f.text || "").slice(0, room);
+      used += body.length;
+      blocks.push(`--- FILE: ${f.name} (${f.chars} chars${body.length < (f.text || "").length ? ", truncated" : ""}) ---\n${body}`);
+    }
+    filesNote = `\n\nATTACHED FILES (the rep attached these for you to work with — use them as the primary material for the question; extract tasks/asks, analyze, draft or author from them as asked; never invent content that isn't here):\n${blocks.join("\n\n")}`;
+  }
+  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${boxNote}${filesNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
   const tools = web ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : undefined;
   return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
@@ -4246,16 +4262,42 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   const [web, setWeb] = useState(false);
   const [copied, setCopied] = useState(-1);
   const [saved, setSaved] = useState(-1);
+  const [files, setFiles] = useState([]); // [{name, text, chars}]
   const scrollRef = useRef(null);
+  const fileRef = useRef(null);
+  // Text-extractable types Smith can read in-browser today. PDF/Office/images need server
+  // extraction (coming with the AWS/Bedrock move) — flagged honestly rather than faked.
+  const TEXT_RX = /\.(txt|md|markdown|csv|tsv|json|log|yaml|yml|xml|html?|eml|vtt|srt)$/i;
+  const PER_FILE_CAP = 50000; // chars; total budget enforced again in smithChat
+  function onPickFiles(e) {
+    const picked = [...(e.target.files || [])];
+    e.target.value = ""; // allow re-pick of same file
+    for (const file of picked) {
+      if (files.length >= 5) { flash && flash("Smith holds up to 5 files at once"); break; }
+      if (!TEXT_RX.test(file.name)) { flash && flash(`Can't read ${file.name} yet — text files only for now (PDF/Office come with the AWS move)`); continue; }
+      if (file.size > 2_000_000) { flash && flash(`${file.name} is large — Smith reads the first part only`); }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const full = String(reader.result || "");
+        const text = full.slice(0, PER_FILE_CAP);
+        setFiles((fs) => fs.some((x) => x.name === file.name) ? fs : [...fs, { name: file.name, text, chars: full.length }]);
+      };
+      reader.onerror = () => flash && flash(`Couldn't read ${file.name}`);
+      reader.readAsText(file);
+    }
+  }
+  const removeFile = (name) => setFiles((fs) => fs.filter((f) => f.name !== name));
   async function send(text, opts = {}) {
     const q = (text != null ? text : input).trim();
     if (!q || busy) return;
     const useWeb = opts.web != null ? opts.web : web;
     setInput("");
-    const next = [...msgs, { role: "user", text: q }];
+    const attached = files;
+    const fileTag = attached.length ? ` 📎 ${attached.length}` : "";
+    const next = [...msgs, { role: "user", text: q + fileTag }];
     setMsgs(next); setBusy(useWeb ? "web" : true);
     try {
-      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb, focusCompany });
+      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb, focusCompany, files: attached });
       setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing.", web: useWeb }]);
     } catch (e) {
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
@@ -4277,18 +4319,35 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   // fire the seeded question once
   useEffect(() => { if (seed) { send(seed); onClearSeed && onClearSeed(); } /* eslint-disable-next-line */ }, [seed]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, busy]);
-  const suggestions = ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
+  const suggestions = files.length
+    ? ["Pull the action items + owners out of this", "Summarize this for a sales call", "Draft an email from this"]
+    : ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Ask Smith</span>
         <span style={{ flex: 1 }} />
+        <button onClick={() => fileRef.current && fileRef.current.click()} title="Attach a file for Smith to work with (text/CSV/markdown/JSON)"
+          style={{ display: "flex", alignItems: "center", gap: 5, background: files.length ? C.accent : "transparent", color: files.length ? "#fff" : C.dim2, border: `1px solid ${files.length ? C.accent : C.line2}`, borderRadius: 20, padding: "3px 9px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
+          <Icon name="download" size={11} color={files.length ? "#fff" : C.dim2} /> Attach{files.length ? ` ${files.length}` : ""}
+        </button>
         <button onClick={() => setWeb((v) => !v)} title="Let Smith search the web for fresh signals on a company"
           style={{ display: "flex", alignItems: "center", gap: 5, background: web ? C.accent : "transparent", color: web ? "#fff" : C.dim2, border: `1px solid ${web ? C.accent : C.line2}`, borderRadius: 20, padding: "3px 9px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
           <Icon name="search" size={11} color={web ? "#fff" : C.dim2} /> Web {web ? "on" : "off"}
         </button>
+        <input ref={fileRef} type="file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.eml,.vtt,.srt" onChange={onPickFiles} style={{ display: "none" }} />
       </div>
+      {files.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 9 }}>
+          {files.map((f) => (
+            <span key={f.name} title={`${f.chars.toLocaleString()} chars${f.text.length < f.chars ? " (truncated)" : ""}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.cream, border: `1px solid ${C.line2}`, borderLeft: `2px solid ${C.accent}`, borderRadius: 4, padding: "3px 8px", fontSize: 11, color: C.text, maxWidth: 200 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+              <button onClick={() => removeFile(f.name)} title="Remove" style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 13, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
       {msgs.length > 0 && (
         <div ref={scrollRef} style={{ maxHeight: 230, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
           {msgs.map((m, i) => (
@@ -4324,7 +4383,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1}
-          placeholder={web ? "Ask Smith to research a prospect…" : "Ask about your pipeline, or draft an email…"}
+          placeholder={files.length ? "Tell Smith what to do with the file(s)…" : web ? "Ask Smith to research a prospect…" : "Ask about your pipeline, attach a file, or draft an email…"}
           style={{ flex: 1, resize: "none", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", maxHeight: 90 }}
         />
         <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
