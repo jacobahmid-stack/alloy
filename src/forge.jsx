@@ -3157,6 +3157,42 @@ Partner: ${project?.partner?.name || project?.name || "AWS partner"}`;
   return await callClaude({ task: "migration_assessment", system: MIGRATION_ASSESS_SYS, user, maxTokens: 3000 });
 }
 
+// Smith Funding Paperwork — Alloy's OWN agent step (no third-party tool): turns an account + its
+// migration assessment into the two artifacts that START an AWS partner-funding request — an ACE
+// opportunity draft and a PoC pre-approval request. DRAFTS ONLY: the rep reviews and submits; Smith
+// never files. Honest — placeholders for unknowns, funding figures flagged "confirm with PDM".
+const FUNDING_PAPERWORK_SYS = `You are Smith, an AWS partner-funding specialist for an AWS partner. From the ACCOUNT, the MIGRATION ASSESSMENT (if provided), and the ALLOY KNOWLEDGE BASE, DRAFT the two artifacts that start an AWS partner-funding request for this account. You DRAFT only — the rep reviews and submits; never say anything is filed/registered/sent.
+HONESTY: never invent the customer's AWS account ID, real contact names/emails, or exact funding figures. Put unknowns in [square brackets] for the rep to fill. Funding amounts are directional — mark them "confirm with AWS PDM". Ground AWS-specific facts in the KNOWLEDGE BASE and cite [source p.N] where you use it.
+Output GitHub-flavoured markdown, exactly these sections:
+## A. ACE opportunity (draft for AWS Partner Central)
+A fielded draft: **Opportunity name** · **Customer** (legal name, country, website) · **Customer contact** [placeholder if unknown] · **Partner of record** · **Opportunity ownership** (Partner Originated) · **Use case / project description** (2–4 sentences drawn from the assessment) · **AWS products & services** · **Delivery model** · **Estimated AWS monthly recurring revenue** (range — estimate, validate) · **Target launch date** [placeholder] · **Stage**.
+## B. PoC funding pre-approval request (email to the AWS PDM — send BEFORE any work)
+A short, senior email + an SOW outline: the ask (pre-approval for PoC funding before work begins) · scope/SOW (from the assessment) · key deliverables · AWS services consumed · duration · requested funding (state the rule: roughly the lower of 10% of year-1 AWS spend or SOW cost, cap ~$25K — confirm with PDM; note cash-on-completion vs credits-upfront) · success criteria · the PoC→production path (converts toward ISV WMP/MAP, with the PoC amount deducted).
+## Before you submit (checklist)
+The gates, tight: Payee Central active · ACE opportunity registered first · pre-approval email acknowledged BEFORE work starts · partner stage/competency that applies.
+Be concise and senior — this goes to an AWS PDM. No hype. End with one line: "Draft only — review and submit in Partner Central; I don't file anything for you."`;
+async function fundingPaperwork({ company, project, assessment }) {
+  const queries = [
+    "ACE APN Customer Engagement opportunity registration partner originated fields",
+    "PoC funding pre-approval SOW partner funding portal cash credits before work starts",
+    "convert PoC to production ISV WMP MAP funding deducted Payee Central",
+  ];
+  const hitsArr = await Promise.all(queries.map((q) => kbSearch(q, 4).catch(() => [])));
+  const seen = new Set();
+  const ground = hitsArr.flat().filter((h) => { const k = (h.title || "") + (h.page || ""); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 12).map((h) => `[${h.title}${h.page ? " p." + h.page : ""}] ${String(h.content).slice(0, 460)}`).join("\n\n");
+  const ctx = `ACCOUNT
+Name: ${company.name}${company.domain ? ` (${company.domain})` : ""}
+Industry: ${company.industry || "unknown"}
+Employees: ${(company.employees === 0 || company.employees) ? company.employees : "unknown"}
+Current cloud: ${company.cloud_provider || "unknown"}${company.aws_detected ? " (AWS detected)" : ""}
+Location: ${[company.city, company.country].filter(Boolean).join(", ") || "unknown"}
+Partner of record: ${project?.partner?.name || project?.name || "[partner]"}`;
+  const asmt = assessment ? `\n\nMIGRATION ASSESSMENT (use this as the scope/use-case source):\n${String(assessment).slice(0, 2800)}` : "\n\n(No prior migration assessment in the thread — draft from the account; suggest running one for a richer scope.)";
+  const user = `${ctx}${asmt}\n\nALLOY KNOWLEDGE BASE (ground AWS specifics; cite [source p.N]):\n${ground || "(no KB hits — rely on general AWS partner-funding best practice and say so)"}\n\nDraft the funding paperwork now.`;
+  return await callClaude({ task: "funding_paperwork", system: FUNDING_PAPERWORK_SYS, user, maxTokens: 2800 });
+}
+
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
 // already on the card (ace.expected_revenue_usd = the est. annual AWS spend) across the
 // services a typical migration uses - so there is never a second, contradictory number.
@@ -4933,6 +4969,22 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't draft the assessment: " + (e?.message || e) }]);
     } finally { setBusy(false); }
   }
+  // One-click: draft the AWS funding paperwork (ACE opp + PoC pre-approval), reusing the latest
+  // assessment in the thread for scope. Alloy's own funding agent — drafts only; the rep submits.
+  async function paperwork() {
+    if (!focusCompany || busy) return;
+    const prior = [...msgs].reverse().find((m) => m.role === "smith" && /7 ?R|portfolio assessment|MAP[- ]?Assess|migration assessment/i.test(m.text || ""));
+    const next = [...msgs, { role: "user", text: `📝 Draft the AWS funding paperwork for ${focusCompany.name}` }];
+    setMsgs(next); setBusy(true);
+    try {
+      const out = await fundingPaperwork({ company: focusCompany, project, assessment: prior?.text });
+      const reply = { role: "smith", text: (out || "").trim() || "Couldn't draft it — try again." };
+      setMsgs((m) => [...m, reply]);
+      if (onPersist) { try { onPersist([...next, reply]); } catch { /* best-effort */ } }
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "smith", text: "Couldn't draft the paperwork: " + (e?.message || e) }]);
+    } finally { setBusy(false); }
+  }
   // clear the persisted account thread
   function clearThread() { setMsgs([]); if (onPersist) { try { onPersist([]); } catch {} } }
   // Turn a Smith reply into the account's next step (human-approved, one click). Picks the
@@ -4985,10 +5037,14 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
         <input ref={fileRef} type="file" multiple accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.xml,.html,.htm,.eml,.vtt,.srt" onChange={onPickFiles} style={{ display: "none" }} />
       </div>
       {focusCompany && (
-        <div style={{ marginBottom: 9 }}>
+        <div style={{ marginBottom: 9, display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button onClick={assess} disabled={!!busy} title={`Draft a discovery-stage migration assessment for ${focusCompany.name} — 7 R's + DMS/SCT outline + MAP-Assess case, grounded in Alloy's brain`}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD, letterSpacing: ".03em", opacity: busy ? 0.55 : 1 }}>
             {busy === true ? <Spinner size={11} /> : <span>📋</span>} Migration assessment
+          </button>
+          <button onClick={paperwork} disabled={!!busy} title={`Draft the AWS funding paperwork (ACE opportunity + PoC pre-approval) for ${focusCompany.name}, from its assessment — Alloy drafts, you submit`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: busy ? "default" : "pointer", fontFamily: FONT_HEAD, letterSpacing: ".03em", opacity: busy ? 0.55 : 1 }}>
+            {busy === true ? <Spinner size={11} /> : <span>📝</span>} Funding paperwork
           </button>
         </div>
       )}
