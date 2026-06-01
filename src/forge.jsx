@@ -59,6 +59,22 @@ function dayStr(offset = 0) {
   const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), da = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${da}`;
 }
+// Normalize + validate a LinkedIn personal-profile URL. Accepts protocol-less and
+// country-subdomain forms (the model often returns "linkedin.com/in/janheggen"), adds https,
+// and only rejects genuinely fake placeholder slugs. Real numeric suffixes (…-77120143) pass.
+function cleanLinkedIn(li) {
+  let s = String(li || "").trim();
+  if (!s) return "";
+  if (/^www\./i.test(s)) s = "https://" + s;
+  else if (/^([a-z]{2,3}\.)?linkedin\.com/i.test(s)) s = "https://" + s;       // protocol-less
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s.replace(/^\/+/, "");
+  if (!/^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/(in|pub)\/[^/\s]{2,}/i.test(s)) return ""; // must be a personal profile
+  const slug = (s.match(/\/(?:in|pub)\/([^/?#\s]+)/i) || [])[1] || "";
+  // reject obvious placeholders + all-numeric slugs (real vanity URLs always contain letters;
+  // a real numeric disambiguator only ever trails a name, e.g. anna-birgersson-77120143)
+  if (/^\d+$/.test(slug) || /^(firstname|lastname|name|username|profile|example|placeholder|john-?doe|jane-?doe|abc-?123|xxxx+)$/i.test(slug)) return "";
+  return s.replace(/\/+$/, "");
+}
 function isToday(iso) {
   if (!iso) return false;
   const d = new Date(iso), t = new Date();
@@ -849,7 +865,8 @@ async function findDecisionMakers(company) {
   const user =
     "Find the key people to contact at this Swedish company for selling cloud/AWS services:\n" + facts +
     "\n\nUse web search. Prioritise whoever owns a cloud/IT decision (VD/CEO, CTO, IT-chef, Head of Digital). Max 4 people. " +
-    'Respond ONLY with JSON:\n{"people":[{"name":"<full name>","title":"<role>","linkedin":"<url or empty>","email":"<likely business email or empty>","email_is_guess":true,"why":"<max 12 words why this person>"}]}';
+    "For each person, ALSO search LinkedIn (query '<name> " + (company.name || "") + " linkedin' or site:linkedin.com/in) and return their personal profile URL as https://www.linkedin.com/in/<slug> — finding the LinkedIn is a primary goal, the rep uses it to reach them. Only return a profile URL you actually saw and that matches this exact person; never invent a slug; leave linkedin empty if you truly can't find it. " +
+    'Respond ONLY with JSON:\n{"people":[{"name":"<full name>","title":"<role>","linkedin":"<https://linkedin.com/in/... or empty>","email":"<likely business email or empty>","email_is_guess":true,"why":"<max 12 words why this person>"}]}';
   const tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }];
   const text = await callClaude({ user, tools, maxTokens: 900, task: "find_contacts" });
   const json = extractJSON(text);
@@ -3153,18 +3170,12 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
       if (!fresh.length) {
         setFindNote(ppl.length ? "Everyone Smith found is already on the card." : "No decision-makers found" + (company.domain ? "." : ". Find the website first."));
       } else {
-        const cleanLi = (li) => {
-          li = (li || "").trim();
-          if (!/^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[^/\s]/i.test(li)) return "";
-          if (/1a2b3c|123456|abcdef|xxxx|example|placeholder|firstname|lastname/i.test(li)) return "";
-          return li;
-        };
         for (const p of fresh) {
           await onAddContact(company.id, {
             name: p.name,
             title: (p.title || "") + (p.email && p.email_is_guess ? " · email guessed" : ""),
             email: p.email || "",
-            linkedin: cleanLi(p.linkedin),
+            linkedin: cleanLinkedIn(p.linkedin),
             source: "smith_find",
           });
         }
@@ -3495,7 +3506,7 @@ function ContactRow({ c, onUpdateContact, onDeleteContact }) {
         </div>
         <input style={fld} placeholder="LinkedIn URL" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
         <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
-          <Btn variant="dark" size="sm" onClick={() => { onUpdateContact(c.id, f); setEdit(false); }}>Save</Btn>
+          <Btn variant="dark" size="sm" onClick={() => { onUpdateContact(c.id, { ...f, linkedin: cleanLinkedIn(f.linkedin) || f.linkedin.trim() }); setEdit(false); }}>Save</Btn>
           <Btn variant="ghost" size="sm" onClick={() => setEdit(false)}>Cancel</Btn>
         </div>
       </div>
@@ -6631,7 +6642,7 @@ export default function Forge() {
   }, [companies, updateCompany, flash]);
   const addContact = useCallback(async (companyId, suggestion) => {
     const parts = norm(suggestion.name).split(/\s+/);
-    const c = { id: uid(), company_id: companyId, first_name: parts[0] || "", last_name: parts.slice(1).join(" "), title: suggestion.role || suggestion.title || "", email: suggestion.email || "", phone: suggestion.phone || "", linkedin: suggestion.linkedin || "", source: suggestion.source || "", status: "Not contacted" };
+    const c = { id: uid(), company_id: companyId, first_name: parts[0] || "", last_name: parts.slice(1).join(" "), title: suggestion.role || suggestion.title || "", email: suggestion.email || "", phone: suggestion.phone || "", linkedin: cleanLinkedIn(suggestion.linkedin), source: suggestion.source || "", status: "Not contacted" };
     await db.addContact(c);
     setContacts((p) => [c, ...p]);
     flash("Contact added");
