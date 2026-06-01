@@ -1,181 +1,165 @@
-# Alloy on AWS — Partner-Led Use Case & Funding Brief
+# AWS Funding Request & Business Case — **Alloy** (Forj)
 
-**Prepared for:** Anders @ Novalo Technologies AB (AWS Partner of record)
-**Customer / ISV:** Forj — product: **Alloy** (B2B AWS-partner prospecting platform)
-**Purpose:** package Forj/Alloy as a referenceable AWS customer case and secure AWS funding for the AWS-native build.
-**Status:** draft for Novalo to adapt and submit via AWS Partner Central. *All funding percentages/caps below are directional from public sources and MUST be confirmed against the gated Program Funding Guide by Novalo's AWS Partner Development Manager (PDM) / Partner Solutions Architect (PSA) before they go in front of AWS.*
-
----
-
-## 0. The ask in one paragraph
-
-Forj is building **Alloy**, a generative-AI B2B SaaS that helps **AWS partners** find, size, and qualify their next customers. Alloy runs today on managed Postgres (Supabase) and the Anthropic API. Novalo will **re-platform Alloy onto AWS-native services — Amazon Bedrock (Claude on Bedrock), Aurora PostgreSQL, and a serverless data pipeline** — generating **net-new AWS consumption**. We are requesting **GenAI Proof-of-Concept funding as the on-ramp**, converting to **ISV Workload Migration Program (ISV WMP) funding** sized against projected post-migration AWS ARR, with Novalo delivering the funded engineering.
-
-> **Why AWS should care, in one line:** Alloy is an AWS-ecosystem product — it *grows AWS's partner pipeline* — built *on* AWS. Funding it compounds: every Alloy tenant is an AWS partner selling more AWS.
+**To:** Amazon Web Services — Partner Development Manager / Partner Funding team
+**From:** Novalo Technologies AB — AWS Partner (org-nr 559427-6411), submitting on behalf of **Forj** (ISV; product: **Alloy**)
+**Date:** 1 June 2026
+**Re:** Funding request — **ISV Workload Migration Program (ISV WMP)**, with a **Generative-AI Proof-of-Concept** as the on-ramp, for the **Alloy** SaaS workload on AWS
+**Requested AWS region:** primary **eu-north-1 (Stockholm)**, expanding to US & APAC regions as the platform scales globally
 
 ---
 
-## 1. Strategic framing (read this first)
+## 1. Executive summary
 
-Alloy is **not a classic "lift servers from a data center" migration** — it has no on-prem estate. It is a **SaaS workload being stood up / re-platformed onto AWS-native services to drive net-new AWS ARR**. That points to a specific funding door:
+Forj is building **Alloy**, a generative-AI B2B SaaS that helps **AWS Partners worldwide** find, size, and qualify their next AWS customers — surfacing cloud-migration and AI-readiness signals and routing partners to the right AWS motion (MAP, GenAI, Marketplace/Resell). Alloy is, in effect, **a pipeline engine for the AWS Partner Network itself.**
 
-- **Primary vehicle → ISV Workload Migration Program (ISV WMP).** Purpose-built for an ISV moving or standing up a SaaS workload on AWS. Funding scales with projected **post-migration AWS ARR**.
-- **On-ramp → GenAI Proof-of-Concept (PoC) funding** (optionally delivered with the **AWS Generative AI Innovation Center, GAIIC**), to build and prove the Bedrock + Aurora pipeline before the full commitment. The formal **"PoC → production"** path lets PoC convert into ISV WMP (PoC amount is deducted from the later award).
-- **Classic MAP** is a secondary/fallback framing only — it fits awkwardly because there is no on-prem estate to assess.
+Alloy runs today on managed PostgreSQL and a third-party LLM API. Novalo will **re-platform Alloy onto AWS-native services — Amazon Bedrock (Claude on Bedrock), Amazon Aurora PostgreSQL, Knowledge Bases, and a serverless data pipeline** — generating **net-new AWS consumption that scales with every partner-tenant Alloy onboards globally.**
 
-**The universal currency AWS actually buys is net-new AWS consumption (ARR / run-rate).** Every section below ladders up to that number.
+**We request AWS's support to:**
+1. fund a **Generative-AI Proof-of-Concept** (Bedrock + Aurora) to validate the AWS-native build, and
+2. convert it, on success, into **ISV Workload Migration Program** funding sized against Alloy's projected post-migration AWS ARR (below),
+with **Novalo delivering the funded engineering** and serving as Partner of record.
+
+> **The strategic case for AWS:** every Alloy tenant is an AWS Partner who, using Alloy, sources and closes *more* AWS business. Funding Alloy compounds AWS consumption twice — once through Alloy's own workload, and again through the partner pipeline Alloy generates.
 
 ---
 
-## 2. Current state (Current Operating Model)
+## 2. Customer & partner
+
+- **Customer / ISV:** Forj — owner and developer of Alloy. Global ambition: serve AWS Partners across EMEA, North America, and APAC.
+- **Partner of record:** Novalo Technologies AB — AWS Partner delivering the AWS-native architecture, migration, and ongoing optimisation. Novalo owns the SOW, the technical review, milestone delivery, and all AWS Partner Central / funding-portal submissions.
+
+---
+
+## 3. The workload — what Alloy is
+
+Alloy ingests company data globally, then for each company: **finds the website, sizes the firm (employees/revenue), detects the current cloud provider, scores AI & digitalisation maturity, identifies decision-makers, and recommends the AWS motion** — all surfaced to the partner through **"Smith," an AI sales co-pilot,** and through on-demand **prospect-list generation** ("build me a new-money MAP list of 1,000+-employee enterprises with cloud & AI signals"). The output is a continuously-refreshed, signal-scored pipeline of AWS opportunities for the partner.
+
+This is an **inherently AWS-aligned workload**: its purpose is to grow AWS adoption, and its core (LLM reasoning + retrieval over a large company knowledge base) is a textbook fit for **Amazon Bedrock + Knowledge Bases.**
+
+---
+
+## 4. Current state (Current Operating Model)
 
 | Dimension | Today |
 |---|---|
-| Application | Single-page React app (Alloy) + AI sales co-pilot ("Smith") |
-| Data store | Managed **PostgreSQL** (Supabase) — companies, contacts, scores, signals |
-| AI / inference | **Anthropic Claude** via a hardened server-side proxy (task-bound) |
-| Compute | Serverless edge functions (Deno) for enrichment, cloud detection, discovery |
-| Scheduled work | Daily discovery/enrichment cron |
-| Core pipeline | Discover Swedish companies → size (employees/revenue) → detect cloud provider → score AI/digitalisation maturity → find decision-makers → Smith co-pilot |
-| Constraints driving the move | Wants first-class GenAI tooling (Bedrock model choice, Knowledge Bases, Guardrails, Agents), AWS-grade data/identity/observability, EU data residency, and to be **co-sellable inside the AWS ecosystem** it serves |
+| Application | React SPA + "Smith" AI co-pilot + prospect-list generation |
+| Data store | Managed **PostgreSQL** — companies, contacts, signals, scores |
+| AI / inference | Third-party LLM API (Claude) via a hardened, task-bound proxy |
+| Compute | Serverless functions for enrichment, cloud detection, discovery |
+| Scheduled work | Daily discovery/enrichment jobs |
+| Drivers to move to AWS | First-class GenAI (Bedrock model choice, Knowledge Bases, Guardrails, Agents), AWS-grade data/identity/observability, **multi-region data residency for a global user base**, and native presence in the **AWS ecosystem Alloy serves** |
 
 ---
 
-## 3. Target-state architecture on AWS (Future Operating Model)
+## 5. Target-state architecture on AWS (Future Operating Model)
 
-**Capability → AWS service map** (this is the bill of materials behind the consumption forecast):
+| Alloy capability | AWS service |
+|---|---|
+| Smith co-pilot, scoring, summarisation (LLM reasoning) | **Amazon Bedrock** — Claude on Bedrock (like-for-like, low migration risk) |
+| Model flexibility | **Bedrock model families** (Anthropic, Meta, Mistral, Cohere, Amazon Nova, AI21, Stability) |
+| Maturity/fit scoring grounded in company & AWS knowledge (RAG) | **Knowledge Bases for Amazon Bedrock** |
+| Vector store | **Amazon Aurora PostgreSQL (pgvector)** (preferred) / **OpenSearch Serverless** |
+| Primary application database | **Amazon Aurora PostgreSQL** (Postgres-to-Postgres continuity) |
+| Agentic Smith + safety | **Bedrock Agents/AgentCore + Guardrails** |
+| Discovery / enrichment / cloud-detection jobs | **AWS Lambda + Step Functions** |
+| Daily discovery cron | **Amazon EventBridge Scheduler** |
+| API layer | **Amazon API Gateway** |
+| Containerised services | **Amazon ECS on AWS Fargate** |
+| Object storage (research, exports, KB sources) | **Amazon S3** |
+| Multi-tenant identity | **Amazon Cognito** |
+| Global frontend delivery | **Amazon CloudFront** |
+| Secrets / keys | **AWS Secrets Manager + KMS** |
+| Observability / cost governance | **Amazon CloudWatch, AWS Cost Explorer / Budgets** |
+| Resilience & DR (multi-region) | designed against **AWS Resilience Hub** targets |
 
-| Alloy capability | AWS service | Note |
-|---|---|---|
-| Smith co-pilot, scoring, summarisation (core LLM reasoning) | **Amazon Bedrock** | **Claude is available on Bedrock** → like-for-like, minimal model-migration risk |
-| Model flexibility | **Bedrock model families** (Anthropic/Claude lead; Meta, Mistral, Cohere, Amazon Nova, AI21, Stability) | Avoids single-model lock-in |
-| Maturity / fit scoring grounded in company data (RAG) | **Knowledge Bases for Amazon Bedrock** | Managed ingest → embeddings → retrieval |
-| Vector store | **Aurora PostgreSQL (pgvector)** *(preferred)* or **OpenSearch Serverless** | pgvector keeps Postgres continuity and a far lower monthly floor |
-| Primary application database | **Amazon Aurora PostgreSQL** | Postgres-to-Postgres continuity from Supabase |
-| Agentic Smith / multi-step tools + safety | **Bedrock Agents/AgentCore + Guardrails** | |
-| Discovery / enrichment / cloud-detection jobs | **AWS Lambda + Step Functions** | Replaces edge functions |
-| Daily discovery cron | **Amazon EventBridge Scheduler** → Step Functions | |
-| API layer | **Amazon API Gateway** | Fronts Lambda/Fargate |
-| Long-running/containerised services | **Amazon ECS on AWS Fargate** | |
-| Object storage (raw research, exports, KB sources) | **Amazon S3** | Also the standard KB data source |
-| Multi-tenant identity | **Amazon Cognito** | Tenant user pools |
-| Frontend delivery | **Amazon CloudFront** (+ S3 / Amplify) | |
-| Secrets / keys | **AWS Secrets Manager + KMS** | |
-| Observability / cost governance | **CloudWatch, Cost Explorer/Budgets** | Feeds the milestone & KPI reporting AWS expects |
-| Region | **eu-north-1 (Stockholm)** | EU data residency for Swedish customers |
-
-**Architecture narrative:** CloudFront → S3/Amplify (web) and API Gateway → Lambda/Fargate (app + Smith). Smith and the scoring engine call **Bedrock**; grounded answers retrieve from **Knowledge Bases** backed by **Aurora pgvector**. The discovery/enrichment pipeline runs as **EventBridge → Step Functions → Lambda**, persisting to **Aurora PostgreSQL** and **S3**. Identity via **Cognito**; secrets in **Secrets Manager/KMS**; everything observed in **CloudWatch** with **Budgets** guarding spend.
-
-> **Forecast driver:** the largest AWS line items for a GenAI SaaS are **Bedrock inference tokens + vector store + Aurora**. Build the year-1 run-rate primarily from *projected Bedrock token volume × per-tenant usage × tenant count* — that is the number that sizes ISV WMP.
+**Flow:** CloudFront → S3/Amplify (web) and API Gateway → Lambda/Fargate (app + Smith). Smith and the scoring engine call **Bedrock**; grounded answers retrieve from **Knowledge Bases** on **Aurora pgvector**. The discovery/enrichment pipeline runs **EventBridge → Step Functions → Lambda**, persisting to **Aurora** and **S3**. Identity via **Cognito**; secrets in **Secrets Manager/KMS**; observed in **CloudWatch** with **Budgets** governing spend. Multi-region from launch in **eu-north-1**, extending to **us-east-1** and an APAC region as the global user base grows.
 
 ---
 
-## 4. Business outcomes & KPIs
+## 6. Net-new AWS consumption — 3-year projection (the funding basis)
 
-**AWS value buckets (use AWS's own framing):**
-- **Business agility** — faster release cadence; new GenAI features (Knowledge Bases, Agents, Guardrails) ship without bespoke plumbing.
-- **Resilience** — managed, multi-AZ Aurora + serverless; EU residency.
-- **IT productivity** — managed Bedrock/KB replaces hand-rolled inference + retrieval infrastructure.
+Alloy is a **global** SaaS; AWS consumption scales with partner-tenants and their prospecting/AI usage. The dominant cost drivers are **Bedrock inference** (enrichment + Smith, per tenant) plus the **Aurora + vector + serverless** platform base.
 
-**Product KPIs (the ones to report against milestones):**
-- Companies discovered & enriched / month
-- Decision-makers identified / month
-- Smith co-pilot queries / month (Bedrock token volume)
-- Paying tenants (AWS partners) & net revenue retention
-- **Monthly AWS run-rate (the funding hero metric)**
+*Illustrative model — Forj/Novalo to confirm against the final plan:*
 
----
+| | Year 1 | Year 2 | Year 3 |
+|---|---|---|---|
+| Active partner-tenants (global) | ~75 | ~400 | ~1,200 |
+| Bedrock + attributable infra / tenant / mo | ~$120 | ~$140 | ~$160 |
+| Platform base / mo (Aurora, vector, Lambda, CloudFront, S3, Cognito) | ~$2.5k | ~$7k | ~$15k |
+| **Monthly AWS run-rate (≈)** | **~$11.5k** | **~$63k** | **~$207k** |
+| **Annualised AWS run-rate (ARR, ≈)** | **~$140k** | **~$760k** | **~$2.5M** |
 
-## 5. Consumption forecast — projected AWS ARR (the hero number)
-
-*Forj to insert real figures; the model below shows the method and that the ISV WMP floor is comfortably cleared.*
-
-**Method:** `monthly AWS ≈ Bedrock tokens (enrichment + Smith) + Aurora + vector store + serverless/egress`.
-
-Illustrative, conservative single-region model (replace with Forj's plan):
-
-| Driver | Assumption (illustrative) | Monthly AWS |
-|---|---|---|
-| Bedrock inference (enrichment + Smith, all tenants) | scales with tenants & usage | $X |
-| Aurora PostgreSQL (Serverless v2) | always-on app DB | $Y |
-| Vector store (Aurora pgvector) | KB retrieval | $Z |
-| Lambda/Step Functions/EventBridge/S3/CloudFront/Cognito | pipeline + delivery | $W |
-| **Total monthly run-rate** | | **$T** |
-| **Year-1 AWS ARR (×12)** | | **$T × 12** |
-
-**Eligibility gate:** ISV WMP requires a minimum of **$36,000 AWS ARR within 12 months** for the migrated workload *(confirm current figure with AWS)* — i.e. an average AWS run-rate of **$3,000/month**, which a multi-tenant GenAI SaaS clears quickly. Provide a **3-year ramp** (conservative + most-likely scenarios; keep to 3–4 scenarios total) per AWS Prescriptive Guidance.
+**Year-1 ARR (~$140k) clears the ISV WMP minimum (≥ $36k AWS ARR in 12 months) by roughly 4×**, and the trajectory reaches a **~$2.5M annual AWS run-rate by Year 3** as Alloy scales across EMEA, North America, and APAC. (Figures are planning estimates to be validated jointly; the model is bottoms-up from tenant count × per-tenant Bedrock usage + platform base.)
 
 ---
 
-## 6. Funding plan (programs, in sequence)
+## 7. Business outcomes & KPIs
 
-| Program | Role in the plan | What it funds | Who applies | Figure *(confirm w/ AWS)* |
-|---|---|---|---|---|
-| **GenAI PoC funding** (+ optional **GAIIC**) | **On-ramp** | A scoped PoC of the Bedrock+Aurora build (e.g. Smith + enrichment) | **Novalo** | ≈ lower of 10% of yr-1 spend **or** SOW cost; requires **pre-approval email before work starts** |
-| **ISV Workload Migration Program (ISV WMP)** | **Primary** | Credits/cash offsetting the SaaS build on AWS | **Novalo** | ≈ **10–15% of post-migration AWS ARR**; min **$36k ARR/12mo**; requires a technical review/**FTR** |
-| **AWS Generative AI Innovation Center (GAIIC)** | Expert delivery + credits behind the PoC | AWS AI scientists co-build; credits | Via AWS/partner | Pool program — name as the delivery mechanism, **don't quote a per-customer grant** |
-| **AWS Activate** | Credits for **Forj directly** | AWS credits (incl. **Bedrock 3P models like Claude**) | **Forj** | Founders **$1,000**; Portfolio **up to $100,000** (needs an Activate Provider Org ID) |
-| **APN Innovation Sandbox** credits | Covers **Novalo's dev-env AWS bill** during the build | Promotional credits | **Novalo** | up to ~3 months dev usage |
-| **Marketing Development Funds (MDF)** | Joint demand-gen for the launch | Marketing (not build) | **Novalo** | Pay-first/claim-back; **claim within 30 days** |
-| **ISV Accelerate + AWS Marketplace** | **Phase 2** co-sell / scale | Co-sell incentives, reduced listing fee | **Forj/Novalo** | Later-stage; needs Marketplace GA listing + opportunity history |
-| **Classic MAP** | Secondary/fallback framing only | Migration funding vs realized consumption | Novalo (Migration Competency) | Awkward fit — no on-prem estate |
+**Value to AWS:** net-new Bedrock/Aurora/serverless consumption **plus** the partner pipeline Alloy generates (more AWS deals sourced by Alloy's tenants). **Value to Forj:** managed GenAI velocity, global multi-region scale, AWS-ecosystem co-sell.
 
-**Critical rules (from AWS):** PoC funding **cannot be combined** with MAP/WMP simultaneously — it is **sequential**, and the PoC amount is **deducted** from the later WMP award. All partner funding flows through the **AWS Partner Funding Portal (APFP)** via SSO from **Partner Central**, requires an **AWS Payee Central** account, and **credit/PoC work must be pre-approved in writing before it begins** (pre-approval work is unclaimable).
+**KPIs reported against milestones:**
+- Monthly AWS run-rate (the funding hero metric)
+- Active partner-tenants (global) & net revenue retention
+- Bedrock token volume (Smith queries + enrichment)
+- Companies enriched / decision-makers found / prospect-lists generated per month
+- AWS opportunities sourced *by Alloy's tenants* (ecosystem pipeline)
 
 ---
 
-## 7. Delivery plan & milestones (milestones are what AWS pays against)
+## 8. Funding requested
 
-1. **Register** Forj as an **ACE opportunity** (APN Customer Engagement) in Partner Central.
-2. **GenAI PoC** (Novalo-led, GAIIC optional): stand up Smith + enrichment on **Bedrock + Aurora pgvector**; prove quality, latency, EU residency. *(Secure the pre-approval email first.)*
-3. **FTR / WAFR** on the Alloy workload — the technical gate for ISV WMP/Accelerate (also unlocks **Well-Architected ISV Funding** credits).
-4. **Convert to ISV WMP**, sized at ~10–15% of projected post-migration AWS ARR (PoC deducted). Migrate the full workload in waves, each wave a **milestone tied to realized AWS consumption**.
-5. **List on AWS Marketplace** + pursue **ISV Accelerate** co-sell as Alloy scales.
-6. In parallel, Novalo taps **Innovation Sandbox** (dev credits) and **MDF** (launch marketing); Forj applies for **Activate**.
+1. **Generative-AI Proof-of-Concept (on-ramp).** Fund a scoped PoC — Smith + the enrichment pipeline on **Bedrock + Aurora pgvector** — to validate quality, latency, and EU residency before the full migration. *(We will secure written pre-approval before any funded work begins.)* AWS's **Generative AI Innovation Center** engagement is welcomed to co-build and de-risk.
+2. **ISV Workload Migration Program (primary).** On a successful PoC, convert to ISV WMP funding sized against the projected post-migration AWS ARR in §6, with milestones tied to realised AWS consumption.
+3. **Supporting vehicles** we intend to use alongside: **AWS Activate** (Forj startup credits, incl. Bedrock model credits), **APN Innovation Sandbox** credits (Novalo's build/dev AWS usage), **Marketing Development Funds** (joint launch demand-gen), and — as Alloy reaches GA on **AWS Marketplace** — **ISV Accelerate** co-sell.
 
-Each milestone carries: deliverable, owner (Novalo vs Forj), date, and the AWS run-rate it unlocks.
+*(We understand PoC and WMP/MAP funding are sequential, not stacked, and that the PoC amount is credited against the subsequent WMP award.)*
 
 ---
 
-## 8. Partner role — Novalo
+## 9. Delivery plan & milestones
 
-- **Delivered (funded) engineering:** Bedrock integration (Claude on Bedrock + Guardrails + Agents), Knowledge Bases/pgvector RAG, Supabase→Aurora migration, the Lambda/Step Functions enrichment pipeline, Cognito multi-tenant identity, CloudFront/API Gateway, observability & cost governance.
-- **Owns:** the SOW, the technical review/FTR remediation, milestone delivery and reporting, and all Partner-Central/APFP submissions.
-- **Partner status to confirm:** Novalo's current stage (**Validated / Differentiated**) and designations (ISV WMP enrolment; Migration Competency if MAP is used) — these gate which doors open.
+| # | Milestone | Owner | Unlocks |
+|---|---|---|---|
+| 1 | Register Forj as an ACE opportunity in AWS Partner Central | Novalo | Engagement of record |
+| 2 | **GenAI PoC**: Smith + enrichment on Bedrock + Aurora pgvector (EU) | Novalo | Validated AWS-native core |
+| 3 | **Foundational Technical Review** (or WAFR via a WAPP partner) on the Alloy workload | Novalo | ISV WMP technical gate; Well-Architected ISV credits |
+| 4 | **ISV WMP**: migrate full workload in waves; cut over from Supabase → Aurora | Novalo | Net-new AWS ARR (§6), milestone funding |
+| 5 | Multi-region rollout (US, APAC) for the global user base | Novalo | ARR ramp Year 2–3 |
+| 6 | **AWS Marketplace** GA listing + **ISV Accelerate** co-sell | Forj + Novalo | Co-sold growth |
 
----
-
-## 9. Why AWS approves this (and the pitfalls we've avoided)
-
-**Approves because:** it is anchored on **net-new AWS consumption** with an explicit year-1 run-rate; the scope and **AWS-native target architecture** are concrete and reviewable; **milestones tie to realized revenue**; outcomes/KPIs are measurable; it is **partner-delivered** (Novalo de-risks scope/architecture for AWS); and it follows the **PoC→production** path correctly with pre-approval and an FTR.
-
-**Pitfalls avoided:** no vague forecast, no open-ended "managed services" framing, no stacking of incompatible programs, no work started before approval, no missed claim windows.
-
----
-
-## 10. Submission checklist (artifacts AWS expects)
-
-- [ ] ACE opportunity registered for Forj
-- [ ] Fund Request(s) raised in APFP (PoC first, then ISV WMP)
-- [ ] **This use case / business case** (current state → AWS-native target → KPIs → consumption forecast → milestones)
-- [ ] **SOW / project plan** for the funded engineering
-- [ ] **Projected AWS ARR / consumption model** (the sizing input)
-- [ ] **Target-state architecture diagram** (from §3)
-- [ ] **FTR (or WAFR via a WAPP partner / SOC 2 Type II)** on the Alloy workload
-- [ ] **Pre-approval email** captured before any funded work starts
-- [ ] **AWS Payee Central** account active (for cash/credit disbursement)
+Each milestone carries a deliverable, owner, date, and the AWS run-rate it unlocks.
 
 ---
 
-## Appendix — figures Novalo must confirm with the AWS PDM/PSA (do NOT present as fact)
+## 10. Partner commitments — Novalo
 
-1. Exact **ISV WMP / MAP** funding percentages and caps (live only in the gated Program Funding Guide).
-2. Exact **GenAI/PoC** cap (public sources conflict; likely program/region-specific).
-3. Whether the ISV WMP technical gate is now formally the **FTR** vs. the older WMP-PSA review.
-4. **Novalo's** current partner stage/designations (Validated/Differentiated; ISV WMP enrolment; Migration Competency).
-5. **Forj's Activate** eligibility (Founders $1k is straightforward; Portfolio $100k needs an Activate Provider Org ID).
-6. Current **MAP** thresholds (e.g. "MAP Lite" minimum) — secondary-source figures only.
+Novalo delivers the funded engineering: **Bedrock integration** (Claude on Bedrock + Guardrails + Agents), **Knowledge Bases / pgvector RAG**, the **Supabase → Aurora** migration, the **Lambda/Step Functions** enrichment pipeline, **Cognito** multi-tenant identity, **CloudFront/API Gateway**, and **observability & cost governance** — and owns the SOW, the FTR/WAFR and remediation, milestone reporting, and all Partner Central / funding-portal submissions.
 
 ---
 
-*Sources: AWS APN blog (ISV WMP), AWS ISV WMP / MAP / Activate / ISV Accelerate / Bedrock / Knowledge Bases / FTR pages, AWS Partner Central funding docs, AWS Prescriptive Guidance (business case). Compiled 2026-06-01; verify program terms before submission.*
+## 11. Requested next steps from AWS
+
+1. Confirm the **PoC funding instrument and pre-approval** so funded work can begin.
+2. Assign a **Partner Solutions Architect** for the PoC review / FTR path.
+3. Confirm the **ISV WMP fit and sizing** against the §6 projection.
+4. Advise on **AWS Generative AI Innovation Center** participation for the PoC.
+
+**Novalo contact:** Anders — Novalo Technologies AB — *[insert email/phone]*
+
+---
+---
+
+> ### ⛔ INTERNAL — Novalo only. **Delete this section before submitting to AWS.**
+>
+> **Vehicle & mechanics (from research; confirm with the AWS PDM/PSA against the gated Program Funding Guide):**
+> - **ISV WMP** is the primary fit (SaaS workload → net-new ARR), publicly described as **~10–15% of post-migration AWS ARR**, min **$36k ARR/12mo**, partner-applied, **FTR**-gated. *Do not quote the % to AWS — state the ARR projection and let AWS size it.*
+> - **GenAI PoC**: ~lower of **10% of year-1 spend or SOW cost**; **pre-approval email required before any work**; PoC is **deducted** from a later WMP award; **cannot** be stacked with WMP/MAP simultaneously.
+> - **AWS Activate**: Founders **$1k**; Portfolio **up to $100k** (needs an Activate **Provider Org ID** — use Forj's VC/accelerator). Activate credits are **redeemable on Bedrock 3P models (Claude)**.
+> - **Innovation Sandbox** (dev-env AWS credits) + **MDF** (pay-first, claim within 30 days) — Novalo-side.
+> - **ISV Accelerate / Marketplace**: later-stage; needs a Marketplace GA listing + opportunity history.
+> - All funding flows through **AWS Partner Central → AWS Partner Funding Portal (APFP)**; requires an **AWS Payee Central** account.
+> - **Figures to confirm before submission:** exact ISV WMP/MAP %/caps; exact GenAI PoC cap; whether the WMP technical gate is now formally the FTR; Novalo's current partner stage (Validated/Differentiated) & designations; Forj's Activate tier eligibility.
+> - **The §6 numbers are illustrative** — replace with Forj's real tenant/usage plan before sending; keep them defensible (bottoms-up).
+
+*Compiled from AWS public documentation (ISV WMP / MAP / Activate / ISV Accelerate / Bedrock / Knowledge Bases / FTR pages, AWS Partner Central funding docs, AWS Prescriptive Guidance business-case framework), 1 June 2026.*

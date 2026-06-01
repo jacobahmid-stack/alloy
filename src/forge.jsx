@@ -265,6 +265,52 @@ function SmithDiscover({ project, onImportRows, flash }) {
     </div>
   );
 }
+// Smith's Brain tab — see what Alloy knows (ingested AWS docs + playbook) and query it directly.
+function SmithKnowledge() {
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [results, setResults] = useState(null);
+  const [docs, setDocs] = useState([]);
+  const fld = { width: "100%", background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 3, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
+  useEffect(() => { kbList().then(setDocs).catch(() => {}); }, []);
+  async function ask() {
+    if (!q.trim()) return;
+    setBusy(true); setResults(null);
+    try { setResults(await kbSearch(q.trim(), 8)); } catch { setResults([]); }
+    finally { setBusy(false); }
+  }
+  const totalChunks = docs.reduce((s, d) => s + (d.chunks || 0), 0);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
+      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Alloy's brain — Smith grounds his AWS answers in this. Ask it anything about AWS funding, plays, services or migration.</div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input style={fld} placeholder="e.g. how does ISV WMP funding work?" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") ask(); }} />
+        <Btn variant="primary" size="sm" onClick={ask} disabled={busy}>{busy ? <Spinner size={12} /> : "Ask"}</Btn>
+      </div>
+      {results && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 300, overflowY: "auto" }}>
+          {results.length === 0 && <div style={{ fontSize: 11.5, color: C.dim2 }}>Nothing in the brain matched — try different words.</div>}
+          {results.map((r, i) => (
+            <div key={i} style={{ background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 4, padding: "7px 9px" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".03em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>{r.title}{r.page ? ` · p.${r.page}` : ""}</div>
+              <div style={{ fontSize: 11.5, color: C.dim, marginTop: 3, lineHeight: 1.5 }}>{String(r.content).slice(0, 320).trim()}…</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 2, borderTop: `1px solid ${C.line}`, paddingTop: 8 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: C.dim2, fontFamily: FONT_HEAD, marginBottom: 5 }}>In the brain {totalChunks ? `· ${totalChunks.toLocaleString()} passages` : ""}</div>
+        {docs.length === 0 && <div style={{ fontSize: 11, color: C.dim2 }}>Loading…</div>}
+        {docs.map((d) => (
+          <div key={d.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 11, color: C.dim, padding: "2px 0" }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.kind === "playbook" ? "🧠 " : "📄 "}{d.title}</span>
+            <span style={{ color: C.dim2, flexShrink: 0 }}>{(d.chunks || 0).toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 function dayStr(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -670,6 +716,29 @@ async function callClaude({ user, tools, maxTokens = 2000, task, system }) {
     try { const j = JSON.parse(detail); msg += " - " + (j?.error?.message || j?.message || detail.slice(0, 160)); } catch { if (detail) msg += " - " + detail.slice(0, 160); }
     throw new Error(msg);
   }
+}
+
+// Retrieve from Alloy's brain (kb-search edge fn): hybrid semantic + full-text over the ingested
+// AWS docs + Smith playbook. Returns [{title, source, page, content, similarity}]. Best-effort.
+async function kbSearch(query, k = 6) {
+  try {
+    const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
+    const base = (cfg.url || "").replace(/\/+$/, ""); const ak = cfg.anonKey || "";
+    if (!base || !query) return [];
+    const r = await fetch(base + "/functions/v1/kb-search", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ak, apikey: ak }, body: JSON.stringify({ query, k }) });
+    const j = await r.json();
+    return Array.isArray(j.results) ? j.results : [];
+  } catch { return []; }
+}
+async function kbList() {
+  try {
+    const cfg = (typeof window !== "undefined" && window.__ALLOY_SUPABASE__) || {};
+    const base = (cfg.url || "").replace(/\/+$/, ""); const ak = cfg.anonKey || "";
+    if (!base) return [];
+    const r = await fetch(base + "/functions/v1/kb-search", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + ak, apikey: ak }, body: JSON.stringify({ list: true }) });
+    const j = await r.json();
+    return Array.isArray(j.docs) ? j.docs : [];
+  } catch { return []; }
 }
 
 function extractJSON(text) {
@@ -3030,7 +3099,14 @@ The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Mod
     }
     filesNote = `\n\nATTACHED FILES (the rep attached these for you to work with — use them as the primary material for the question; extract tasks/asks, analyze, draft or author from them as asked; never invent content that isn't here):\n${blocks.join("\n\n")}`;
   }
-  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${boxNote}${filesNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
+  // Ground AWS facts in Alloy's brain (ingested AWS docs + Smith playbook). Best-effort; self-gates to
+  // empty when nothing relevant is found, so non-AWS chit-chat isn't polluted.
+  let kbNote = "";
+  try {
+    const hits = await kbSearch(`${question} ${focusCompany?.name || ""}`.trim(), 6);
+    if (hits.length) kbNote = `\n\nALLOY KNOWLEDGE BASE (retrieved from ingested AWS documentation + Forj's AWS playbook — ground any AWS program / service / funding fact in THIS, and cite it as [source p.N] when you use it; if something isn't here and you're unsure, say so rather than guessing):\n` + hits.map((h) => `[${h.title}${h.page ? " p." + h.page : ""}] ${String(h.content).slice(0, 650)}`).join("\n\n");
+  } catch {}
+  const user = `${SMITH_VOICE}\n\n${context}${focusNote}${boxNote}${kbNote}${filesNote}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
   const tools = web ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : undefined;
   return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
@@ -7313,7 +7389,7 @@ export default function Forge() {
               </div>
               {/* tabs — Chat / FAQ / Contact (ABK-style self-serve) */}
               <div style={{ display: "flex", gap: 2, marginBottom: 12, borderBottom: `1px solid ${C.line}` }}>
-                {[["chat", "Chat"], ["discover", "Lists"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
+                {[["chat", "Chat"], ["discover", "Lists"], ["brain", "Brain"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
                   <button key={k} onClick={() => setSmithTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${smithTab === k ? C.accent : "transparent"}`, color: smithTab === k ? C.accent : C.dim, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", fontFamily: FONT_HEAD, cursor: "pointer", padding: "3px 11px 8px" }}>{lbl}</button>
                 ))}
               </div>
@@ -7335,6 +7411,7 @@ export default function Forge() {
                 </>
               )}
               {smithTab === "discover" && <SmithDiscover project={project} onImportRows={handleImportRows} flash={flash} />}
+              {smithTab === "brain" && <SmithKnowledge />}
               {smithTab === "faq" && <SmithFAQ />}
               {smithTab === "contact" && <SmithContact project={project} flash={flash} />}
             </div>
