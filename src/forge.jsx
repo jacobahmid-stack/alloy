@@ -117,6 +117,41 @@ function daysAgo(iso) {
   if (!iso) return null;
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
 }
+// Smith launcher tabs — lightweight self-serve help (the ABK "Chat / FAQ / Contact" pattern).
+function SmithFAQ() {
+  const QA = [
+    ["Which play fits an account?", "Migrate (MAP) = not on AWS yet · Modernize = already on AWS · GenAI = an AWS-funded pilot · Greenfield = net-new build · Resell = own the AWS billing on accounts already consuming AWS."],
+    ["What does “fundability” mean?", "A deterministic 0–100 score for how well the account fits an AWS funding program — no LLM guess, just the rules. Higher = easier to co-fund."],
+    ["How do I find a decision-maker?", "Open the company card → Find decision-makers. Smith searches for IT/digitalisation owners + their LinkedIn (it advises — it never emails anyone for you)."],
+    ["What's the Resell ARR estimate?", "A rough band from the account's revenue + the AWS service footprint we detect. It's directional — the exact spend is owner-only until you win the billing relationship."],
+    ["Is the “on AWS” call reliable?", "Yes — it's anchored on the apex host's own ASN. ‘High’ means the site's real host is AWS; ‘Cloudflare’ means the origin is hidden; a stray asset alone never reads as AWS."],
+    ["Can Smith send or file anything?", "No. Smith advises and drafts — it never sends an email, saves a contact, or files with AWS on its own. You stay in control of every action."],
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
+      {QA.map(([q, a], i) => (
+        <div key={i} style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 4, padding: "10px 12px" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 4, fontFamily: FONT_BODY }}>{q}</div>
+          <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>{a}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function SmithContact({ project }) {
+  const row = { fontSize: 12.5, color: C.text, lineHeight: 1.6 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
+      <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>Need a human? Reach the {MAKER} team — we build and run {BRAND} with you.</div>
+      <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 4, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={row}><strong>Email</strong> · <a href="mailto:jacob.ahmid@gmail.com" style={{ color: C.blue, textDecoration: "none" }}>jacob.ahmid@gmail.com</a></div>
+        {project?.partner?.name && <div style={row}><strong>Partner</strong> · {project.partner.name}</div>}
+        <div style={row}><strong>Programs</strong> · AWS MAP · POC GenAI credits · Greenfield PGP · Marketplace</div>
+      </div>
+      <div style={{ fontSize: 10.5, color: C.dim2, lineHeight: 1.5 }}>{POWERED_BY}. Smith runs on AWS.</div>
+    </div>
+  );
+}
 function dayStr(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -6875,6 +6910,7 @@ export default function Forge() {
   // floating panel works on cards/lists/funding too, not just the dashboard. ---
   const [smithOpen, setSmithOpen] = useState(false);
   const [smithFocus, setSmithFocus] = useState(false); // chat-only mode (hide the rec cards)
+  const [smithTab, setSmithTab] = useState("chat"); // launcher panel: chat | faq | contact
   const [smithSeed, setSmithSeed] = useState(""); // text passed from the command bar's "Ask Smith"
   const [smithTracks, setSmithTracks] = useState({});
   useEffect(() => {
@@ -7158,19 +7194,31 @@ export default function Forge() {
                   <button onClick={() => { setSmithOpen(false); setSmithFocus(false); }} style={{ background: "transparent", border: "none", color: C.dim, fontSize: 18, lineHeight: 1, cursor: "pointer", padding: 2 }}>×</button>
                 </div>
               </div>
-              <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
-                onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
-                onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
-              <SmithChat
-                project={project}
-                projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
-                trackMap={smithTracks}
-                contacts={contacts}
-                recs={smithLauncherRecs}
-                seed={smithSeed}
-                onClearSeed={() => setSmithSeed("")}
-                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} flash={flash}
-                focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
+              {/* tabs — Chat / FAQ / Contact (ABK-style self-serve) */}
+              <div style={{ display: "flex", gap: 2, marginBottom: 12, borderBottom: `1px solid ${C.line}` }}>
+                {[["chat", "Chat"], ["faq", "FAQ"], ["contact", "Contact"]].map(([k, lbl]) => (
+                  <button key={k} onClick={() => setSmithTab(k)} style={{ background: "transparent", border: "none", borderBottom: `2px solid ${smithTab === k ? C.accent : "transparent"}`, color: smithTab === k ? C.accent : C.dim, fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", fontFamily: FONT_HEAD, cursor: "pointer", padding: "3px 11px 8px" }}>{lbl}</button>
+                ))}
+              </div>
+              {smithTab === "chat" && (
+                <>
+                  <SmithPanel recs={smithLauncherRecs} greeting={smithGreeting} variant="rail"
+                    onOpen={(id) => { setSelected(id); setSmithOpen(false); }}
+                    onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); setSelected(null); setSmithOpen(false); }} />
+                  <SmithChat
+                    project={project}
+                    projCompanies={companies.filter((c) => c.project_id === activeProject && c.list_tag !== "archived_shell")}
+                    trackMap={smithTracks}
+                    contacts={contacts}
+                    recs={smithLauncherRecs}
+                    seed={smithSeed}
+                    onClearSeed={() => setSmithSeed("")}
+                    onOpen={(id) => { setSelected(id); setSmithOpen(false); }} flash={flash}
+                    focusCompany={selectedCompany} onSaveToCard={saveSmithToCard} />
+                </>
+              )}
+              {smithTab === "faq" && <SmithFAQ />}
+              {smithTab === "contact" && <SmithContact project={project} />}
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker, forging the pipeline" className="smith-launch"
