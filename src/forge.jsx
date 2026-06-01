@@ -2582,8 +2582,19 @@ function smithRecommendations(projCompanies, trackMap, contactSet, activities, o
 }
 
 // Build a compact, grounded CONTEXT block for Smith's chat from the real loaded data, then
+// ---- SMITH'S VOICE — one character, reused across chat / drafts / briefing ----------------
+// Forj forges the Alloy; Smith works the forge. He's a warm, seasoned craftsman: a peer who
+// knows the AWS-funding trade cold, takes quiet pride in good work, and never fakes it.
+// This is appended client-side to ground tone; the proxy's smith_chat system carries the rules.
+const SMITH_VOICE = `You are Smith — Forj's AWS sales co-worker inside Alloy. Forj forges the Alloy; you work the forge.
+Character: a warm, seasoned craftsman. You're a peer who has worked hundreds of AWS deals, not an eager assistant. You take quiet pride in a well-built pipeline and you genuinely want the rep to win.
+Voice: warm but economical; Nordic-understated, never hype. Encouraging without being soft — you acknowledge good work, then point at the next move. You speak AWS-funding natively (MAP, MAP-Modernize, POC credits, Greenfield/PGP, ISV/WMP, ACE, MDF) and explain a term only when it helps.
+Always: name the account + the number that matters + one concrete next move. Flag risk plainly ("this is a guess", "30 days cold"). Be brief — a busy AE is reading between calls.
+Never: emoji spam, "As an AI", "Great question!", fake urgency, marketing fluff, or inventing a company/number/contact you don't have. If you don't know, say so and say how to find out.
+Integrity: you ADVISE, you don't act. You'd never send or file something in the rep's name — out of respect, not limitation. You draft; they send. Say so when relevant ("I drafted it — you send it").`;
+
 // ask claude-proxy (task smith_chat). Read-only: Smith advises, never acts. Returns text.
-async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs }) {
+async function smithChat({ question, history, project, projCompanies, trackMap, contacts, recs, web }) {
   const contactSet = new Set((contacts || []).map((x) => x.company_id));
   const byTrack = {};
   for (const c of projCompanies) { const t = (trackMap[c.id] && trackMap[c.id].primary_track) || "NONE"; (byTrack[t] = byTrack[t] || []).push(c); }
@@ -2612,8 +2623,12 @@ ${recLines || "(none)"}
 
 The plays = AWS funding programs: Migrate(MAP, move existing estate to AWS), Modernize(MAP-Modernize, already on AWS → optimize/resell/expand), GenAI(POC credits, net-new GenAI pilot), Greenfield(PGP/Partner-led, net-new build), Marketplace(ISV-WMP).`;
   const convo = (history || []).slice(-6).map((m) => `${m.role === "user" ? "REP" : "SMITH"}: ${m.text}`).join("\n");
-  const user = `${context}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — concise, concrete, grounded in the context above.`;
-  return await callClaude({ user, task: "smith_chat", maxTokens: 700 });
+  const webNote = web
+    ? `\n\nWEB SEARCH IS ON: for questions about what's new / recent signals at a COMPANY (funding, leadership change, hiring, product, cloud move), use web_search and cite what you find. Research the COMPANY for B2B context only — not private detail on individuals. If search returns nothing solid, say so; never fabricate a signal.`
+    : "";
+  const user = `${SMITH_VOICE}\n\n${context}${webNote}\n\n${convo ? "CONVERSATION SO FAR:\n" + convo + "\n\n" : ""}REP'S QUESTION: ${question}\n\nAnswer as Smith — in character, grounded in the context above.`;
+  const tools = web ? [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }] : undefined;
+  return await callClaude({ user, task: "smith_chat", maxTokens: 900, tools });
 }
 
 // Deterministic AWS cost estimate for the MAP fund request. Itemizes the SAME spend figure
@@ -4151,23 +4166,30 @@ function SmithCommandBar({ companies, onLookup, onOpen, onAskSmith }) {
 // SmithChat — conversational Smith inside the launcher (Phase 2). Grounded in the rep's
 // real pipeline via smithChat(); read-only (advises, never acts). seed = optional first
 // question passed from the command bar's "Ask Smith".
-function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen }) {
+function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onClearSeed, onOpen, flash }) {
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [web, setWeb] = useState(false);
+  const [copied, setCopied] = useState(-1);
   const scrollRef = useRef(null);
-  async function send(text) {
+  async function send(text, opts = {}) {
     const q = (text != null ? text : input).trim();
     if (!q || busy) return;
+    const useWeb = opts.web != null ? opts.web : web;
     setInput("");
     const next = [...msgs, { role: "user", text: q }];
-    setMsgs(next); setBusy(true);
+    setMsgs(next); setBusy(useWeb ? "web" : true);
     try {
-      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs });
+      const answer = await smithChat({ question: q, history: next, project, projCompanies, trackMap, contacts, recs, web: useWeb });
       setMsgs((m) => [...m, { role: "smith", text: (answer || "").trim() || "I didn't get a response — try rephrasing." }]);
     } catch (e) {
       setMsgs((m) => [...m, { role: "smith", text: "Couldn't reach the model: " + (e?.message || e) }]);
     } finally { setBusy(false); }
+  }
+  function copy(text, i) {
+    try { navigator.clipboard.writeText(text); setCopied(i); flash && flash("Copied to clipboard"); setTimeout(() => setCopied(-1), 1500); }
+    catch { flash && flash("Copy failed — select the text manually"); }
   }
   // fire the seeded question once
   useEffect(() => { if (seed) { send(seed); onClearSeed && onClearSeed(); } /* eslint-disable-next-line */ }, [seed]);
@@ -4175,13 +4197,27 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   const suggestions = ["Who should I call first today?", "Which Modernize accounts have no contact?", "Draft an opener for my top Migrate account"];
   return (
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2, marginBottom: 8, fontFamily: FONT_HEAD }}>Ask Smith</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim2, fontFamily: FONT_HEAD }}>Ask Smith</span>
+        <span style={{ flex: 1 }} />
+        <button onClick={() => setWeb((v) => !v)} title="Let Smith search the web for fresh signals on a company"
+          style={{ display: "flex", alignItems: "center", gap: 5, background: web ? C.accent : "transparent", color: web ? "#fff" : C.dim2, border: `1px solid ${web ? C.accent : C.line2}`, borderRadius: 20, padding: "3px 9px", fontSize: 10.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>
+          <Icon name="search" size={11} color={web ? "#fff" : C.dim2} /> Web {web ? "on" : "off"}
+        </button>
+      </div>
       {msgs.length > 0 && (
         <div ref={scrollRef} style={{ maxHeight: 230, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
           {msgs.map((m, i) => (
-            <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "88%", background: m.role === "user" ? C.ink : C.panel, color: m.role === "user" ? C.cream : C.text, border: m.role === "user" ? "none" : `1px solid ${C.line}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
+            <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "90%" }}>
+              <div style={{ background: m.role === "user" ? C.ink : C.panel, color: m.role === "user" ? C.cream : C.text, border: m.role === "user" ? "none" : `1px solid ${C.line}`, borderRadius: 8, padding: "8px 11px", fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}</div>
+              {m.role === "smith" && m.text.length > 90 && (
+                <button onClick={() => copy(m.text, i)} style={{ marginTop: 3, background: "transparent", border: "none", color: copied === i ? C.green : C.dim2, fontSize: 10.5, cursor: "pointer", fontFamily: FONT_BODY, display: "flex", alignItems: "center", gap: 4, padding: "1px 2px" }}>
+                  <Icon name="copy" size={11} color={copied === i ? C.green : C.dim2} /> {copied === i ? "Copied" : "Copy"}
+                </button>
+              )}
+            </div>
           ))}
-          {busy && <div style={{ alignSelf: "flex-start", color: C.dim2, fontSize: 12, display: "flex", alignItems: "center", gap: 7, padding: "4px 2px" }}><Spinner size={12} /> Smith is thinking…</div>}
+          {busy && <div style={{ alignSelf: "flex-start", color: C.dim2, fontSize: 12, display: "flex", alignItems: "center", gap: 7, padding: "4px 2px" }}><Spinner size={12} /> {busy === "web" ? "Smith is searching the web…" : "Smith is thinking…"}</div>}
         </div>
       )}
       {msgs.length === 0 && (
@@ -4197,12 +4233,56 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1}
-          placeholder="Ask about your pipeline…"
+          placeholder={web ? "Ask Smith to research a prospect…" : "Ask about your pipeline, or draft an email…"}
           style={{ flex: 1, resize: "none", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 6, padding: "8px 10px", fontSize: 12.5, color: C.text, fontFamily: FONT_BODY, outline: "none", maxHeight: 90 }}
         />
         <button onClick={() => send()} disabled={busy || !input.trim()} style={{ background: C.ink, color: C.cream, border: "none", borderRadius: 6, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: busy || !input.trim() ? "default" : "pointer", opacity: busy || !input.trim() ? 0.5 : 1, fontFamily: FONT_HEAD }}>Send</button>
       </div>
-      <div style={{ fontSize: 10, color: C.dim2, marginTop: 6 }}>Smith advises from your live pipeline. He won't send or change anything.</div>
+      <div style={{ fontSize: 10, color: C.dim2, marginTop: 6 }}>Smith advises from your live pipeline and drafts for you. He won't send or change anything.</div>
+    </div>
+  );
+}
+
+// SmithBriefing — Smith's morning digest, shown in-app at the top of the dashboard.
+// Deterministic ($0): assembled from the recommendation engine + stale set + day's numbers,
+// phrased in Smith's warm-craftsman voice. Dismissible per day (localStorage). No external send.
+function smithBriefingLines({ greeting, recs, stale, fundingQualified, bookedNow }) {
+  const lines = [];
+  const top = recs[0];
+  if (top) {
+    lines.push(`${greeting}. ${recs.length} ${recs.length === 1 ? "play" : "plays"} in motion — and your sharpest one today is ${top.label}.`);
+    lines.push(`Start with ${top.company.name}${top.fundability != null ? ` (fundability ${top.fundability})` : ""}: ${top.reasonTag}. ${top.action}`);
+  } else {
+    lines.push(`${greeting}. Nothing scored into a play yet — cloud-check and score a few accounts and I'll line up the work.`);
+  }
+  const others = recs.slice(1).filter((r) => r.needyCount > 0);
+  if (others.length) lines.push("Also worth a look: " + others.map((r) => `${r.label} (${r.company.name})`).join(", ") + ".");
+  if (stale && stale.length) lines.push(`${stale.length} ${stale.length === 1 ? "deal is" : "deals are"} going cold — I've flagged them under Today so they don't slip.`);
+  if (fundingQualified) lines.push(`${fundingQualified} funding-qualified in the pipeline${bookedNow ? `, ${bookedNow} ${bookedNow === 1 ? "meeting" : "meetings"} booked` : ""}. Good base to forge from.`);
+  return lines;
+}
+function SmithBriefing({ greeting, recs, stale, fundingQualified, bookedNow, onOpen, onDismiss }) {
+  if (!recs || recs.length === 0) return null;
+  const lines = smithBriefingLines({ greeting, recs, stale, fundingQualified, bookedNow });
+  const top = recs[0];
+  return (
+    <div style={{ background: C.dark, border: `1px solid ${C.darkRule}`, borderRadius: 4, padding: "16px 18px", marginBottom: 20, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+        <span style={{ width: 22, height: 22, borderRadius: "50%", background: C.ink, border: `2px solid ${C.accent}`, color: C.cream, fontSize: 11, fontWeight: 700, fontFamily: FONT_HEAD, display: "flex", alignItems: "center", justifyContent: "center" }}>S</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.darkText, fontFamily: FONT_HEAD }}>Smith's morning briefing</span>
+        <span style={{ flex: 1 }} />
+        <button onClick={onDismiss} title="Dismiss for today" style={{ background: "transparent", border: "none", color: C.darkMuted, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>×</button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {lines.map((l, i) => (
+          <div key={i} style={{ fontSize: i === 0 ? 14.5 : 12.5, color: i === 0 ? C.cream : C.darkText, lineHeight: 1.5, fontFamily: i === 0 ? FONT_DISPLAY : FONT_BODY }}>{l}</div>
+        ))}
+      </div>
+      {top && (
+        <button onClick={() => onOpen(top.company.id)} style={{ marginTop: 12, background: C.accent, color: "#fff", border: "none", borderRadius: 3, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, display: "inline-flex", alignItems: "center", gap: 7 }}>
+          Work {top.company.name} <span style={{ fontSize: 14 }}>→</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -4317,6 +4397,24 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
     () => smithRecommendations(projCompanies, trackMap, smithContactSet, activities),
     [projCompanies, trackMap, smithContactSet, activities],
   );
+  // stale-deal count for the briefing (same rule as the Today "Going cold" group)
+  const staleCount = useMemo(() => {
+    const lastAct = {};
+    for (const a of (activities || [])) { const d = a && a.company_id; if (!d) continue; if (lastAct[d] === undefined || (a.created_at || "") > lastAct[d]) lastAct[d] = a.created_at || ""; }
+    let n = 0;
+    for (const c of projCompanies) {
+      if (c.stage === "vunnen" || c.stage === "forlorad") continue;
+      const last = lastAct[c.id];
+      const days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : Infinity;
+      if (c.stage === "mote_bokat" && days >= 3) n++;
+      else if (phaseOf(c.stage) === "pipeline" && days >= 30) n++;
+    }
+    return n;
+  }, [projCompanies, activities]);
+  // Morning briefing: show once per day per project unless dismissed.
+  const briefKey = "alloy:brief:" + project.id + ":" + dayStr(0);
+  const [briefDismissed, setBriefDismissed] = useState(() => { try { return localStorage.getItem(briefKey) === "1"; } catch { return false; } });
+  const dismissBrief = () => { setBriefDismissed(true); try { localStorage.setItem(briefKey, "1"); } catch {} };
 
   // per-projekt-statistik för översikten
   const projStats = projects.map((p) => {
@@ -4334,6 +4432,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
   return (
     <div>
+      {/* Smith's morning briefing — in-app digest, dismissible per day */}
+      {!briefDismissed && <SmithBriefing greeting={greeting} recs={smithRecs} stale={Array(staleCount)} fundingQualified={fundingQualified} bookedNow={bookedNow.length} onOpen={onOpen} onDismiss={dismissBrief} />}
+
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
 
@@ -6403,7 +6504,7 @@ export default function Forge() {
                 recs={smithLauncherRecs}
                 seed={smithSeed}
                 onClearSeed={() => setSmithSeed("")}
-                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} />
+                onOpen={(id) => { setSelected(id); setSmithOpen(false); }} flash={flash} />
             </div>
           )}
           <button onClick={() => setSmithOpen((v) => !v)} title="Smith — your AWS sales co-worker"
