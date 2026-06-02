@@ -6998,6 +6998,110 @@ function PartnerPortal({ project, onSignOut }) {
   );
 }
 
+// CALL-OUT CAMPAIGN — a focused outbound-calling cockpit. Builds a prioritised list of ICP-fit,
+// fundable accounts that have a contact to call, shows the phone + the play's opener, and one-tap
+// call outcomes (reuses OUTCOMES/logOutcome). The rep dials + dispositions; Alloy preps the list.
+function CallOutCampaign({ project, companies, contacts, activities, trackMap, onOpen, onOutcome, flash }) {
+  const PLAYN = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace" };
+  const [done, setDone] = useState(() => new Set());
+  const [filterPlay, setFilterPlay] = useState("all");
+  const [onlyPhone, setOnlyPhone] = useState(false);
+  const contactsByCo = useMemo(() => {
+    const m = {};
+    for (const c of (contacts || [])) { if (!c.company_id) continue; (m[c.company_id] = m[c.company_id] || []).push(c); }
+    return m;
+  }, [contacts]);
+  const lastTouchOf = useMemo(() => {
+    const m = {};
+    for (const a of (activities || [])) {
+      if (a.type !== "Call" && a.type !== "Meeting") continue;
+      const d = a.company_id; if (!d) continue;
+      if (!m[d] || (a.created_at || "") > m[d]) m[d] = a.created_at || "";
+    }
+    return m;
+  }, [activities]);
+  const list = useMemo(() => {
+    const phoneOf = (cs) => (cs.find((x) => x.phone && String(x.phone).trim()) || {}).phone || "";
+    return (companies || [])
+      .filter((c) => c.project_id === project.id && isActiveCompany(c) && !isTooLarge(c) && c.stage !== "vunnen" && c.stage !== "forlorad")
+      .map((c) => {
+        const cs = contactsByCo[c.id] || [];
+        const fe = trackMap[c.id] || {};
+        const last = (lastTouchOf[c.id] || "").slice(0, 10);
+        const daysSince = last ? Math.max(0, Math.floor((Date.parse(dayStr(0)) - Date.parse(last)) / 86400000)) : Infinity;
+        return { c, cs, fe, track: fe.primary_track || null, phone: phoneOf(cs), last, daysSince, fund: fe.fundability_score || 0 };
+      })
+      .filter((x) => x.cs.length > 0 || x.c.is_hot)
+      .filter((x) => filterPlay === "all" || x.track === filterPlay)
+      .filter((x) => !onlyPhone || x.phone)
+      .sort((a, b) => (b.daysSince - a.daysSince) || (b.fund - a.fund))
+      .slice(0, 80);
+  }, [companies, project.id, contactsByCo, lastTouchOf, trackMap, filterPlay, onlyPhone]);
+  const todays = (activities || []).filter((a) => (a.type === "Call" || a.type === "Meeting") && isToday(a.created_at)).length;
+  const queue = list.filter((x) => !done.has(x.c.id));
+  const plays = ["all", "MAP", "MAP_MODERNIZE", "POC", "GREENFIELD_PGP"];
+  async function disp(id, key) {
+    try { await onOutcome(id, key); setDone((s) => { const n = new Set(s); n.add(id); return n; }); }
+    catch (e) { flash && flash("Couldn't log: " + (e?.message || e)); }
+  }
+  return (
+    <div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>Call-out campaign</div>
+        <div style={{ fontSize: 13, color: C.dim, marginTop: 3 }}>{project.name} · <strong style={{ color: C.accent }}>{queue.length}</strong> to call · <strong style={{ color: C.green }}>{todays}</strong> logged today</div>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        {plays.map((p) => (
+          <button key={p} onClick={() => setFilterPlay(p)} style={{ background: filterPlay === p ? C.accent : C.panel, color: filterPlay === p ? C.onAccent : C.dim, border: `1px solid ${filterPlay === p ? C.accent : C.line}`, borderRadius: 20, padding: "4px 11px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: FONT_HEAD, letterSpacing: ".04em" }}>{p === "all" ? "All plays" : (PLAYN[p] || p)}</button>
+        ))}
+        <span style={{ flex: 1 }} />
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: C.dim, cursor: "pointer" }}>
+          <input type="checkbox" checked={onlyPhone} onChange={(e) => setOnlyPhone(e.target.checked)} style={{ accentColor: C.accent }} /> Has phone
+        </label>
+      </div>
+      {queue.length === 0 ? (
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 4, padding: "28px 20px", textAlign: "center", color: C.dim2, fontSize: 13, lineHeight: 1.5 }}>
+          {list.length === 0 ? "No accounts with a contact to call yet — run Smith → Find decision-makers on your fundable accounts first." : "All caught up — every account in this filter has been worked today. Nice."}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {queue.map(({ c, cs, track, phone, daysSince, fund }) => {
+            const contact = cs[0];
+            const pb = track ? playbookFor(track) : null;
+            return (
+              <div key={c.id} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 3, padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 5 }}>
+                  <span onClick={() => onOpen(c.id)} style={{ fontSize: 16, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, cursor: "pointer" }}>{c.name}</span>
+                  {track && <Pill color={C.accent}>{PLAYN[track] || track}</Pill>}
+                  {fund ? <span style={{ fontSize: 11, color: C.dim2 }}>fund {fund}</span> : null}
+                  <span style={{ flex: 1 }} />
+                  <span style={{ fontSize: 11, color: daysSince === Infinity ? C.accent : C.dim2 }}>{daysSince === Infinity ? "never called" : daysSince + "d since last"}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: C.dim, marginBottom: pb ? 7 : 9 }}>
+                  {contact ? <span style={{ color: C.text, fontWeight: 600 }}>{contact.name || [contact.first_name, contact.last_name].filter(Boolean).join(" ") || "Contact"}</span> : <span>No named contact</span>}
+                  {contact?.title && <span>{contact.title}</span>}
+                  {phone ? <a href={"tel:" + String(phone).replace(/\s/g, "")} style={{ color: C.accent, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="phone" size={13} color={C.accent} />{phone}</a> : <span style={{ color: C.dim2 }}>no phone on file</span>}
+                  {contact?.email && <span style={{ color: C.dim2, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220, whiteSpace: "nowrap" }}>{contact.email}</span>}
+                </div>
+                {pb && <div style={{ fontSize: 12, color: C.dim2, lineHeight: 1.45, marginBottom: 9 }}><span style={{ fontWeight: 600, color: C.dim }}>Open with:</span> {pb.leadWith}</div>}
+                <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+                  {OUTCOME_ORDER.map((k) => {
+                    const o = OUTCOMES[k];
+                    const col = o.tone === "green" ? C.green : o.tone === "red" ? C.red : o.tone === "blue" ? C.blue : C.dim2;
+                    return <button key={k} onClick={() => disp(c.id, k)} style={{ background: "transparent", border: `1px solid ${col}55`, color: col, borderRadius: 3, padding: "5px 11px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>{o.label}</button>;
+                  })}
+                  <span style={{ flex: 1 }} />
+                  <button onClick={() => onOpen(c.id)} style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>Open card →</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Forge() {
   const theme = useTheme(); // subscribe the whole app to theme changes (re-render -> C reflects the active theme)
   const [loading, setLoading] = useState(true);
@@ -7453,6 +7557,7 @@ export default function Forge() {
   const NAV = [
     { key: "dashboard", label: "Dashboard", icon: "chart" },
     { key: "today", label: "Today", icon: "phone" },
+    { key: "callout", label: "Call-out", icon: "phone" },
     { key: "hot", label: "Hot Leads", icon: "spark" },
     { key: "list", label: "Companies", icon: "layers" },
     { key: "pipeline", label: "Pipeline", icon: "trend" },
@@ -7645,6 +7750,8 @@ export default function Forge() {
           <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); setSmithFocus(true); }} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} onDone={(id) => updateCompany(id, { next_action_at: null })} onAskSmith={() => { setSmithOpen(true); setSmithFocus(true); }} flash={flash} />
+        ) : nav === "callout" ? (
+          <CallOutCampaign project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} flash={flash} />
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
