@@ -1851,6 +1851,7 @@ const LIGHT = {
   darkText: "#C2BEB5",
   darkMuted: "#8C8880",
   darkLabel: "#9A958C",   // lifted from #87827A -> AA ~5.7:1 on dark (was 4.87, felt dim)
+  onDark: "#F1ECE3", onDarkActive: "#1E1C18", railAccent: "#E2622A",  // rail sub-palette (rail is DARK in light theme)
   // semantiska (mer mättade för färg & kontrast)
   green: "#357A26",       // darkened from #3F8A2E -> AA ~5.0:1 on cream (was 4.13)
   amber: "#946410",       // darkened from #C77D11 -> AA ~4.7:1 on cream (was 3.17)
@@ -1864,12 +1865,13 @@ const LIGHT = {
 // DARK — warm near-black mode. Surfaces darken, ink lightens; every accent/semantic colour uses a
 // brighter variant so text clears WCAG AA on the dark panels (cream-tuned values are only ~3:1 on dark).
 const DARK = {
-  bg: "#15130E", cream: "#211E17", panel: "#211E17", panel2: "#2A2620",
+  bg: "#100C06", cream: "#211E17", panel: "#211E17", panel2: "#2A2620",
   line: "#37322A", line2: "#443E34",
   text: "#F2EDE4", ink: "#F4EFE7", dim: "#B6B0A5", dim2: "#9A958B",
   accent: "#EA6A33", accentDark: "#EA6A33", accentFill: "#B83D0C", onAccent: "#FDFAF5",
   lime: "#EA6A33", limeSoft: "rgba(234,106,51,0.16)", limeDim: "#EA6A33",
-  dark: "#100F0B", darkRule: "#34302A", darkText: "#D8D3C9", darkMuted: "#9A958C", darkLabel: "#857F75",
+  dark: "#ECE7DD", darkRule: "#D6D0C4", darkText: "#33302A", darkMuted: "#5E5A52", darkLabel: "#635E55",  // rail is LIGHT in dark theme (contrasting rail)
+  onDark: "#1C1915", onDarkActive: "#DCD5C8", railAccent: "#A0340A",
   green: "#5FB85A", amber: "#D7A23F", red: "#E8694A", blue: "#5B9BD8", teal: "#3CB9A4", violet: "#A98BDA", gold: "#D7A23F",
   pink: "#EA6A33",
 };
@@ -7638,7 +7640,7 @@ export default function Forge() {
         {/* ===== RAIL (dark) ===== */}
         <aside className="alloy-rail" style={{ background: C.dark, borderRight: `1px solid ${C.darkRule}`, display: railOpen ? "flex" : "none", flexDirection: "column", padding: "24px 18px", position: "sticky", top: 0, height: "100vh", maxHeight: "100vh", boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }} title={BRAND_FULL}>
-            <span style={{ fontFamily: FONT_HEAD, fontSize: 15, letterSpacing: ".2em", textTransform: "uppercase", color: "#F1ECE3", fontWeight: 700 }}>{BRAND}</span>
+            <span style={{ fontFamily: FONT_HEAD, fontSize: 15, letterSpacing: ".2em", textTransform: "uppercase", color: C.onDark, fontWeight: 700 }}>{BRAND}</span>
             <span style={{ fontFamily: FONT_HEAD, fontSize: 8.5, letterSpacing: ".18em", textTransform: "uppercase", color: C.darkLabel }}>by</span>
             <ForjLogo height={13} color={C.darkLabel} />
           </div>
@@ -7649,9 +7651,9 @@ export default function Forge() {
               const isA = p.id === activeProject;
               const cnt = companies.filter((c) => c.project_id === p.id && isActiveCompany(c)).length;
               return (
-                <button key={p.id} onClick={() => { setActiveProject(p.id); setSelected(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: isA ? "#1E1C18" : "transparent", border: "none", borderTop: i === 0 ? "none" : `1px solid ${C.darkRule}`, padding: "11px 13px", color: isA ? "#F1ECE3" : C.darkText, fontSize: 13, fontFamily: FONT_BODY, cursor: "pointer", textAlign: "left" }}>
+                <button key={p.id} onClick={() => { setActiveProject(p.id); setSelected(null); }} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: isA ? C.onDarkActive : "transparent", border: "none", borderTop: i === 0 ? "none" : `1px solid ${C.darkRule}`, padding: "11px 13px", color: isA ? C.onDark : C.darkText, fontSize: 13, fontFamily: FONT_BODY, cursor: "pointer", textAlign: "left" }}>
                   <span>{p.name}</span>
-                  <span style={{ fontFamily: FONT_HEAD, fontSize: 10, color: isA ? C.accentDark : C.darkMuted }}>{cnt || "\u00b7"}</span>
+                  <span style={{ fontFamily: FONT_HEAD, fontSize: 10, color: isA ? C.railAccent : C.darkMuted }}>{cnt || "\u00b7"}</span>
                 </button>
               );
             })}
@@ -7662,8 +7664,8 @@ export default function Forge() {
             {NAV.map((n, i) => {
               const on = nav === n.key && !selectedCompany;
               return (
-                <button key={n.key} onClick={() => { setNav(n.key); setSelected(null); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderTop: i === 0 ? `1px solid ${C.darkRule}` : "none", borderBottom: `1px solid ${C.darkRule}`, borderLeft: `2px solid ${on ? C.accent : "transparent"}`, padding: "11px 0 11px 12px", color: on ? "#F1ECE3" : C.darkMuted, fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}>
-                  <Icon name={n.icon} size={14} color={on ? C.accent : C.darkMuted} />{n.label}
+                <button key={n.key} onClick={() => { setNav(n.key); setSelected(null); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", borderTop: i === 0 ? `1px solid ${C.darkRule}` : "none", borderBottom: `1px solid ${C.darkRule}`, borderLeft: `2px solid ${on ? C.railAccent : "transparent"}`, padding: "11px 0 11px 12px", color: on ? C.onDark : C.darkMuted, fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", textAlign: "left", whiteSpace: "nowrap" }}>
+                  <Icon name={n.icon} size={14} color={on ? C.railAccent : C.darkMuted} />{n.label}
                 </button>
               );
             })}
@@ -7680,7 +7682,7 @@ export default function Forge() {
               <button onClick={signOut} style={{ background: "transparent", border: "none", color: C.darkMuted, fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".1em", textTransform: "uppercase", cursor: "pointer", padding: 0 }}>Sign out</button>
             </div>
             <div title={BRAND_FULL + " — " + POWERED_BY} style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5, color: C.darkLabel, letterSpacing: ".04em" }}>
-              Powered by <span style={{ color: C.accentDark }}>AWS</span>
+              Powered by <span style={{ color: C.railAccent }}>AWS</span>
             </div>
           </div>
         </aside>
@@ -7715,7 +7717,7 @@ export default function Forge() {
                 return cells.map((s, i) => (
                   <div key={i} style={{ flex: 1, minWidth: 130, padding: "16px 32px", borderRight: i < cells.length - 1 ? `1px solid ${C.darkRule}` : "none" }}>
                     <div style={{ fontFamily: FONT_HEAD, fontSize: 9, letterSpacing: ".16em", textTransform: "uppercase", color: C.darkLabel, marginBottom: 5 }}>{s.l}</div>
-                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 28, lineHeight: 1, color: s.a ? C.accent : "#F1ECE3", letterSpacing: "-.02em" }}>{s.v}</div>
+                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 28, lineHeight: 1, color: s.a ? C.railAccent : C.onDark, letterSpacing: "-.02em" }}>{s.v}</div>
                   </div>
                 ));
               })()}
