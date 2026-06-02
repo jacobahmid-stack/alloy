@@ -5567,96 +5567,11 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         })}
       </div>
 
-      {worklist.length > 0 && (
-        <Section title="Today & overdue" icon="target">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {worklist.map(({ c, kind }) => {
-              const col = kind === "overdue" ? C.red : kind === "today" ? C.green : C.dim2;
-              const lbl = kind === "overdue" ? "Overdue" : kind === "today" ? "Today" : "Upcoming";
-              return (
-                <div key={c.id} style={{ background: C.panel, border: `1px solid ${C.line}`, borderLeft: `3px solid ${col}`, borderRadius: 2, padding: "11px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onOpen && onOpen(c.id)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 14, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{c.name}</span>
-                      <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".06em", textTransform: "uppercase", color: col }}>{lbl}</span>
-                      <span style={{ fontSize: 11, color: C.dim2, fontFamily: FONT_MONO }}>{c.next_action_at}</span>
-                    </div>
-                    {c.next_action && <div style={{ fontSize: 12, color: C.dim, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.next_action}</div>}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: snoozeOneDay(c.next_action_at) })} title="Push one day forward" style={wbtn}>{kind === "upcoming" ? "+1 day" : "Tomorrow"}</button>
-                    <button onClick={() => onUpdate && onUpdate(c.id, { next_action_at: null })} title="Mark done (clear the date)" style={wbtn}>Done</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-      <Section title="My active projects" icon="folder">
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {projStats.map((p) => {
-            const active = p.id === project.id;
-            return (
-              <div key={p.id} onClick={() => onSelectProject(p.id)} style={{
-                background: active ? C.panel2 : C.panel,
-                border: `1px solid ${active ? p.color + "66" : C.line}`,
-                borderRadius: 2, padding: "14px 18px", display: "flex", alignItems: "center",
-                gap: 14, cursor: "pointer", transition: "all .15s",
-              }}>
-                <div style={{ width: 38, height: 38, borderRadius: 2, background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, color: C.cream, fontFamily: FONT_HEAD, letterSpacing: ".05em", flexShrink: 0 }}>{initials(p.name)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 15.5, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{p.name}</span>
-                    {active && <Pill color={C.accent}>active</Pill>}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>
-                    {p.partner?.name} · {p.total} companies
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 18, textAlign: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{p.readiness}</div>
-                    <div style={{ fontSize: 10, color: C.dim2, textTransform: "uppercase", letterSpacing: 0.5 }}>Readiness</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 400, color: C.blue, fontFamily: FONT_DISPLAY }}>{p.pipeline}</div>
-                    <div style={{ fontSize: 10, color: C.dim2, textTransform: "uppercase", letterSpacing: 0.5 }}>Pipeline</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 400, color: C.green, fontFamily: FONT_DISPLAY }}>{p.won}</div>
-                    <div style={{ fontSize: 10, color: C.dim2, textTransform: "uppercase", letterSpacing: 0.5 }}>Won</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
+      {/* "Today & overdue" worklist lives in the Today view now — dashboard stays Smith + plays focused. */}
+      {/* Project switcher lives in the sidebar — removed the duplicate cards here. */}
 
-      {/* AT A GLANCE — funding KPIs + goals in one compact strip (merged from Metrics + Goals) */}
-      <Section title="At a glance" icon="chart">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-          <Metric label="Funding-qualified" value={fundingQualified} icon="tag" accent={C.accent} />
-          <Metric label="Meetings booked" value={bookedNow.length} icon="calendar" accent={C.green} />
-          <Metric label="Qualified (MEDDIC)" value={meddicQualified} icon="target" accent={C.blue} />
-          <Metric label="Won" value={won.length} icon="spark" accent={C.violet} />
-          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "13px 16px" }}>
-            <div style={{ fontSize: 11, color: C.dim2, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Goal · week</div>
-            <div style={{ fontSize: 21, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedNow.filter((c) => isThisWeek(c.updated_at)).length} <span style={{ fontSize: 13, color: C.dim2 }}>/ {project.goal_week}</span></div>
-          </div>
-          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: "13px 16px" }}>
-            <div style={{ fontSize: 11, color: C.dim2, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>Goal · month</div>
-            <div style={{ fontSize: 21, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY }}>{bookedThisMonth} <span style={{ fontSize: 13, color: C.dim2 }}>/ {project.goal_month}</span></div>
-          </div>
-        </div>
-      </Section>
-
-      <ConversionInsights companies={projCompanies} trackOf={trackOf} />
-
-      <PipelineValuePanel companies={projCompanies} fundings={(fundings || []).filter((f) => f.project_id === project.id)} />
-
-      <ActivityFeed companies={projCompanies} activities={activities} />
+      {/* At-a-glance KPIs are the signal strip up top; advance-rate, pipeline-value + activity feed
+          were removed to keep the dashboard Smith + plays focused (they live in Pipeline / Funding / the cards). */}
     </div>
   );
 }
