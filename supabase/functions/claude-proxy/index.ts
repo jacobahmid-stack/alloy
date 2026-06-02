@@ -2,6 +2,12 @@
 // Client sends a `task`; proxy injects its OWN system prompt and ignores client system.
 // Set STRICT_TASKS=true (env) before going public. AWS/Bedrock: only the upstream
 // fetch (endpoint+auth) changes; this policy carries over.
+//
+// GLOBAL BUDGET CAP: every paid Claude call in Alloy funnels through here (Smith, aws-discovery,
+// bulk-enrich, icp-screen, domain-fill). Before calling Anthropic we check public.claude_budget;
+// once spent_usd >= cap_usd we refuse WITHOUT spending. After each call we add the real cost.
+// Raise/reset the cap with: update public.claude_budget set cap_usd = 150;  (or spent_usd = 0).
+import { createClient } from "jsr:@supabase/supabase-js@2";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -20,6 +26,20 @@ const MAX_INPUT_CHARS = 120000;
 const MAX_TOOLS = 8;
 const ALLOWED_SERVER_TOOL_TYPES = new Set(["web_search_20250305"]);
 const STRICT_TASKS = (Deno.env.get("STRICT_TASKS") || "false").toLowerCase() === "true";
+
+// Approx USD cost of one call from its usage block. Conservative (cache reads counted at full input
+// rate) so the cap protects the budget rather than overshooting. web_search billed at $0.01/req.
+function priceFor(model: string) {
+  if ((model || "").includes("sonnet")) return { in: 3, out: 15 };
+  return { in: 1, out: 5 }; // haiku-4.5 / default
+}
+function callCost(model: string, u: any): number {
+  if (!u) return 0;
+  const p = priceFor(model);
+  const inTok = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+  const ws = ((u.server_tool_use || {}).web_search_requests) || 0;
+  return inTok / 1e6 * p.in + (u.output_tokens || 0) / 1e6 * p.out + ws * 0.01;
+}
 
 const TASK_SYSTEM: Record<string, string> = {
   lead: "You are an experienced sales engineer. You are honest: an 'unknown' is worth more than a slick guess. You always respond with valid JSON only, no surrounding text.",
@@ -76,6 +96,25 @@ Deno.serve(async (req: Request) => {
     safe.tools = body.tools;
   }
 
+  // --- GLOBAL BUDGET GATE -------------------------------------------------
+  // One DB client (service role) for the spend ledger. Fail-OPEN on ledger errors: a transient DB
+  // hiccup must never take Smith / discovery offline — the cap simply isn't enforced for that call.
+  const sbUrl = Deno.env.get("SUPABASE_URL") || "";
+  const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const sb = (sbUrl && sbKey) ? createClient(sbUrl, sbKey) : null;
+  if (sb) {
+    try {
+      const { data: bud } = await sb.from("claude_budget").select("cap_usd,spent_usd").eq("id", 1).maybeSingle();
+      if (bud && Number(bud.spent_usd) >= Number(bud.cap_usd)) {
+        return json({
+          error: "budget_cap_reached",
+          message: `Claude budget cap reached ($${bud.cap_usd}). Raise it: update public.claude_budget set cap_usd = <higher>;`,
+          cap_usd: Number(bud.cap_usd), spent_usd: Number(bud.spent_usd),
+        }, 200);
+      }
+    } catch { /* fail-open */ }
+  }
+
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -83,6 +122,14 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(safe),
     });
     const text = await res.text();
+    // Record real cost (best-effort; never block or alter the response on a ledger error).
+    if (sb && res.ok) {
+      try {
+        const j = JSON.parse(text);
+        const cost = callCost(safe.model, j?.usage);
+        if (cost > 0) await sb.rpc("claude_budget_add", { p_cost: cost });
+      } catch { /* ignore ledger errors */ }
+    }
     return new Response(text, { status: res.status, headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     return json({ error: String((e as Error)?.message || e) }, 502);
