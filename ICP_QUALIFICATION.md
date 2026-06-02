@@ -1,0 +1,58 @@
+# ICP Qualification — rules & guidelines
+
+How a raw Swedish org from `se_registry` (~489k companies) becomes a paid-for, enriched account in
+Alloy — and, critically, **what we check for free before spending a single Claude token**.
+
+## Why this exists
+Every account we enrich costs money: the importer makes a paid Claude call (firmographics, then
+domain) per candidate. Historically that call ran on *every* registry row and then archived the
+rejects — i.e. we paid to discover a company was too small or a shell. This gate moves every check
+we can do **for free** ahead of the paid step.
+
+## The two tiers
+
+### Tier 1 — FREE gate (deterministic SQL, $0, no Claude/API)
+Implemented in `pick_icp_candidates` (migration `icp_free_prequalify_gate`). A registry row must
+pass ALL of these before it can ever reach a paid call:
+
+| # | Rule | Field | Why |
+|---|------|-------|-----|
+| 1 | In a target SNI industry | `sni_code` | ICP fit (caller supplies the list) |
+| 2 | Aktiebolag only (`= '49'`) | `juridisk_form` | operating company, not förening/stiftelse/branch |
+| 3 | Has a city | `postort` | data quality (`lan` is never populated in the registry) |
+| 4 | Name is not a shell/holding | `name` | excludes `holding, invest, förvaltning, intressenter, fastighet, likvidation, konkurs, vilande, lagerbolag` |
+| 5 | Not already imported | anti-join on `companies` | dedupe — never pay twice |
+
+Rejects are never returned, so re-runs re-test them for free. On the software pool this removes
+~2.7% (the obvious junk) at zero cost; the value is that holdings, property shells, and
+dormant/bankrupt entities never burn a paid call again.
+
+### Tier 2 — PAID enrichment (Claude, only on Tier-1 survivors)
+Runs in `icp-screen`, one survivor at a time:
+1. **Size** — `find_firmographics` (employees + revenue). `employees >= min_employees` → **lead**;
+   below → archived `too-small`; unknown → archived `size-unknown`.
+2. **Domain** — `find_domain` (only if it qualified on size).
+
+Then the **free** crons take over: cloud detection (AWS/GCP/Azure, ASN-based) and
+funding-eligibility (deterministic play score). Neither uses Claude.
+
+## The honest limit: size isn't free (yet)
+`se_registry` carries **no headcount** (`raw` and `status` are null), and allabolag/proff serve a
+bot challenge to server fetches (verified 2026-06-02 — HTTP 202, empty body). So the single most
+common reject reason — *too small* — cannot be decided for free today. Options, cheapest first:
+
+- **Wire a free size source.** SCB's business register (Företagsregistret) includes an employee
+  *size class*. Ingesting that field into `se_registry` would make the size gate free — highest-
+  leverage fix.
+- **Lean out the paid call.** Drop `find_firmographics` web_search 2→1 and trim max_tokens —
+  ~40–50% cheaper per call, with a small accuracy risk on obscure SMEs.
+- **Flip push → pull.** Enrich on demand (when a user actually opens / wants an account) instead
+  of pre-paying to size cold registry rows.
+
+## Guardrails (standing)
+- The free gate runs first, always; nothing reaches a paid call without passing Tier 1.
+- Never invent a number: if firmographics returns no parseable answer the candidate is left
+  unconsumed (not guessed) — a `null` beats a wrong size.
+- Rejects are archived, not deleted, so dedupe holds across re-runs.
+- Size threshold (`min_employees`) and target SNIs are passed per import, not hard-coded, so each
+  ICP (Novalo software, Alto mid-market) tunes its own bar.
