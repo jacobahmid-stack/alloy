@@ -1827,8 +1827,65 @@ const supabaseDb = {
   async upsertOutcome(row) { return await sb("lead_outcomes", { method: "POST", query: "?on_conflict=company_id", prefer: "resolution=merge-duplicates,return=representation", body: [row], single: true }); },
 };
 
+// ── DEMO / sample workspace ──────────────────────────────────────────────────
+// A read-only sample partner pipeline so anyone can explore Alloy from a ?demo URL with no signup,
+// no import, no real data — accounts already classified into AWS plays + the deterministic Smith
+// brief. The "give it a spin" artifact + concierge-demo script. International accounts (Alloy travels).
+const ALLOY_DEMO = (() => { try { return new URLSearchParams(location.search).has("demo") || /(^|[#&])demo(=|$|&)/.test(location.hash); } catch { return false; } })();
+const DEMO_PROJECT = { id: "demo", name: "Northwind Cloud", color: "#B83D0C", goal_week: 3, goal_month: 12,
+  partner: { name: "Northwind Cloud", country: "DE", tier: "Advanced", brief: "Sample AWS Advanced-tier partner pipeline — see how Alloy classifies accounts into AWS funding plays and arms the rep. All data here is illustrative." } };
+const _dc = (id, name, domain, employees, city, country, industry, cloud, stage, extra) => ({
+  id, name, domain, employees, city, country, industry, cloud_provider: cloud, aws_detected: cloud === "aws",
+  project_id: "demo", stage: stage || "lead", source: "Demo", ...(extra || {}) });
+const DEMO_COMPANIES = [
+  _dc("demo-1", "Meridian Logistics", "meridianlog.com", 480, "München", "DE", "Logistics", "azure", "kontaktad", { next_action: "Confirm Azure spend, book discovery", next_action_at: dayStr(0) }),
+  _dc("demo-2", "Helvetia Retail Group", "helvetiaretail.ch", 650, "Zürich", "CH", "Retail", "gcp", "lead", { next_action: "Open the MAP business case", next_action_at: dayStr(0) }),
+  _dc("demo-3", "Northwind Manufacturing", "northwind-mfg.com", 340, "Manchester", "GB", "Manufacturing", "other", "lead"),
+  _dc("demo-4", "Cobalt Systems", "cobaltsys.io", 190, "Amsterdam", "NL", "SaaS", "aws", "mote_bokat", { next_action: "Prep Modernize + resell pitch", next_action_at: dayStr(1) }),
+  _dc("demo-5", "Tably", "tably.app", 95, "Berlin", "DE", "SaaS", "aws", "lead"),
+  _dc("demo-6", "Lumen AI", "lumen.ai", 70, "Stockholm", "SE", "AI software", "aws", "lead", { ai_native: true, maturity_band: 4 }),
+  _dc("demo-7", "Forsa Studio", "forsastudio.com", 28, "Oslo", "NO", "Digital agency", "other", "lead"),
+  _dc("demo-8", "Brightpath Health", "brightpathhealth.dk", 520, "København", "DK", "Healthcare", "azure", "kontaktad", { next_action: "Lead with EU data residency", next_action_at: dayStr(-1) }),
+  _dc("demo-9", "Volta Mobility", "voltamobility.eu", 210, "Eindhoven", "NL", "Automotive", "gcp", "lead"),
+  _dc("demo-10", "Kanto Commerce", "kantocommerce.com", 150, "Helsinki", "FI", "E-commerce", "aws", "lead"),
+  _dc("demo-11", "Strato Data", "stratodata.io", 120, "Dublin", "IE", "Data platform", "aws", "lead", { ai_native: true, maturity_band: 4 }),
+  _dc("demo-12", "Pellén Industri", "pellen.se", 260, "Göteborg", "SE", "Industrial", "other", "lead"),
+];
+const _tr = (id, track, score, conf) => ({ company_id: id, primary_track: track, fundability_score: score, confidence: conf });
+const DEMO_TRACKS = {
+  "demo-1": _tr("demo-1", "MAP", 82, "high"), "demo-2": _tr("demo-2", "MAP", 78, "high"), "demo-3": _tr("demo-3", "MAP", 71, "med"),
+  "demo-4": _tr("demo-4", "MAP_MODERNIZE", 80, "high"), "demo-5": _tr("demo-5", "MAP_MODERNIZE", 68, "med"),
+  "demo-6": _tr("demo-6", "POC", 76, "high"), "demo-7": _tr("demo-7", "GREENFIELD_PGP", 60, "med"),
+  "demo-8": _tr("demo-8", "MAP", 84, "high"), "demo-9": _tr("demo-9", "MAP", 73, "med"),
+  "demo-10": _tr("demo-10", "MAP_MODERNIZE", 70, "med"), "demo-11": _tr("demo-11", "POC", 74, "high"), "demo-12": _tr("demo-12", "MAP", 66, "med"),
+};
+const DEMO_CONTACTS = [
+  { id: "dc-1", company_id: "demo-1", first_name: "Anika", last_name: "Brandt", title: "Head of IT", email: "a.brandt@meridianlog.com", phone: "+49 89 1234 567", status: "Not contacted" },
+  { id: "dc-4", company_id: "demo-4", first_name: "Sven", last_name: "de Vries", title: "CTO", email: "sven@cobaltsys.io", phone: "+31 20 765 4321", status: "Spoke" },
+  { id: "dc-8", company_id: "demo-8", first_name: "Mette", last_name: "Larsen", title: "CIO", email: "m.larsen@brightpathhealth.dk", phone: "+45 33 22 11 00", status: "Not contacted" },
+  { id: "dc-2", company_id: "demo-2", first_name: "Luca", last_name: "Brunner", title: "VP Engineering", email: "luca@helvetiaretail.ch", phone: "+41 44 555 6677", status: "Not contacted" },
+];
+const DEMO_ACTIVITIES = [
+  { id: "da-1", company_id: "demo-4", type: "Call", body: "Spoke with prospect — keen on Modernize + resell", created_at: new Date(Date.now() - 36e5).toISOString() },
+  { id: "da-2", company_id: "demo-1", type: "Call", body: "Reached gatekeeper", created_at: new Date(Date.now() - 9e5).toISOString() },
+  { id: "da-3", company_id: "demo-8", type: "Meeting", body: "Discovery booked — data residency a key driver", created_at: new Date(Date.now() - 2 * 864e5).toISOString() },
+];
+const _demoNoop = async () => {};
+const demoDb = {
+  allProjects: async () => [DEMO_PROJECT], allCompanies: async () => DEMO_COMPANIES.slice(),
+  allContacts: async () => DEMO_CONTACTS.slice(), allActivities: async () => DEMO_ACTIVITIES.slice(),
+  allFundings: async () => [], isAdmin: async () => true, myProjectIds: async () => ["demo"], myRole: async () => "admin",
+  updateProject: _demoNoop, updateCompany: _demoNoop, bulkAddCompanies: _demoNoop, deleteCompany: _demoNoop,
+  addContact: _demoNoop, updateContact: _demoNoop, deleteContact: _demoNoop, bulkAddContacts: _demoNoop,
+  addActivity: _demoNoop, deleteActivity: _demoNoop, addFunding: _demoNoop, updateFunding: _demoNoop,
+  getOutcome: async () => null, upsertOutcome: _demoNoop, provisionWorkspace: _demoNoop,
+  listInvites: async () => [], createInvite: _demoNoop, revokeInvite: _demoNoop, addMember: _demoNoop, removeMember: _demoNoop,
+  partnerOpportunities: async () => [], partnerFunding: async () => [], acceptInvite: _demoNoop,
+};
+
 // Single seam the whole app talks to. auto = Supabase when configured, else local.
 function activeDb() {
+  if (ALLOY_DEMO) return demoDb;
   if (DB_BACKEND === "supabase") return supabaseDb;
   if (DB_BACKEND === "local") return localDb;
   try {
@@ -5045,6 +5102,7 @@ function SmithChat({ project, projCompanies, trackMap, contacts, recs, seed, onC
   async function send(text, opts = {}) {
     const q = (text != null ? text : input).trim();
     if (!q || busy) return;
+    if (ALLOY_DEMO) { setInput(""); setMsgs((m) => [...m, { role: "user", text: q }, { role: "smith", text: "This is a read-only sample workspace — create your own to chat with Smith live (he drafts off your real pipeline + Alloy's AWS knowledge base)." }]); return; }
     const useWeb = opts.web != null ? opts.web : web;
     setInput("");
     const attached = files;
@@ -5374,8 +5432,9 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
   // --- REAL funding tracks (not a cloud guess) — fetched once from funding_eligibility.
   // companies rows don't carry primary_track, so the play tiles + funding metrics read this map.
-  const [trackMap, setTrackMap] = useState({});
+  const [trackMap, setTrackMap] = useState(ALLOY_DEMO ? DEMO_TRACKS : {});
   useEffect(() => {
+    if (ALLOY_DEMO) return;
     let live = true;
     (async () => {
       try {
@@ -6472,6 +6531,9 @@ function LoginScreen({ onAuthed }) {
           )}
         </div>
         <div style={{ textAlign: "center", fontSize: 11, color: C.dim2, marginTop: 14 }}>Invite-only · data secured in Supabase</div>
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <a href="?demo" style={{ fontSize: 12.5, color: C.accent, fontWeight: 600, textDecoration: "none", fontFamily: FONT_BODY }}>Explore a sample workspace →</a>
+        </div>
       </div>
     </div>
   );
@@ -7107,7 +7169,7 @@ export default function Forge() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("all");
   const [toast, setToast] = useState(null);
-  const [session, setSession] = useState(undefined); // undefined = checking, null = logged out, object = authed
+  const [session, setSession] = useState(ALLOY_DEMO ? { email: "demo@sample.alloy", access_token: "demo" } : undefined); // undefined = checking, null = logged out, object = authed; demo = fake session (bypasses login)
   const [isAdmin, setIsAdmin] = useState(false);
   const [myRole, setMyRole] = useState(null);
   const [editingAccess, setEditingAccess] = useState(false);
@@ -7517,8 +7579,9 @@ export default function Forge() {
   const [smithFocus, setSmithFocus] = useState(false); // chat-only mode (hide the rec cards)
   const [smithTab, setSmithTab] = useState("chat"); // launcher panel: chat | faq | contact
   const [smithSeed, setSmithSeed] = useState(""); // text passed from the command bar's "Ask Smith"
-  const [smithTracks, setSmithTracks] = useState({});
+  const [smithTracks, setSmithTracks] = useState(ALLOY_DEMO ? DEMO_TRACKS : {});
   useEffect(() => {
+    if (ALLOY_DEMO) return;
     let live = true;
     (async () => {
       try {
@@ -7699,6 +7762,11 @@ export default function Forge() {
               <div style={{ fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim }}>
                 {(project?.name) || BRAND_FULL} <span style={{ color: C.line2 }}>/</span> <span style={{ color: C.ink, fontWeight: 600 }}>{selectedCompany ? "Lead" : (NAV.find((n) => n.key === nav)?.label || (nav === "discovery" ? "Cloud Discovery" : ""))}</span>
               </div>
+              {ALLOY_DEMO && <>
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, border: `1px solid ${C.accent}`, borderRadius: 20, padding: "3px 9px", whiteSpace: "nowrap" }}>Sample workspace</span>
+                <a href={typeof location !== "undefined" ? location.pathname : "/"} title="Leave the demo and create your own workspace" style={{ flexShrink: 0, background: C.accentFill, color: C.onAccent, borderRadius: 4, padding: "6px 13px", fontSize: 11.5, fontWeight: 600, fontFamily: FONT_HEAD, textDecoration: "none", whiteSpace: "nowrap" }}>Create your workspace →</a>
+              </>}
             </div>
           </div>
 
