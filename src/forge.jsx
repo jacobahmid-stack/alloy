@@ -3671,8 +3671,6 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState({ brief: true, nba: true, qual: false, cosell: false, notes: true });
   const [qual, setQual] = useState(() => (company.enrichment && company.enrichment.copilot_qual) || {});
-  const [finding, setFinding] = useState(false);
-  const [findNote, setFindNote] = useState("");
   const [smithAction, setSmithAction] = useState(null); // triggers Smith's assessment/paperwork agent below
 
   useEffect(() => {
@@ -3714,34 +3712,7 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
   }
 
   const card = { background: C.panel, border: `1px solid ${C.line}`, borderRadius: 2, padding: 18, marginBottom: 16 };
-  // Smith finds the decision-makers (web search) and populates the card automatically.
-  // Auto-adds everyone new; guessed emails are marked so a rep verifies before sending.
-  async function findPeople() {
-    setFinding(true); setFindNote("");
-    try {
-      const ppl = await findDecisionMakers(company);
-      const have = new Set((contacts || []).map((c) => norm([c.first_name, c.last_name].filter(Boolean).join(" ")).toLowerCase()));
-      const fresh = ppl.filter((p) => p.name && !have.has(norm(p.name).toLowerCase()));
-      if (!fresh.length) {
-        setFindNote(ppl.length ? "Everyone Smith found is already on the card." : "No decision-makers found" + (company.domain ? "." : ". Find the website first."));
-      } else {
-        for (const p of fresh) {
-          await onAddContact(company.id, {
-            name: p.name,
-            title: (p.title || "") + (p.email && p.email_is_guess ? " · email guessed" : ""),
-            email: p.email || "",
-            linkedin: cleanLinkedIn(p.linkedin),
-            source: "smith_find",
-          });
-        }
-        setFindNote("Smith added " + fresh.length + " decision-maker" + (fresh.length > 1 ? "s" : "") + " to the card.");
-        flash("Smith added " + fresh.length + " contact" + (fresh.length > 1 ? "s" : ""));
-      }
-    } catch (e) {
-      setFindNote("Find failed: " + (e?.message || e));
-      flash("Find decision-makers failed: " + (e?.message || e));
-    } finally { setFinding(false); }
-  }
+  // Find decision-makers now lives in the Decision-makers & contacts section (CompanyCard).
 
   const secHead = (key, label, hint) => (
     <button onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
@@ -3883,16 +3854,6 @@ function CoPilotPanel({ company, project, contacts, onAddContact, onUpdate, flas
         </div>
       )}
 
-      {/* WHO TO TALK TO: Smith finds the decision-makers and populates the card */}
-      <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 8 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 0 2px" }}>
-        <Btn variant="dark" size="sm" onClick={findPeople} disabled={finding}>
-          {finding ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {finding ? "Searching the web…" : "Find decision-makers"}
-        </Btn>
-        <span style={{ fontSize: 11.5, color: C.dim2, flex: 1, minWidth: 180 }}>
-          {findNote || ((contacts && contacts.length) ? contacts.length + " on the card · Smith adds anyone missing to Decision-makers above" : "Smith finds who owns the cloud decision and adds them to Decision-makers above")}
-        </span>
-      </div>
 
       {/* 3 — QUALIFICATION (AWS-MEDDIC) */}
       {qualKeys.length > 0 && <>
@@ -4128,6 +4089,29 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
     setOppNote(company.enrichment?.opportunity || "");
   }, [company.id]);
   const myContacts = contacts.filter((c) => c.company_id === company.id);
+  // Find decision-makers (web search) -> auto-adds anyone new straight into the contacts list above.
+  const [finding, setFinding] = useState(false);
+  const [findNote, setFindNote] = useState("");
+  async function findPeople() {
+    setFinding(true); setFindNote("");
+    try {
+      const ppl = await findDecisionMakers(company);
+      const have = new Set(myContacts.map((c) => norm([c.first_name, c.last_name].filter(Boolean).join(" ")).toLowerCase()));
+      const fresh = ppl.filter((p) => p.name && !have.has(norm(p.name).toLowerCase()));
+      if (!fresh.length) {
+        setFindNote(ppl.length ? "Everyone found is already on the card." : "No decision-makers found" + (company.domain ? "." : ". Find the website first."));
+      } else {
+        for (const p of fresh) {
+          await onAddContact(company.id, { name: p.name, title: (p.title || "") + (p.email && p.email_is_guess ? " · email guessed" : ""), email: p.email || "", linkedin: cleanLinkedIn(p.linkedin), source: "smith_find" });
+        }
+        setFindNote("Added " + fresh.length + " decision-maker" + (fresh.length > 1 ? "s" : "") + " to the list above.");
+        flash("Added " + fresh.length + " contact" + (fresh.length > 1 ? "s" : ""));
+      }
+    } catch (e) {
+      setFindNote("Find failed: " + (e?.message || e));
+      flash("Find decision-makers failed: " + (e?.message || e));
+    } finally { setFinding(false); }
+  }
   const myActs = activities.filter((a) => a.company_id === company.id);
 
   const fin = [
@@ -4219,7 +4203,15 @@ function CompanyCard({ project, company, contacts, activities, onBack, onUpdate,
         {myContacts.map((c) => (
           <ContactRow key={c.id} c={c} onUpdateContact={onUpdateContact} onDeleteContact={onDeleteContact} />
         ))}
-        {/* Smith (below) finds decision-makers and populates this list. One finder, in the co-worker. */}
+        {/* Find decision-makers — web search, auto-adds anyone new straight into the list above */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
+          <Btn variant="dark" size="sm" onClick={findPeople} disabled={finding}>
+            {finding ? <Spinner /> : <Icon name="search" size={13} color={C.cream} />} {finding ? "Searching the web…" : "Find decision-makers"}
+          </Btn>
+          <span style={{ fontSize: 11.5, color: C.dim2, flex: 1, minWidth: 180 }}>
+            {findNote || "Searches the web for the IT/cloud decision-makers and adds anyone missing above."}
+          </span>
+        </div>
       </Collapsible>
 
       {/* company intelligence (merged cloud + web tech + data/AI) */}
