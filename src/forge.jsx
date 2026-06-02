@@ -5832,6 +5832,11 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
           }}>Play: {PLAY_LABEL[playFilter] || playFilter} <span style={{ opacity: 0.7 }}>✕</span></button>
         )}
       </div>
+      {tab === "new" && (
+        <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 6, padding: "10px 13px", marginBottom: 12, fontSize: 12, color: C.dim, lineHeight: 1.5 }}>
+          Fresh prospects fed free overnight (industry · org-nr · city — no spend). Open one to research, hit <b style={{ color: C.text }}>Enrich</b> on a keeper to add website + cloud + funding fit, or use <b style={{ color: C.text }}>Find websites → Cloud-check</b> above for the batch. Enrich uses a little of the Claude budget.
+        </div>
+      )}
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
