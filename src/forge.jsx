@@ -33,10 +33,13 @@ let _smithFaceN = 0;
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
   const base = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/");
-  // Smith wears a different face each weekday (Mon–Sat); Sunday + any miss fall back to the all-week look, then smith.png, then the SVG.
-  const DAYS = ["all_week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  let di = 0; try { di = new Date().getDay(); } catch { /* default all_week */ }
-  const srcs = [base + "smith_" + (DAYS[di] || "all_week") + ".jpg", base + "smith_all_week.jpg", base + "smith.png"];
+  // Smith ALWAYS wears a happy face. Curated to the clearly-smiling, clean-crop portraits only —
+  // the neutral/serious shot (tuesday), the day-label-baked ones (friday/saturday) and the 3x3
+  // contact sheet (all_week) are intentionally excluded. Rotates among the happy set so he still
+  // varies day to day but never looks flat. Falls back to smith.png, then the hand-drawn SVG.
+  const HAPPY = ["smith_thursday.jpg", "smith_wednesday.jpg", "smith_monday.jpg"];
+  let di = 0; try { di = new Date().getDay(); } catch { /* default 0 */ }
+  const srcs = [base + HAPPY[di % HAPPY.length], base + "smith_thursday.jpg", base + "smith.png"];
   const [imgI, setImgI] = useState(0);
   if (imgI < srcs.length) {
     return <img src={srcs[imgI]} width={size} height={size} alt={title || "Smith"} onError={() => setImgI((n) => n + 1)}
