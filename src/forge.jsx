@@ -5707,7 +5707,7 @@ function PipelineView({ project, companies, onOpen, onStage }) {
 /* ============================================================================
    FÖRETAGSLISTA
    ============================================================================ */
-function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, onStopBatch, playFilter, setPlayFilter }) {
+function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, onStopBatch, playFilter, setPlayFilter, onEnrichOne }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const [mineOnly, setMineOnly] = useState(false);
   // When a dashboard play tile is clicked, playFilter holds a primary_track (e.g. "MAP_MODERNIZE").
@@ -5748,6 +5748,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
     const q = lc(query);
     return projCompanies.filter((c) => {
       if (playFilter && (playFilter === "RESELL" ? !(c.aws_detected || c.cloud_provider === "aws") : trackMap[c.id] !== playFilter)) return false;
+      if (tab === "new" && c.list_tag !== "nightly-free") return false;
       if (tab === "hot" && !c.is_hot) return false;
       if (tab === "leads" && phaseOf(c.stage) !== "readiness") return false;
       if (tab === "booked" && c.stage !== "mote_bokat") return false;
@@ -5781,6 +5782,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
 
   const tabs = [
     { key: "all", label: "All targets", n: counts.all },
+    { key: "new", label: "New · triage", n: projCompanies.filter((c) => c.list_tag === "nightly-free").length },
     { key: "hot", label: "Hot", n: projCompanies.filter((c) => c.is_hot).length },
     { key: "leads", label: "Readiness", n: counts.leads },
     { key: "booked", label: "Booked", n: counts.booked },
@@ -5886,6 +5888,10 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
                   {[c.industry, c.employees ? c.employees + " empl." : "", cc.length ? cc.length + " contacts" : "", c.opp_value ? fmtSEK(c.opp_value) : "", c.owner ? "@" + c.owner.split("@")[0] : ""].filter(Boolean).join(" · ")}
                 </div>
               </div>
+              {onEnrichOne && !c.cloud_provider && !c.aws_detected && (
+                <button onClick={(e) => { e.stopPropagation(); onEnrichOne(c); }} title="Find website → cloud-check (AWS/GCP/Azure) → score funding fit. Uses a little Claude budget."
+                  style={{ background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "5px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY, flexShrink: 0 }}>Enrich</button>
+              )}
               <Pill color={STATUS_COLOR[c.stage]} bg={C.panel2}>
                 <Dot color={STATUS_COLOR[c.stage]} />{STAGE_LABEL[c.stage]}
               </Pill>
@@ -7397,6 +7403,23 @@ export default function Forge() {
     // stable useCallback, so omitting it is safe.
   }, [companies, activeProject, flash]);
 
+  // On-demand single-account enrich (pull model): find website -> cloud-check -> score funding fit.
+  // Reuses the same primitives as the org-nr lookup. Paid steps go through claude-proxy, so the global
+  // $90 budget cap applies. resolveDomain/detectAws/scoreFundingFit/updateCompany are stable callbacks
+  // captured at click time — intentionally kept out of deps to avoid the temporal-dead-zone crash.
+  const enrichOne = useCallback(async (c) => {
+    if (!c) return;
+    if (ALLOY_DEMO) { flash("Enrich is disabled in the demo workspace"); return; }
+    try {
+      flash(`Enriching ${c.name}…`);
+      let domain = c.domain || "";
+      if (!domain) { const dom = await resolveDomain(c).catch(() => null); if (dom?.domain) { domain = dom.domain; await updateCompany(c.id, { domain }); } }
+      try { const cd = await detectAws(domain || c.name); if (cd) await updateCompany(c.id, { aws_detected: !!cd.aws_detected, cloud_provider: cd.provider || "unknown", aws_signals: (cd.signals || []).join(", ") }); } catch {}
+      try { await scoreFundingFit(c.id, true); } catch {}
+      flash(`${c.name}: website + cloud + funding updated`);
+    } catch (e) { flash("Enrich failed: " + (e?.message || e)); }
+  }, [flash]);
+
   const handleImport = useCallback(async (text) => {
     const { companies: newC, contacts: newCt } = parseToRecords(text, "import");
     if (!newC.length) { flash("No companies found - check the CSV format"); return; }
@@ -7840,7 +7863,7 @@ export default function Forge() {
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
-          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onStopBatch={stopBatch} playFilter={playFilter} setPlayFilter={setPlayFilter} />
+          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onStopBatch={stopBatch} playFilter={playFilter} setPlayFilter={setPlayFilter} onEnrichOne={enrichOne} />
         ) : nav === "pipeline" ? (
           <PipelineView project={project} companies={companies} onOpen={setSelected} onStage={moveStage} />
         ) : nav === "funding" ? (
