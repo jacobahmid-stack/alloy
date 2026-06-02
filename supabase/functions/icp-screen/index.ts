@@ -78,10 +78,11 @@ Deno.serve(async (req) => {
       try {
         const r = await fetch(`${url}/functions/v1/claude-proxy`, {
           method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + anon, apikey: anon },
-          body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task, max_tokens: max, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] }),
+          body: JSON.stringify({ model: "claude-haiku-4-5-20251001", task, max_tokens: max, messages: [{ role: "user", content: user }], tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 1 }] }),
         });
         if (r.status === 429) { await sleep(2000 * (a + 1) + Math.floor(Math.random() * 900)); continue; }
         const j = await r.json();
+        if (j && j.error === "budget_cap_reached") return null; // global cap hit — stop asking, don't burn retries
         if (j && (j.error || j.type === "error")) { await sleep(1500 * (a + 1)); continue; }
         return j;
       } catch { await sleep(1500 * (a + 1)); }
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
     const id = "se-" + c.orgnr;
     const where = c.city || c.kommun || "Sweden";
     // 1) size gate — only a DEFINITIVE parsed answer is allowed to consume the candidate.
-    const j = await callProxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`, 700);
+    const j = await callProxy("find_firmographics", `Company: "${c.name}"\nOrg.nr: ${dashed}\nCity: ${where}\nFind this exact Swedish company's latest employee count and annual revenue.`, 500);
     if (!j) { failed++; results.push({ name: c.name, skipped: "proxy" }); continue; } // 429/err -> leave for next loop
     cost += pCost(j.usage || {});
     const o = firstJson(j);
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
     const qualified = emp !== null && !Number.isNaN(emp) && emp >= minEmp;
     let domain: string | null = null;
     if (qualified) {
-      const dj = await callProxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 320);
+      const dj = await callProxy("find_domain", `Company: "${c.name}"\nCity: ${where}\nOrg.nr: ${dashed}\nFind this exact Swedish company's official website domain.`, 250);
       if (dj) {
         cost += pCost(dj.usage || {});
         const dobj = firstJson(dj);
