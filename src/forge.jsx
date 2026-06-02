@@ -5697,7 +5697,7 @@ function PipelineView({ project, companies, onOpen, onStage }) {
 /* ============================================================================
    FÖRETAGSLISTA
    ============================================================================ */
-function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, playFilter, setPlayFilter }) {
+function CompanyList({ project, companies, contacts, onOpen, query, setQuery, tab, setTab, me, onDomainBatch, domainBatch, onAwsBatch, awsBatch, onStopBatch, playFilter, setPlayFilter }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const [mineOnly, setMineOnly] = useState(false);
   // When a dashboard play tile is clicked, playFilter holds a primary_track (e.g. "MAP_MODERNIZE").
@@ -5780,12 +5780,12 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
   return (
   <div>
   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-            <Btn variant="dark" size="sm" onClick={onDomainBatch} disabled={domainBatch?.running || (!missingDomain && !domainBatch?.running)}>
-              {domainBatch?.running ? `Finding… ${domainBatch.done}/${domainBatch.total}` : missingDomain ? `Find ${missingDomain} websites` : "Websites done"}
-            </Btn>
-            <Btn variant="dark" size="sm" onClick={onAwsBatch} disabled={awsBatch?.running || (!uncheckedAws && !awsBatch?.running)}>
-              {awsBatch?.running ? `Checking… ${awsBatch.done}/${awsBatch.total}` : uncheckedAws ? `Cloud-check ${uncheckedAws}` : "Cloud done"}
-            </Btn>
+            {domainBatch?.running
+              ? <Btn variant="danger" size="sm" onClick={onStopBatch}>Stop · {domainBatch.done}/{domainBatch.total}</Btn>
+              : <Btn variant="dark" size="sm" onClick={onDomainBatch} disabled={!missingDomain}>{missingDomain ? `Find ${missingDomain} websites` : "Websites done"}</Btn>}
+            {awsBatch?.running
+              ? <Btn variant="danger" size="sm" onClick={onStopBatch}>Stop · {awsBatch.done}/{awsBatch.total}</Btn>
+              : <Btn variant="dark" size="sm" onClick={onAwsBatch} disabled={!uncheckedAws}>{uncheckedAws ? `Cloud-check ${uncheckedAws}` : "Cloud done"}</Btn>}
             <span style={{ flex: 1 }} />
             <span style={{ fontSize: 11.5, color: C.dim2 }}>
               {domainBatch?.running ? `${domainBatch.found} found` : awsBatch?.running ? `${awsBatch.found} on AWS` :
@@ -7156,6 +7156,8 @@ export default function Forge() {
   const [editingPw, setEditingPw] = useState(false);
   const [awsBatch, setAwsBatch] = useState(null);
   const [domainBatch, setDomainBatch] = useState(null);
+  const batchStop = useRef(false); // flips true to cancel a running domain/cloud batch mid-loop
+  const stopBatch = useCallback(() => { batchStop.current = true; }, []);
   const [companies, setCompanies] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -7468,9 +7470,11 @@ export default function Forge() {
   const runAwsBatch = useCallback(async () => {
     const targets = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c) && c.domain && !c.cloud_provider);
     if (!targets.length) { flash("No companies to check - all already classified or lack a domain"); return; }
+    batchStop.current = false;
     setAwsBatch({ running: true, done: 0, total: targets.length, errors: 0, found: 0 });
     let done = 0, errors = 0, found = 0;
     for (const c of targets) {
+      if (batchStop.current) break;
       try {
         const r = await detectAws(c.domain);
         await updateCompany(c.id, { aws_detected: !!r.aws_detected, cloud_provider: r.provider || (r.aws_detected ? "aws" : "unknown"), email_provider: r.email_provider || null, aws_signals: (r.signals || []).join(", ") || (r.cdn ? "Behind " + r.cdn : "No major-cloud signal") });
@@ -7481,14 +7485,16 @@ export default function Forge() {
       await new Promise((res) => setTimeout(res, 700));
     }
     setAwsBatch({ running: false, done, total: targets.length, errors, found });
-    flash(`Cloud check done: ${found} on AWS, ${errors} errors of ${targets.length}`);
+    flash(batchStop.current ? `Stopped at ${done}/${targets.length} (${found} on AWS)` : `Cloud check done: ${found} on AWS, ${errors} errors of ${targets.length}`);
   }, [companies, activeProject, updateCompany, flash]);
   const runDomainBatch = useCallback(async () => {
     const targets = companies.filter((c) => c.project_id === activeProject && isActiveCompany(c) && !c.domain);
     if (!targets.length) { flash("No companies need a domain - all in this project already have one"); return; }
+    batchStop.current = false;
     setDomainBatch({ running: true, done: 0, total: targets.length, found: 0, errors: 0 });
     let done = 0, found = 0, errors = 0;
     for (const c of targets) {
+      if (batchStop.current) break;
       let attempt = 0;
       while (attempt < 2) {
         try {
@@ -7506,7 +7512,7 @@ export default function Forge() {
       await new Promise((res) => setTimeout(res, 1500)); // gentle throttle to spare the proxy
     }
     setDomainBatch({ running: false, done, total: targets.length, found, errors });
-    flash(`Domain lookup done: ${found} found, ${errors} errors of ${targets.length}`);
+    flash(batchStop.current ? `Stopped at ${done}/${targets.length} (${found} found)` : `Domain lookup done: ${found} found, ${errors} errors of ${targets.length}`);
   }, [companies, activeProject, updateCompany, flash]);
   const moveStage = useCallback(async (id, stage) => {
     setCompanies((p) => p.map((c) => (c.id === id ? { ...c, stage, updated_at: now() } : c)));
@@ -7824,7 +7830,7 @@ export default function Forge() {
         ) : nav === "hot" ? (
           <HotLeads projects={projects} companies={companies} onOpen={setSelected} flash={flash} />
         ) : nav === "list" ? (
-          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} playFilter={playFilter} setPlayFilter={setPlayFilter} />
+          <CompanyList project={project} companies={companies} contacts={contacts} onOpen={setSelected} query={query} setQuery={setQuery} tab={tab} setTab={setTab} me={session?.email || ""} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onStopBatch={stopBatch} playFilter={playFilter} setPlayFilter={setPlayFilter} />
         ) : nav === "pipeline" ? (
           <PipelineView project={project} companies={companies} onOpen={setSelected} onStage={moveStage} />
         ) : nav === "funding" ? (
