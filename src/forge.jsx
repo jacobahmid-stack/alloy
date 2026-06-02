@@ -5751,6 +5751,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
     const q = lc(query);
     return projCompanies.filter((c) => {
       if (playFilter && (playFilter === "RESELL" ? !(c.aws_detected || c.cloud_provider === "aws") : trackMap[c.id] !== playFilter)) return false;
+      if (tab === "hot" && !c.is_hot) return false;
       if (tab === "leads" && phaseOf(c.stage) !== "readiness") return false;
       if (tab === "booked" && c.stage !== "mote_bokat") return false;
       if (tab === "won" && c.stage !== "vunnen") return false;
@@ -5783,6 +5784,7 @@ function CompanyList({ project, companies, contacts, onOpen, query, setQuery, ta
 
   const tabs = [
     { key: "all", label: "All targets", n: counts.all },
+    { key: "hot", label: "Hot", n: projCompanies.filter((c) => c.is_hot).length },
     { key: "leads", label: "Readiness", n: counts.leads },
     { key: "booked", label: "Booked", n: counts.booked },
     { key: "won", label: "Won", n: counts.won },
@@ -7550,13 +7552,11 @@ export default function Forge() {
 
   const NAV = [
     { key: "dashboard", label: "Dashboard", icon: "chart" },
-    { key: "today", label: "Today", icon: "phone" },
+    { key: "today", label: "Today", icon: "calendar" },
     { key: "callout", label: "Call-out", icon: "phone" },
-    { key: "hot", label: "Hot Leads", icon: "spark" },
     { key: "list", label: "Companies", icon: "layers" },
     { key: "pipeline", label: "Pipeline", icon: "trend" },
     { key: "funding", label: "Funding", icon: "tag" },
-    { key: "discovery", label: "Cloud Discovery", icon: "spark" },
     { key: "import", label: "Import", icon: "download" },
   ];
 
@@ -7690,7 +7690,7 @@ export default function Forge() {
                 {railOpen ? "⟨ ⟨" : "☰"}
               </button>
               <div style={{ fontFamily: FONT_HEAD, fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: C.dim }}>
-                {(project?.name) || BRAND_FULL} <span style={{ color: C.line2 }}>/</span> <span style={{ color: C.ink, fontWeight: 600 }}>{selectedCompany ? "Lead" : (NAV.find((n) => n.key === nav)?.label || "")}</span>
+                {(project?.name) || BRAND_FULL} <span style={{ color: C.line2 }}>/</span> <span style={{ color: C.ink, fontWeight: 600 }}>{selectedCompany ? "Lead" : (NAV.find((n) => n.key === nav)?.label || (nav === "discovery" ? "Cloud Discovery" : ""))}</span>
               </div>
             </div>
           </div>
@@ -7763,6 +7763,10 @@ export default function Forge() {
               <span style={{ fontSize: 12.5, color: C.text, fontWeight: 600 }}>Auto-enrich new imports</span>
               <span style={{ fontSize: 11.5, color: C.dim2 }}>- find website + AWS check in the background (first 25)</span>
             </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: C.panel, border: `1px solid ${C.line2}`, borderRadius: 2, padding: "11px 14px", marginBottom: 14 }}>
+              <Btn variant="ghost" size="sm" onClick={() => setNav("discovery")}><Icon name="search" size={13} color={C.dim} /> AWS Cloud Discovery</Btn>
+              <span style={{ fontSize: 11.5, color: C.dim2, flex: 1, minWidth: 180 }}>Review companies the discovery agent found on AWS and approve them into this project.</span>
+            </div>
             <ImportView project={project} companies={companies} contacts={contacts} onImport={handleImport} onImportRows={handleImportRows} flash={flash} isAdmin={isAdmin} />
           </>
         )}
