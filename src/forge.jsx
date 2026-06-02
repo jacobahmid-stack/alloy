@@ -33,10 +33,9 @@ let _smithFaceN = 0;
 function SmithFace({ size = 24, title }) {
   const u = "sf" + (++_smithFaceN);
   const base = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.BASE_URL) || "/");
-  // ONE canonical face — smith_thursday.jpg, the best of the set (warm open smile, clean crop, no
-  // baked-in text). No weekday rotation, so Smith reads as a single consistent identity everywhere.
-  // Falls back to smith.png, then the hand-drawn SVG, if the portrait ever fails to load.
-  const srcs = [base + "smith_thursday.jpg", base + "smith.png"];
+  // ONE canonical face — smith.jpg (warm open smile, clean crop). No rotation, so Smith reads as a
+  // single consistent identity everywhere. Falls back to the hand-drawn SVG if it ever fails to load.
+  const srcs = [base + "smith.jpg"];
   const [imgI, setImgI] = useState(0);
   if (imgI < srcs.length) {
     return <img src={srcs[imgI]} width={size} height={size} alt={title || "Smith"} onError={() => setImgI((n) => n + 1)}

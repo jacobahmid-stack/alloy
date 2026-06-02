@@ -49,6 +49,15 @@ common reject reason — *too small* — cannot be decided for free today. Optio
 - **Flip push → pull.** Enrich on demand (when a user actually opens / wants an account) instead
   of pre-paying to size cold registry rows.
 
+## Nightly free feeder (every night, $0)
+`feed_free_prospects(p_limit)` + the pg_cron job `feed-free-prospects-nightly` (01:00 UTC) walk the
+registry and insert the next batch of Tier-1-qualified prospects — **pure SQL, no Claude, no API**,
+server-side, independent of any laptop/agent session. They land as `stage='lead'`,
+`list_tag='nightly-free'`, carrying name / org-nr / city / industry (SNI division label) only — no
+size or domain, because those aren't free. Idempotent: the anti-join skips anything already
+imported, so each night advances further through the ~22.5k qualified pool (≈ 80/night). Triage by
+the `nightly-free` tag; enrich the keepers on demand.
+
 ## Guardrails (standing)
 - The free gate runs first, always; nothing reaches a paid call without passing Tier 1.
 - Never invent a number: if firmographics returns no parseable answer the candidate is left
