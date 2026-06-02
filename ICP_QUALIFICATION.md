@@ -41,9 +41,15 @@ funding-eligibility (deterministic play score). Neither uses Claude.
 bot challenge to server fetches (verified 2026-06-02 — HTTP 202, empty body). So the single most
 common reject reason — *too small* — cannot be decided for free today. Options, cheapest first:
 
-- **Wire a free size source.** SCB's business register (Företagsregistret) includes an employee
-  *size class*. Ingesting that field into `se_registry` would make the size gate free — highest-
-  leverage fix.
+- **Wire a size source (investigated 2026-06-02 — blocked on data, not code).** The size gate would
+  be free if `se_registry` carried an employee *size class*. The ingest pipeline (`se-ingest` /
+  `se-process`) maps a fixed `COLS` set with **no** employee/size field, and the loaded rows have
+  empty `sni_text` + null `status` — i.e. the source was a **basic SCB extract**. SCB's employee
+  size class lives in the fuller **Företagsregistret**, a **paid** SCB order (needs Jacob's SCB
+  account — not actionable autonomously). Path when ready: order a file with the size-class column →
+  add `emp_size` to `COLS` + a `colFor()` rule (e.g. matches `anställda`/`storleksklass`) in both
+  ingest functions → add the column to `se_registry` → have the free gate read it. ~30 min once the
+  source file is confirmed (use `se-ingest` `mode:"peek"` to verify the field name first).
 - **Lean out the paid call.** Drop `find_firmographics` web_search 2→1 and trim max_tokens —
   ~40–50% cheaper per call, with a small accuracy risk on obscure SMEs.
 - **Flip push → pull.** Enrich on demand (when a user actually opens / wants an account) instead
