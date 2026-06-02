@@ -2304,14 +2304,25 @@ function TechStackPanel({ company, onSave, flash }) {
     setAwsBusy(true);
     try {
       const r = await detectCloudSmart(d, flash);
-      await onSave(company.id, {
-        aws_detected: r.aws_detected,
-        cloud_provider: r.provider,
-        email_provider: r.email_provider,
-        aws_signals: r.signals,
-        domain: d,
-      });
-      flash((r.provider && CLOUD[r.provider]?.label ? CLOUD[r.provider].label + ": " : "") + (r.signals || "no major-cloud signal"));
+      const STRONG = ["aws", "gcp", "azure"];
+      const prev = company.cloud_provider;
+      if (STRONG.includes(prev) && !STRONG.includes(r.provider) && !r.aws_detected) {
+        await onSave(company.id, {
+          email_provider: r.email_provider,
+          aws_signals: `Kept ${String(prev).toUpperCase()} (prior detection); re-scan inconclusive — ${r.signals || "behind a proxy/WAF"}`,
+          domain: d,
+        });
+        flash(`Re-scan couldn't see past the proxy — kept the prior ${String(prev).toUpperCase()} verdict`);
+      } else {
+        await onSave(company.id, {
+          aws_detected: r.aws_detected,
+          cloud_provider: r.provider,
+          email_provider: r.email_provider,
+          aws_signals: r.signals,
+          domain: d,
+        });
+        flash((r.provider && CLOUD[r.provider]?.label ? CLOUD[r.provider].label + ": " : "") + (r.signals || "no major-cloud signal"));
+      }
     } catch (e) {
       flash("AWS check failed: " + e.message);
     } finally { setAwsBusy(false); }
@@ -2648,13 +2659,27 @@ function CompanyIntelPanel({ company, onSave, flash }) {
     try {
       try {
         const r = await detectCloudSmart(d, flash);
-        await onSave(company.id, {
-          aws_detected: r.aws_detected,
-          cloud_provider: r.provider,
-          email_provider: r.email_provider,
-          aws_signals: r.signals,
-          domain: d,
-        });
+        // Never let a re-scan DOWNGRADE a confident cloud to an inconclusive "other"/proxy result:
+        // if we already have aws/gcp/azure and this scan can't confirm a cloud (a WAF hides the
+        // origin), keep the prior detection and just refresh the non-cloud signals.
+        const STRONG = ["aws", "gcp", "azure"];
+        const prev = company.cloud_provider;
+        if (STRONG.includes(prev) && !STRONG.includes(r.provider) && !r.aws_detected) {
+          await onSave(company.id, {
+            email_provider: r.email_provider,
+            aws_signals: `Kept ${String(prev).toUpperCase()} (prior detection); re-scan inconclusive — ${r.signals || "behind a proxy/WAF"}`,
+            domain: d,
+          });
+          flash(`Re-scan couldn't see past the proxy — kept the prior ${String(prev).toUpperCase()} verdict`);
+        } else {
+          await onSave(company.id, {
+            aws_detected: r.aws_detected,
+            cloud_provider: r.provider,
+            email_provider: r.email_provider,
+            aws_signals: r.signals,
+            domain: d,
+          });
+        }
       } catch (e) { flash("Cloud detect failed: " + e.message); }
       const result = await analyzeTechStack(d);
       await onSave(company.id, { techstack: result, techstack_at: now(), domain: d });
