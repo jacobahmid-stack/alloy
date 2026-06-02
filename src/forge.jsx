@@ -1615,6 +1615,7 @@ const localDb = {
   async isAdmin() { return true; },
   async myProjectIds() { return DEFAULT_PROJECTS.map((p) => p.id); },
   async myRole() { return "admin"; },
+  async provisionWorkspace() { throw new Error("Creating a workspace needs the cloud backend — sign in first."); },
   async partnerOpportunities() { return []; },
   async partnerFunding() { return []; },
   async acceptInvite() { return null; },
@@ -1771,13 +1772,25 @@ function uniformRows(list) {
 
 const supabaseDb = {
   async allProjects() {
-    const rows = await sb("projects", { query: "?select=*" }).catch(() => []);
-    const byId = Object.fromEntries((rows || []).map((o) => [o.id, o]));
-    return DEFAULT_PROJECTS.map((p) => ({ ...p, ...(byId[p.id] || {}) }));
+    // Multi-tenant: a user's projects come from their MEMBERSHIPS (RLS-scoped), not a hardcoded list.
+    // Known projects (alto/novalo) get DEFAULT_PROJECTS metadata; self-serve workspaces derive their
+    // name/colour from the partner jsonb. [] = a new user with no workspace yet (-> onboarding).
+    // null = DB unreachable (dev/local) -> fall back to DEFAULT_PROJECTS so the app still runs.
+    let rows;
+    try { rows = await sb("projects", { query: "?select=*" }); } catch { rows = null; }
+    if (rows == null) return DEFAULT_PROJECTS;
+    const defById = Object.fromEntries(DEFAULT_PROJECTS.map((p) => [p.id, p]));
+    return rows.map((o) => {
+      if (defById[o.id]) return { ...defById[o.id], ...o };
+      const pr = o.partner || {};
+      return { goal_week: 1, goal_month: 5, ...o, name: pr.name || o.id, color: pr.color || "#B83D0C" };
+    });
   },
   async updateProject(id, patch) {
     await sb("projects", { method: "POST", query: "?on_conflict=id", prefer: "resolution=merge-duplicates,return=minimal", body: [{ id, ...patch }] });
   },
+  // Self-serve: a signed-in user creates their OWN tenant + first project (SECURITY DEFINER RPC, scoped to them).
+  async provisionWorkspace(name, country, partner) { return await sbRpc("app_provision_workspace", { p_name: name, p_country: country || "SE", p_partner: partner || {} }); },
   async allCompanies() {
     return (await sb("companies", { query: "?select=*&order=created_at.desc" })) || [];
   },
@@ -7013,6 +7026,65 @@ function CallOutCampaign({ project, companies, contacts, activities, trackMap, o
   );
 }
 
+// CREATE WORKSPACE — self-serve onboarding. A signed-in user with no workspace (or anyone via
+// "+ New workspace") provisions their OWN tenant + project — no admin/Jacob in the loop. Geo-agnostic:
+// country is a field, and accounts get seeded afterwards from the user's own list (Import) or web
+// research (Smith Discovery), so the Swedish registry is just one optional source, not a requirement.
+function CreateWorkspace({ onCreated, onCancel, canCancel, onSignOut }) {
+  const [name, setName] = useState("");
+  const [partnerName, setPartnerName] = useState("");
+  const [country, setCountry] = useState("SE");
+  const [tier, setTier] = useState("");
+  const [size, setSize] = useState("50-1000");
+  const [icp, setIcp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const fld = { width: "100%", background: C.cream, border: `1px solid ${C.line2}`, borderRadius: 4, padding: "9px 11px", fontSize: 13, color: C.text, fontFamily: FONT_BODY, outline: "none", boxSizing: "border-box" };
+  const lbl = { fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.dim2, fontFamily: FONT_HEAD, marginBottom: 5, display: "block" };
+  const COUNTRIES = [["SE", "Sweden"], ["NO", "Norway"], ["DK", "Denmark"], ["FI", "Finland"], ["DE", "Germany"], ["NL", "Netherlands"], ["GB", "United Kingdom"], ["US", "United States"], ["", "Other / global"]];
+  async function create() {
+    if (!name.trim()) { setErr("Give your workspace a name."); return; }
+    setBusy(true); setErr("");
+    try {
+      const partner = { name: partnerName.trim() || name.trim(), color: "#B83D0C", country, tier, icp: { size, notes: icp.trim() } };
+      const pid = await db.provisionWorkspace(name.trim(), country, partner);
+      await (onCreated && onCreated(pid));
+    } catch (e) { setErr("Couldn't create the workspace: " + (e?.message || e)); setBusy(false); }
+  }
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "8vh 20px" }}>
+      <link rel="stylesheet" href={fontLink} />
+      <style>{`@keyframes forjspin{to{transform:rotate(360deg)}} *:focus-visible{outline:2px solid ${C.accent}!important;outline-offset:1px}`}</style>
+      <div style={{ width: "100%", maxWidth: 540 }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <span style={{ fontFamily: FONT_HEAD, fontSize: 26, letterSpacing: ".24em", textTransform: "uppercase", color: C.text, fontWeight: 700 }}>{BRAND}</span>
+          <div style={{ fontSize: 20, color: C.text, marginTop: 8, fontFamily: FONT_DISPLAY }}>Set up your workspace</div>
+          <div style={{ fontSize: 12.5, color: C.dim2, marginTop: 4, lineHeight: 1.5 }}>Your own tenant. Bring your accounts (or let Smith research them) — wherever you sell.</div>
+        </div>
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${C.accent}`, borderRadius: 6, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div><label style={lbl}>Workspace name</label><input style={fld} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme AWS Practice" autoFocus /></div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 180 }}><label style={lbl}>Partner / company</label><input style={fld} value={partnerName} onChange={(e) => setPartnerName(e.target.value)} placeholder="Your company" /></div>
+            <div style={{ flex: 1, minWidth: 140 }}><label style={lbl}>Country</label><select style={fld} value={country} onChange={(e) => setCountry(e.target.value)}>{COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 160 }}><label style={lbl}>AWS partner tier</label><select style={fld} value={tier} onChange={(e) => setTier(e.target.value)}><option value="">—</option><option>Registered</option><option>Select</option><option>Advanced</option><option>Premier</option></select></div>
+            <div style={{ flex: 1, minWidth: 160 }}><label style={lbl}>Target size (employees)</label><select style={fld} value={size} onChange={(e) => setSize(e.target.value)}><option>10-200</option><option>50-1000</option><option>200-2000</option><option>1000+</option></select></div>
+          </div>
+          <div><label style={lbl}>Who's your ICP? (optional)</label><textarea style={{ ...fld, resize: "vertical", minHeight: 54 }} value={icp} onChange={(e) => setIcp(e.target.value)} placeholder="e.g. mid-market manufacturers on Azure / on-prem, ripe for a MAP migration" /></div>
+          {err && <div style={{ fontSize: 12, color: C.red }}>{err}</div>}
+          <Btn variant="primary" full onClick={create} disabled={busy}>{busy ? <Spinner color={C.cream} /> : null} {busy ? "Creating…" : "Create workspace"}</Btn>
+          <div style={{ fontSize: 11, color: C.dim2, textAlign: "center", lineHeight: 1.5 }}>Starts on a free trial. Next: add accounts via Import or Smith Discovery — no list required to start.</div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 2 }}>
+            {canCancel && <button onClick={onCancel} style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>Cancel</button>}
+            <button onClick={onSignOut} style={{ background: "transparent", border: "none", color: C.dim2, fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY }}>Sign out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Forge() {
   const theme = useTheme(); // subscribe the whole app to theme changes (re-render -> C reflects the active theme)
   const [loading, setLoading] = useState(true);
@@ -7028,6 +7100,7 @@ export default function Forge() {
   const [fundings, setFundings] = useState([]);
   const [nav, setNav] = useState("dashboard"); // dashboard | today | hot | list | pipeline | import
   const [railOpen, setRailOpen] = useState(true); // collapse the dark sidebar for a full-width card
+  const [showCreate, setShowCreate] = useState(false); // self-serve "Create workspace" screen
   const [playFilter, setPlayFilter] = useState(null); // when a dashboard play tile is clicked -> filter the list
   const [autoEnrich, setAutoEnrich] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -7465,6 +7538,18 @@ export default function Forge() {
   const smithHour = new Date().getHours();
   const smithGreeting = smithHour < 5 ? "Working late" : smithHour < 11 ? "Good morning" : smithHour < 17 ? "Good afternoon" : "Good evening";
 
+  // Reload projects + data after a self-serve workspace is created.
+  const reloadWorkspaces = useCallback(async (pid) => {
+    try {
+      const p = await db.allProjects();
+      let vis = p;
+      if (!isAdmin) { const ids = await db.myProjectIds().catch(() => []); vis = p.filter((pr) => ids.includes(pr.id)); }
+      setProjects(vis);
+      if (pid) setActiveProject(pid); else if (vis[0]) setActiveProject(vis[0].id);
+      const [c, ct, a] = await Promise.all([db.allCompanies(), db.allContacts(), db.allActivities()]);
+      setCompanies(c); setContacts(ct); setActivities(a);
+    } catch (e) { flash("Created — reload to see your workspace"); }
+  }, [isAdmin, flash]);
   const NAV = [
     { key: "dashboard", label: "Dashboard", icon: "chart" },
     { key: "today", label: "Today", icon: "calendar" },
@@ -7497,6 +7582,12 @@ export default function Forge() {
   }
 
   if (loading) return <LoadingSplash />;
+
+  // No workspace yet (new user) -> self-serve create. Gated on empty projects, so existing users never see it.
+  if (session && (projects.length === 0 || showCreate)) {
+    return <CreateWorkspace canCancel={projects.length > 0} onCancel={() => setShowCreate(false)} onSignOut={signOut}
+      onCreated={async (pid) => { setShowCreate(false); await reloadWorkspaces(pid); flash("Workspace ready"); }} />;
+  }
 
   // Role still resolving for a non-admin - avoid flashing the operator UI
   if (!isAdmin && myRole === null) {
@@ -7564,6 +7655,7 @@ export default function Forge() {
                 </button>
               );
             })}
+            <button onClick={() => setShowCreate(true)} title="Create a new workspace" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "transparent", border: "none", borderTop: `1px solid ${C.darkRule}`, padding: "9px 13px", color: C.darkMuted, fontSize: 11, fontFamily: FONT_HEAD, letterSpacing: ".06em", textTransform: "uppercase", cursor: "pointer", textAlign: "left" }}>+ New workspace</button>
           </div>
 
           {/* nav - the ONLY scrollable zone; foot stays pinned + clickable on any screen height */}
