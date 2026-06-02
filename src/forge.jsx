@@ -5405,7 +5405,7 @@ function SmithPanel({ recs, onOpen, onOpenPlay, variant = "hero", greeting }) {
   );
 }
 
-function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay, onAskSmith }) {
+function Dashboard({ project, projects, companies, contacts, activities, fundings, onSelectProject, onOpen, onUpdate, onOrgLookup, onAwsBatch, awsBatch, onDomainBatch, domainBatch, onOpenPlay, onAskSmith, onNav }) {
   const projCompanies = companies.filter((c) => c.project_id === project.id && isActiveCompany(c));
   const wbtn = { background: "transparent", border: `1px solid ${C.line2}`, color: C.dim, borderRadius: 2, padding: "6px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: FONT_BODY };
   const today = dayStr(0), soon = dayStr(7);
@@ -5555,6 +5555,17 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
 
       {/* universal command bar — search company / add by org-nr / ask Smith */}
       {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
+      {projCompanies.length === 0 && (
+        <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "18px 20px", marginBottom: 22 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Your workspace is ready — add your first accounts</div>
+          <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5, marginTop: 4, marginBottom: 12 }}>Get a live, AWS-classified pipeline in minutes — Alloy enriches each account and sorts it into its funding play automatically. Three ways in:</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Btn variant="primary" size="sm" onClick={() => onNav && onNav("import")}>Import or paste your accounts</Btn>
+            <Btn variant="dark" size="sm" onClick={() => onAskSmith && onAskSmith("Build me a prospect list of mid-market companies in my market that are strong AWS migration / funding targets — real companies, with why each fits.")}>Ask Smith to research targets</Btn>
+          </div>
+          <div style={{ fontSize: 11, color: C.dim2, marginTop: 10 }}>…or paste a company name or org-number in the search bar above to add one instantly.</div>
+        </div>
+      )}
 
       {/* MAP "Assess" kit — features the best ICP-FIT customer case (right account, not the biggest). */}
       {kitCandidates.length > 0 && (() => {
@@ -7822,7 +7833,7 @@ export default function Forge() {
             onUpdateFunding={updateFunding}
           />
         ) : nav === "dashboard" ? (
-          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); setSmithFocus(true); }} />
+          <Dashboard project={project} projects={projects} companies={companies} contacts={contacts} activities={activities} fundings={fundings} onSelectProject={(id) => { setActiveProject(id); setSelected(null); setNav("list"); }} onOpen={setSelected} onUpdate={updateCompany} onOrgLookup={handleOrgLookup} onAwsBatch={runAwsBatch} awsBatch={awsBatch} onDomainBatch={runDomainBatch} domainBatch={domainBatch} onOpenPlay={(t) => { setPlayFilter(t); setTab("all"); setNav("list"); }} onAskSmith={(text) => { setSmithSeed(text); setSmithOpen(true); setSmithFocus(true); }} onNav={setNav} />
         ) : nav === "today" ? (
           <TodayQueue project={project} companies={companies} contacts={contacts} activities={activities} trackMap={smithTracks} onOpen={setSelected} onOutcome={logOutcome} onSnooze={(id, days) => updateCompany(id, { next_action_at: dayStr(days) })} onDone={(id) => updateCompany(id, { next_action_at: null })} onAskSmith={() => { setSmithOpen(true); setSmithFocus(true); }} flash={flash} />
         ) : nav === "callout" ? (
