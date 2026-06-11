@@ -12,3 +12,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Dashboard drag-to-reorder: grip reveals on panel hover */
+.dash-panel .dash-grip { opacity: 0; transition: opacity .15s ease, color .15s ease, background .15s ease; }
+.dash-panel:hover .dash-grip { opacity: .6; }
+.dash-panel .dash-grip:hover { opacity: 1 !important; }
+.dash-panel.dash-dragging { cursor: grabbing; }

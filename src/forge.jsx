@@ -5505,6 +5505,19 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
   const [briefDismissed, setBriefDismissed] = useState(() => { try { return localStorage.getItem(briefKey) === "1"; } catch { return false; } });
   const dismissBrief = () => { setBriefDismissed(true); try { localStorage.setItem(briefKey, "1"); } catch {} };
 
+  // ---- Drag-to-reorder dashboard panels (persisted per workspace) ----
+  const DASH_KEY = "alloy:dash-order:" + project.id;
+  const DASH_DEFAULT = ["signals", "command", "kit", "plays"];
+  const [dashOrder, setDashOrder] = useState(() => {
+    try { const a = JSON.parse(localStorage.getItem(DASH_KEY) || "null");
+      if (Array.isArray(a)) { const m = a.filter((k) => DASH_DEFAULT.includes(k)); DASH_DEFAULT.forEach((k) => { if (!m.includes(k)) m.push(k); }); return m; }
+    } catch {} return DASH_DEFAULT;
+  });
+  useEffect(() => { try { localStorage.setItem(DASH_KEY, JSON.stringify(dashOrder)); } catch {} }, [DASH_KEY, dashOrder]);
+  const [dashDrag, setDashDrag] = useState(null);
+  const dashReorder = (from, to) => setDashOrder((cur) => { if (from === to) return cur; const a = cur.slice(); const i = a.indexOf(from), j = a.indexOf(to); if (i < 0 || j < 0) return cur; a.splice(i, 1); a.splice(j, 0, from); return a; });
+  const dashMove = (key, delta) => setDashOrder((cur) => { const a = cur.slice(); const i = a.indexOf(key), j = i + delta; if (i < 0 || j < 0 || j >= a.length) return cur; a.splice(i, 1); a.splice(j, 0, key); return a; });
+
   // per-projekt-statistik för översikten
   const projStats = projects.map((p) => {
     const pc = companies.filter((c) => c.project_id === p.id && isActiveCompany(c));
@@ -5519,24 +5532,14 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
     };
   });
 
-  return (
-    <div>
-      {/* Smith's morning briefing — in-app digest, dismissible per day */}
-      {!briefDismissed && <SmithBriefing greeting={greeting} recs={smithRecs} stale={Array(staleCount)} fundingQualified={fundingQualified} bookedNow={bookedNow.length} onOpen={onOpen} onDismiss={dismissBrief} />}
-
-      {/* welcome hero - greeting first (orient), then the command bar (act). Greeting shown
-          here only when the briefing above isn't already greeting. */}
-      <div style={{ marginBottom: 16 }}>
+  // Panel content keyed for the draggable list (null panels are skipped in the order map).
+  const dashPanels = {
+    signals: (
+      <div>
         {briefDismissed && (
-          <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>
-            {greeting}.
-          </div>
+          <div style={{ fontSize: 24, fontWeight: 400, color: C.text, fontFamily: FONT_DISPLAY, letterSpacing: "-.01em" }}>{greeting}.</div>
         )}
-        <div style={{ fontSize: 13, color: C.dim, marginTop: briefDismissed ? 3 : 0 }}>
-          {project.name} · {projCompanies.length} companies
-        </div>
-        {/* signal strip — the day's state of play, always visible (welcoming + signals first).
-            Zero values recede (muted) so the live numbers are what catch the eye. */}
+        <div style={{ fontSize: 13, color: C.dim, marginTop: briefDismissed ? 3 : 0 }}>{project.name} · {projCompanies.length} companies</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
           {[
             { n: worklist.length, label: worklist.length === 1 ? "needs you today" : "need you today", color: overdue.length ? C.red : C.accent },
@@ -5551,11 +5554,96 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
           ))}
         </div>
       </div>
+    ),
+    command: onOrgLookup ? <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} /> : null,
+    kit: kitCandidates.length > 0 ? (() => {
+      const top = kitCandidates[0].c;
+      const alts = kitCandidates.slice(1, 4).map((x) => x.c);
+      const PLAYN = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace" };
+      const sig = (c) => {
+        const cloud = c.cloud_provider && c.cloud_provider !== "unknown" ? String(c.cloud_provider).toUpperCase() : null;
+        const tr = trackMap[c.id] && trackMap[c.id].primary_track;
+        return [cloud, (c.employees ? `~${Number(c.employees).toLocaleString()} emp` : null), tr ? (PLAYN[tr] || tr) : null].filter(Boolean).join(" · ");
+      };
+      const short = (n) => n.length > 22 ? n.slice(0, 22) + "…" : n;
+      return (
+        <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 14, padding: "16px 20px", boxShadow: "0 1px 2px rgba(0,0,0,.03), 0 10px 26px -16px rgba(0,0,0,.18)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0, boxShadow: "0 2px 8px rgba(255,122,26,0.25)" }}>🔨</div>
+            <div style={{ flex: 1, minWidth: 230 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Build a MAP “Assess” kit in one click</div>
+              <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 3 }}>Smith drafts the 7-R assessment, the DMS/SCT plan, and the AWS funding paperwork (ACE + PoC). You review &amp; submit.</div>
+            </div>
+            <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(top.id)}>Try it on {short(top.name)} →</Btn>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Best ICP fit</span>
+            <span style={{ fontSize: 11.5, color: C.dim2 }}>{sig(top) || "matches your ICP"}</span>
+            {alts.length > 0 && <><span style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.dim2 }}>or try</span></>}
+            {alts.map((c) => (
+              <button key={c.id} onClick={() => onOpen && onOpen(c.id)} title={`Run the kit on ${c.name}${sig(c) ? " — " + sig(c) : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 20, padding: "4px 10px", fontSize: 10.5, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>
+                {short(c.name)} →
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    })() : null,
+    plays: (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Your plays today</span>
+          <span style={{ fontSize: 11, color: C.dim2 }}>count, and who Smith says to work first</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          {PLAYS.map((p) => {
+            const rec = smithRecs.find((r) => r.track === p.track);
+            return (
+              <div key={p.key}
+                title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
+                onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
+                style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.hits.length ? p.accent : C.line2}`, borderRadius: 12, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column", opacity: p.hits.length ? 1 : 0.6, transition: "opacity .15s", boxShadow: p.hits.length ? "0 1px 2px rgba(0,0,0,.03), 0 8px 22px -16px rgba(0,0,0,.16)" : "none" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
+                  <span style={{ fontSize: 9, color: C.dim2, fontWeight: 600, letterSpacing: ".03em", whiteSpace: "nowrap" }}>{p.prog}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 8 }}>
+                  <span style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
+                  <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
+                </div>
+                <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, minHeight: 30, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.pitch}</div>
+                {p.track === "RESELL" && (() => {
+                  const ests = p.hits.map(estResellSpend).filter(Boolean);
+                  if (!ests.length) return null;
+                  const mo = ests.reduce((s, e) => s + e.monthly, 0), arr = ests.reduce((s, e) => s + e.arr, 0);
+                  return <div style={{ fontSize: 10.5, color: C.amber, fontWeight: 600, marginTop: 4, lineHeight: 1.35 }}>~{fmtSEK(mo)}/mo book · ARR ~{fmtSEK(arr)}/yr <span style={{ color: C.dim2, fontWeight: 400 }}>({ests.length} sized)</span></div>;
+                })()}
+                <div style={{ flex: 1 }} />
+                {rec && rec.company && (
+                  <div onClick={(e) => { e.stopPropagation(); onOpen && onOpen(rec.company.id); }}
+                    style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}`, cursor: "pointer" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, marginBottom: 3, fontFamily: FONT_HEAD }}>Work first →</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rec.company.name}</div>
+                    <div style={{ fontSize: 10.5, color: C.dim, marginTop: 2 }}>{rec.reasonTag}{rec.fundability != null ? ` · fund ${rec.fundability}` : ""}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ),
+  };
 
-      {/* universal command bar — search company / add by org-nr / ask Smith */}
-      {onOrgLookup && <SmithCommandBar companies={projCompanies} onLookup={onOrgLookup} onOpen={onOpen} onAskSmith={onAskSmith} />}
+  return (
+    <div>
+      {/* Smith's morning briefing — in-app digest, dismissible per day (pinned at top) */}
+      {!briefDismissed && <SmithBriefing greeting={greeting} recs={smithRecs} stale={Array(staleCount)} fundingQualified={fundingQualified} bookedNow={bookedNow.length} onOpen={onOpen} onDismiss={dismissBrief} />}
+
       {projCompanies.length === 0 && (
-        <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "18px 20px", marginBottom: 22 }}>
+        <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 14, padding: "18px 20px", marginBottom: 22, boxShadow: "0 1px 2px rgba(0,0,0,.03), 0 10px 26px -16px rgba(0,0,0,.18)" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Your workspace is ready — add your first accounts</div>
           <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5, marginTop: 4, marginBottom: 12 }}>Get a live, AWS-classified pipeline in minutes — Alloy enriches each account and sorts it into its funding play automatically. Three ways in:</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -5566,94 +5654,27 @@ function Dashboard({ project, projects, companies, contacts, activities, funding
         </div>
       )}
 
-      {/* MAP "Assess" kit — features the best ICP-FIT customer case (right account, not the biggest). */}
-      {kitCandidates.length > 0 && (() => {
-        const top = kitCandidates[0].c;
-        const alts = kitCandidates.slice(1, 4).map((x) => x.c);
-        const PLAYN = { MAP: "Migrate", MAP_MODERNIZE: "Modernize", POC: "GenAI", GREENFIELD_PGP: "Greenfield", ISV_WMP: "Marketplace" };
-        const sig = (c) => {
-          const cloud = c.cloud_provider && c.cloud_provider !== "unknown" ? String(c.cloud_provider).toUpperCase() : null;
-          const tr = trackMap[c.id] && trackMap[c.id].primary_track;
-          return [cloud, (c.employees ? `~${Number(c.employees).toLocaleString()} emp` : null), tr ? (PLAYN[tr] || tr) : null].filter(Boolean).join(" · ");
-        };
-        const short = (n) => n.length > 22 ? n.slice(0, 22) + "…" : n;
+      {/* Reorderable panels — drag the grip (top-right of each) to arrange your dashboard; saved per workspace. */}
+      {dashOrder.map((key) => {
+        const node = dashPanels[key];
+        if (!node) return null;
+        const dragging = dashDrag === key;
         return (
-          <div style={{ background: C.panel, border: `1px solid ${C.line2}`, borderLeft: `3px solid ${C.accent}`, borderRadius: 8, padding: "14px 18px", marginBottom: 22 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: SMITH_AV_BG, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0, boxShadow: "0 2px 8px rgba(255,122,26,0.25)" }}>🔨</div>
-              <div style={{ flex: 1, minWidth: 230 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, fontFamily: FONT_HEAD }}>Build a MAP “Assess” kit in one click</div>
-                <div style={{ fontSize: 11.5, color: C.dim, lineHeight: 1.5, marginTop: 3 }}>Smith drafts the 7-R assessment, the DMS/SCT plan, and the AWS funding paperwork (ACE + PoC). You review &amp; submit.</div>
-              </div>
-              <Btn variant="primary" size="sm" onClick={() => onOpen && onOpen(top.id)}>Try it on {short(top.name)} →</Btn>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Best ICP fit</span>
-              <span style={{ fontSize: 11.5, color: C.dim2 }}>{sig(top) || "matches your ICP"}</span>
-              {alts.length > 0 && <><span style={{ flex: 1 }} /><span style={{ fontSize: 10, color: C.dim2 }}>or try</span></>}
-              {alts.map((c) => (
-                <button key={c.id} onClick={() => onOpen && onOpen(c.id)} title={`Run the kit on ${c.name}${sig(c) ? " — " + sig(c) : ""}`}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.panel2, border: `1px solid ${C.line2}`, borderRadius: 20, padding: "4px 10px", fontSize: 10.5, color: C.dim, cursor: "pointer", fontFamily: FONT_BODY }}>
-                  {short(c.name)} →
-                </button>
-              ))}
-            </div>
+          <div key={key} className={"dash-panel" + (dragging ? " dash-dragging" : "")}
+            onDragEnter={() => { if (dashDrag && dashDrag !== key) dashReorder(dashDrag, key); }}
+            onDragOver={(e) => { if (dashDrag) e.preventDefault(); }}
+            onDrop={(e) => { if (dashDrag) e.preventDefault(); }}
+            style={{ position: "relative", marginBottom: 22, borderRadius: 14, transition: "opacity .15s, box-shadow .2s, outline-color .2s", opacity: dragging ? 0.4 : 1, boxShadow: dragging ? "0 18px 44px -14px rgba(0,0,0,.32)" : "none", outline: dragging ? `2px dashed ${C.accent}` : "2px dashed transparent", outlineOffset: 6 }}>
+            <span className="dash-grip" draggable role="button" tabIndex={0}
+              title="Drag to reorder — or focus and press ↑ / ↓" aria-label="Reorder panel: drag, or press arrow up or down"
+              onDragStart={(e) => { setDashDrag(key); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", key); } catch {} }}
+              onDragEnd={() => setDashDrag(null)}
+              onKeyDown={(e) => { if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); dashMove(key, e.key === "ArrowDown" ? 1 : -1); } }}
+              style={{ position: "absolute", top: -2, right: -2, width: 24, height: 24, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "grab", color: C.dim, background: C.panel, border: `1px solid ${C.line2}`, fontSize: 12, lineHeight: 1, zIndex: 6, userSelect: "none", boxShadow: "0 1px 3px rgba(0,0,0,.08)" }}>⠿</span>
+            {node}
           </div>
         );
-      })()}
-
-      {/* AWS PLAYS — one row, one source of truth: each tile = how many + WHO to work next
-          (Smith's pick folded in) + why. Replaces the old duplicated "Smith recommends" section. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent, display: "inline-block" }} />
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, fontFamily: FONT_HEAD }}>Your plays today</span>
-        <span style={{ fontSize: 11, color: C.dim2 }}>count, and who Smith says to work first</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 26 }}>
-        {PLAYS.map((p) => {
-          const rec = smithRecs.find((r) => r.track === p.track);
-          return (
-            <div key={p.key}
-              title={p.hits.length ? `${p.pitch} — click to work these ${p.hits.length}` : p.pitch}
-              onClick={() => onOpenPlay && p.hits.length && onOpenPlay(p.track)}
-              style={{ background: C.panel, border: `1px solid ${C.line}`, borderTop: `3px solid ${p.hits.length ? p.accent : C.line2}`, borderRadius: 3, padding: "14px 15px", cursor: (onOpenPlay && p.hits.length) ? "pointer" : "default", display: "flex", flexDirection: "column", opacity: p.hits.length ? 1 : 0.6, transition: "opacity .15s" }}>
-              {/* header row — single line so every number sits at the same height */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
-                <span style={{ fontSize: 10, color: C.ink, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: FONT_HEAD, whiteSpace: "nowrap" }}>{p.label}</span>
-                <span style={{ fontSize: 9, color: C.dim2, fontWeight: 600, letterSpacing: ".03em", whiteSpace: "nowrap" }}>{p.prog}</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 8 }}>
-                <span style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: FONT_DISPLAY, lineHeight: 1, letterSpacing: "-.02em" }}>{p.hits.length}</span>
-                <span style={{ fontSize: 10.5, color: C.dim2 }}>in play</span>
-              </div>
-              {/* pitch — fixed 2-line slot so the pitch row aligns across every tile */}
-              <div style={{ fontSize: 10.5, color: C.dim2, marginTop: 7, lineHeight: 1.4, minHeight: 30, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.pitch}</div>
-              {p.track === "RESELL" && (() => {
-                const ests = p.hits.map(estResellSpend).filter(Boolean);
-                if (!ests.length) return null;
-                const mo = ests.reduce((s, e) => s + e.monthly, 0), arr = ests.reduce((s, e) => s + e.arr, 0);
-                return <div style={{ fontSize: 10.5, color: C.amber, fontWeight: 600, marginTop: 4, lineHeight: 1.35 }}>~{fmtSEK(mo)}/mo book · ARR ~{fmtSEK(arr)}/yr <span style={{ color: C.dim2, fontWeight: 400 }}>({ests.length} sized)</span></div>;
-              })()}
-              <div style={{ flex: 1 }} />
-              {/* Smith's pick — "who to work first", bottom-aligned across all tiles */}
-              {rec && rec.company && (
-                <div onClick={(e) => { e.stopPropagation(); onOpen && onOpen(rec.company.id); }}
-                  style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${C.line}`, cursor: "pointer" }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: C.accent, marginBottom: 3, fontFamily: FONT_HEAD }}>Work first →</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rec.company.name}</div>
-                  <div style={{ fontSize: 10.5, color: C.dim, marginTop: 2 }}>{rec.reasonTag}{rec.fundability != null ? ` · fund ${rec.fundability}` : ""}</div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* "Today & overdue" worklist lives in the Today view now — dashboard stays Smith + plays focused. */}
-      {/* Project switcher lives in the sidebar — removed the duplicate cards here. */}
-
-      {/* At-a-glance KPIs are the signal strip up top; advance-rate, pipeline-value + activity feed
-          were removed to keep the dashboard Smith + plays focused (they live in Pipeline / Funding / the cards). */}
+      })}
     </div>
   );
 }
