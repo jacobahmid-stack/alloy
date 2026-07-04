@@ -21,6 +21,9 @@ verify_deploys.txt
 .env
 .env.*
 
+# local MCP server config (holds endpoints + may hold creds)
+.mcp.json
+
 # OS / editor / tooling
 .DS_Store
 .claude/
@@ -36,3 +39,7 @@ par_innov*.txt
 
 # allow the template (real .env stays ignored above)
 !.env.example
+
+# Smith's ES256 signing key: NEVER commit (private key). Lives here for the resign script only.
+smith-signing-key.json
+forj-keys/
