@@ -1,0 +1,58 @@
+<svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="'Space Grotesk', system-ui, sans-serif">
+  <title id="t">Smith's self-verify loop</title>
+  <desc id="d">Smith drafts, checks every claim against its source, ships if it traces, re-forges with a reason if not (max 2 passes), and softens rather than blocks if still unsupported. Every reject reason is logged.</desc>
+  <rect x="0" y="0" width="760" height="470" rx="18" fill="#0E0F12"/>
+  <defs>
+    <marker id="mn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9BA8B3"/></marker>
+    <marker id="ms" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9E92D8"/></marker>
+    <marker id="me" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D9722E"/></marker>
+  </defs>
+  <text x="30" y="40" font-family="'Space Mono', ui-monospace, monospace" font-size="12" letter-spacing="3" fill="#9BA8B3">SMITH  ·  SELF-VERIFY</text>
+  <text x="30" y="72" font-size="27" font-weight="700" fill="#ECF0F3">The self-verify loop</text>
+  <text x="30" y="96" font-size="14" fill="#9BA8B3">Every claim traces to its source, or it does not ship.</text>
+
+  <line x1="200" y1="192" x2="262" y2="192" stroke="#9BA8B3" stroke-width="1.5" marker-end="url(#mn)"/>
+  <line x1="470" y1="192" x2="552" y2="192" stroke="#9E92D8" stroke-width="1.5" marker-end="url(#ms)"/>
+  <text x="511" y="184" text-anchor="middle" font-family="'Space Mono', ui-monospace, monospace" font-size="10" fill="#9E92D8">traces</text>
+  <line x1="370" y1="228" x2="370" y2="302" stroke="#D9722E" stroke-width="1.5" marker-end="url(#me)"/>
+  <text x="384" y="272" font-family="'Space Mono', ui-monospace, monospace" font-size="10" fill="#D9722E">no source</text>
+  <line x1="470" y1="338" x2="552" y2="338" stroke="#D9722E" stroke-width="1.5" marker-end="url(#me)"/>
+  <text x="511" y="330" text-anchor="middle" font-family="'Space Mono', ui-monospace, monospace" font-size="10" fill="#D9722E">cap hit</text>
+
+  <path d="M268,348 C130,388 36,346 36,256 C36,232 76,227 114,229" fill="none" stroke="#9E92D8" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ms)"/>
+  <text x="150" y="410" font-family="'Space Mono', ui-monospace, monospace" font-size="10.5" font-weight="700" letter-spacing="1" fill="#9E92D8">RE-FORGE  ·  MAX 2 PASSES</text>
+
+  <g>
+    <rect x="40" y="156" width="160" height="72" rx="10" fill="#16171B" stroke="#2A2C32"/>
+    <text x="120" y="190" text-anchor="middle" font-size="16" font-weight="700" fill="#ECF0F3">DRAFT</text>
+    <text x="120" y="211" text-anchor="middle" font-size="12" fill="#9BA8B3">Smith writes</text>
+  </g>
+  <g>
+    <rect x="270" y="156" width="200" height="72" rx="10" fill="#16171B" stroke="#2A2C32"/>
+    <text x="370" y="184" text-anchor="middle" font-size="16" font-weight="700" fill="#ECF0F3">CHECK</text>
+    <text x="370" y="202" text-anchor="middle" font-size="12" fill="#9BA8B3">every claim vs source</text>
+    <text x="370" y="218" text-anchor="middle" font-family="'Space Mono', ui-monospace, monospace" font-size="9.5" fill="#9BA8B3">deterministic + judge</text>
+  </g>
+  <g>
+    <rect x="560" y="156" width="170" height="72" rx="10" fill="#9E92D8" fill-opacity="0.13" stroke="#9E92D8" stroke-width="2"/>
+    <text x="645" y="190" text-anchor="middle" font-size="16" font-weight="700" fill="#9E92D8">VERIFIED</text>
+    <text x="645" y="211" text-anchor="middle" font-size="12" fill="#9BA8B3">ship it</text>
+  </g>
+  <g>
+    <rect x="270" y="306" width="200" height="64" rx="10" fill="#16171B" stroke="#D9722E" stroke-width="2"/>
+    <text x="370" y="336" text-anchor="middle" font-size="14.5" font-weight="700" fill="#D9722E">REJECT + REASON</text>
+    <text x="370" y="355" text-anchor="middle" font-size="11" fill="#9BA8B3">the unsupported claim, named</text>
+  </g>
+  <g>
+    <rect x="560" y="306" width="170" height="64" rx="10" fill="#16171B" stroke="#D9722E" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="645" y="334" text-anchor="middle" font-size="14.5" font-weight="700" fill="#D9722E">SOFTEN</text>
+    <text x="645" y="353" text-anchor="middle" font-size="11" fill="#9BA8B3">degraded, never blocks</text>
+  </g>
+
+  <line x1="30" y1="432" x2="730" y2="432" stroke="#2A2C32"/>
+  <rect x="40" y="446" width="12" height="12" rx="2" fill="#9E92D8"/>
+  <text x="58" y="456" font-size="11.5" fill="#9BA8B3">verified / sourced (clean, ships)</text>
+  <rect x="330" y="446" width="12" height="12" rx="2" fill="#D9722E"/>
+  <text x="348" y="456" font-size="11.5" fill="#9BA8B3">reject + reforge, or soften</text>
+  <text x="730" y="456" text-anchor="end" font-family="'Space Mono', ui-monospace, monospace" font-size="10" fill="#9BA8B3">every reject reason logged</text>
+</svg>

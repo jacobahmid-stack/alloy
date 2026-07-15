@@ -8,24 +8,25 @@ retired from the site but kept as source; the character model is unchanged.
 | File | Origin | Use |
 |---|---|---|
 | `smith-forging-aws.png` | Gemini `prti3p` (Jacob, 2026-07-15) — forging ONE glowing ingot, violet rounded frame, no cubes | Source art for the OG v5 card; hero-grade portrait for posts/decks |
-| `../banners/og-image-aws-v5.png` | PIL composition: `smith-forging-aws` left + "Built for **AWS** partners." (AWS in ember `#D9722E`, NOT AWS orange) + molten rule + Alloy tile + forj.se, Space Grotesk/Mono | **DEPLOYED** as `alloy-landing/og-image.png?v=5` (all og/twitter/JSON-LD refs bumped, landing `2f64af2`) |
+| `../banners/og-image-aws-v5.png` | PIL composition: `smith-forging-aws` left + "Built for **AWS** partners." (AWS in amber anchor `#D98A33`, recolored at deploy, landing `dd0e368`; NOT AWS orange `#FF9900`) + molten rule + Alloy tile + forj.se, Space Grotesk/Mono | **DEPLOYED** as `alloy-landing/og-image.png?v=5` (all og/twitter/JSON-LD refs bumped, landing `2f64af2`). Kit copy re-exported 2026-07-15 from the deployed og-image with the corrected steel-violet A-tile composited in; the deployed og-image.png still carries the old-ramp tile until the next landing deploy. |
 | `smith-present-clean-cut.png` | Derived from `smith-cosell-cut`: floating cloud + cubes erased (component-clean, verified no artifacts) | Presenting pose with open hand, nothing vendor-colored — pairs with any content placed beside him |
 
 **Already AWS-safe in the old set (no rework needed):** `smith-cartoon-forging` (one glowing billet),
-`smith-alloy-cut` (tablet), `smith-bust-focused-cut` (neutral metal ingots in hand — reads as alloy),
+`smith-alloy-cut` (tablet),
 `smith-cartoon-new7`/`new8` (busts with a single AMBER cube → the live `smith.png`/`smith-avatar.png` avatars are these, fine as-is).
 
 **Needs Gemini regeneration for AWS-only reuse (cubes touch the figure — classical-CV removal FAILED, do not retry):**
 `smith-hold-tricloud` (→ holding ONE glowing ingot), `smith-live`/`smith-live-3cube` (→ map with one amber piece),
 `smith-readiness` (→ one ingot onto the stone pile), `smith-ecosystem` (→ one ingot over the parts burst),
 `smith-armscross-3cube`/`smith-bust-cubes-a`/`smith-team` (→ same pose, single amber cube or none),
+`smith-bust-focused` (→ same pose, ONE glowing amber ingot, plain grey bg for cutting; NOT AWS-safe as previously listed: the art shows three equal cloud-echo cubes, and the current `-cut` has a failed blotchy brown alpha-matte halo, so do not place it on any surface),
 `smith-forge-hero` (superseded by `smith-forging-aws`). Prompt base: "same semi-realistic cartoon blacksmith
 (dark hair, short beard, leather apron), [POSE], with ONE glowing amber deal-ingot, warm sparks, no cloud cubes,
 no logos, plain light grey background for cutting."
 
 **Rules (locked):**
 - Cubes are **solid/opaque** (never translucent glass — that washes out on background removal).
-- Cloud colours: **AWS amber `#FF9900` · Azure blue `#0089D6` · Google four-colour** (`#4285F4/#EA4335/#FBBC05/#34A853`).
+- RETIRED (tri-cloud-era history, kept for the record only): cloud cube colours AWS `#FF9900` · Azure blue `#0089D6` · Google four-colour (`#4285F4/#EA4335/#FBBC05/#34A853`). `#FF9900` is banned absolutely; AWS = amber anchor `#D98A33`.
 - **No trademarked cloud logos / partner badges** anywhere — Forj is not a cloud partner; colour + naming only (see memory `multicloud-pivot`).
 - Background strip = `rembg` (alpha-matting for busts) → `*-cut.png`. Plain light/grey source bg cuts cleanest.
 

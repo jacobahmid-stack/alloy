@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16131f;--ink-mid:#4b4760;--ink-dim:#8b8799;
+    --accent:#6B4DE0;--accent2:#7C5CFC;--violet-soft:#F1ECFF;--violet-line:#E4DCFB;
+    --cream:#FCFAF6;--panel:#ffffff;--rule:#ebe6f3;
+    --amber:#FF9E2C;--azure:#2E8BFF;--green:#34A853;--red:#EA4335;--yellow:#FBBC05;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{width:1500px;height:980px;background:
+      radial-gradient(60% 50% at 84% 10%, rgba(255,158,44,.10), transparent 60%),
+      radial-gradient(60% 50% at 12% 8%, rgba(46,139,255,.10), transparent 60%),
+      radial-gradient(80% 70% at 50% 116%, rgba(124,92,252,.16), transparent 60%),
+      var(--cream);
+    font-family:'Inter',system-ui,sans-serif;color:var(--ink);overflow:hidden;}
+  .wrap{padding:50px 58px 40px;height:980px;display:flex;flex-direction:column;}
+  /* header */
+  .lock{display:inline-flex;align-items:center;gap:11px;margin-bottom:20px;}
+  .lock .m{width:34px;height:34px;border-radius:9px;}
+  .lock .w{font-family:'Space Grotesk';font-size:19px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;}
+  .lock .by{font-family:'Space Mono';font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);}
+  h1{font-family:'Space Grotesk';font-size:44px;font-weight:700;letter-spacing:-.015em;line-height:1.02;}
+  h1 .v{color:var(--accent2);}
+  .sub{font-size:18px;color:var(--ink-mid);font-weight:300;margin-top:11px;}
+  .meta{font-family:'Space Mono';font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim);margin-top:9px;}
+  /* rows */
+  .rows{margin-top:24px;display:flex;flex-direction:column;gap:13px;flex:1;}
+  .row{display:grid;grid-template-columns:330px 1fr 360px;align-items:center;gap:22px;
+    background:var(--panel);border:1px solid var(--rule);border-radius:15px;padding:17px 22px;
+    box-shadow:0 16px 34px -26px rgba(60,40,130,.45);}
+  .who{display:flex;align-items:center;gap:14px;}
+  .num{width:46px;height:46px;flex:none;border-radius:12px;background:linear-gradient(150deg,var(--accent),var(--accent2));
+    color:#fff;font-family:'Space Grotesk';font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px -8px rgba(108,77,224,.7);}
+  .nm{font-family:'Space Grotesk';font-size:19px;font-weight:600;line-height:1.05;}
+  .jb{font-size:12.5px;color:var(--ink-mid);font-weight:300;margin-top:3px;line-height:1.32;}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{font-family:'Space Mono';font-size:11px;letter-spacing:.02em;color:var(--accent);
+    background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:7px;padding:5px 10px;white-space:nowrap;}
+  .out{display:flex;align-items:center;gap:13px;}
+  .arr{color:var(--accent2);font-size:22px;flex:none;}
+  .card{background:var(--cream);border:1px solid var(--rule);border-left:3px solid var(--accent2);border-radius:10px;padding:10px 13px;flex:1;}
+  .card .k{font-family:'Space Mono';font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);}
+  .card .t{font-size:13px;color:var(--ink);font-weight:500;margin-top:3px;line-height:1.3;}
+  .card .t b{color:var(--accent);}
+  /* footer */
+  .foot{margin-top:20px;background:linear-gradient(120deg,#171331,#241a4d 60%,#2c1f57);border-radius:15px;
+    padding:20px 26px;display:flex;align-items:center;justify-content:space-between;color:#efeafa;}
+  .foot .l{display:flex;align-items:center;gap:16px;}
+  .dots{display:flex;gap:6px;flex:none;}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block;}
+  .brain{font-size:14.5px;font-weight:300;color:#d9d2f0;max-width:760px;line-height:1.4;}
+  .brain b{color:#fff;font-weight:600;}
+  .tag{text-align:right;flex:none;margin-left:24px;}
+  .tag .big{font-family:'Space Grotesk';font-size:17px;font-weight:600;color:#fff;}
+  .tag .small{font-family:'Space Mono';font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#b3a8e0;margin-top:4px;}
+</style></head>
+<body><div class="wrap">
+  <div>
+    <span class="lock"><img class="m" src="file:///C:/Users/jacob/alloy-landing/alloy-mark.svg"><span class="w">Alloy</span><span class="by">by Forj</span></span>
+    <h1>Alloy is your <span class="v">acquisition department</span>.</h1>
+    <div class="sub">From a cold account to a funded, co-sell-ready deal.</div>
+    <div class="meta">Four Smith agents &middot; one Alloy brain &middot; grounded in real cloud and funding signals</div>
+  </div>
+
+  <div class="rows">
+    <div class="row">
+      <div class="who"><div class="num">01</div><div><div class="nm">Outreach</div><div class="jb">Catches the cloud and funding signal, finds the fit, names the funded play, drafts the first touch.</div></div></div>
+      <div class="chips"><span class="chip">Signal in</span><span class="chip">ICP fit</span><span class="chip">Funded play</span><span class="chip">First touch</span></div>
+      <div class="out"><span class="arr">&rarr;</span><div class="card"><div class="k">The deal</div><div class="t">A <b>funded play</b> named on a co-sell-ready account.</div></div></div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="num">02</div><div><div class="nm">Follow-up</div><div class="jb">Runs the multi-touch sequence at the right moment, so no account slips through the cracks.</div></div></div>
+      <div class="chips"><span class="chip">Sequence</span><span class="chip">Right moment</span><span class="chip">On-brand</span><span class="chip">No drop</span></div>
+      <div class="out"><span class="arr">&rarr;</span><div class="card"><div class="k">The reply</div><div class="t">Every account worked to a <b>reply</b>, nothing forgotten.</div></div></div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="num">03</div><div><div class="nm">Scheduling</div><div class="jb">Proposes the time, books the meeting, sends the reminder, kills the no-show.</div></div></div>
+      <div class="chips"><span class="chip">Propose</span><span class="chip">Book</span><span class="chip">Remind</span><span class="chip">Reschedule</span></div>
+      <div class="out"><span class="arr">&rarr;</span><div class="card"><div class="k">The meeting</div><div class="t">A meeting <b>on the calendar</b>, confirmed.</div></div></div>
+    </div>
+    <div class="row">
+      <div class="who"><div class="num">04</div><div><div class="nm">Retention</div><div class="jb">Watches account health, catches the renewal window, surfaces the next co-sell.</div></div></div>
+      <div class="chips"><span class="chip">Health</span><span class="chip">Renewal window</span><span class="chip">Expansion</span><span class="chip">Next play</span></div>
+      <div class="out"><span class="arr">&rarr;</span><div class="card"><div class="k">The account</div><div class="t">Renewal protected, the <b>next funded play</b> queued.</div></div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="l">
+      <span class="dots"><i style="background:var(--amber)"></i><i style="background:var(--azure)"></i><i style="background:var(--green)"></i></span>
+      <div class="brain">One <b>Alloy brain</b>: every cloud, data and AI buying signal in the market, kept current and grounded in real funding and stack data. Each agent has one job. Together they turn a chaotic pipeline into a predictable, funded one.</div>
+    </div>
+    <div class="tag"><div class="big">Smith forges it. You close it.</div><div class="small">Across AWS, Azure and Google Cloud</div></div>
+  </div>
+</div></body></html>

@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Forge marks</title>
+<style>
+  body{margin:0;background:#E9E5DD;font-family:system-ui,sans-serif;padding:40px;}
+  h1{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:#6A6760;font-weight:600;margin:0 0 28px;}
+  .row{display:flex;align-items:center;gap:28px;margin-bottom:26px;}
+  .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8A8276;width:130px;}
+  .tile{border-radius:22px;box-shadow:0 6px 22px rgba(26,25,22,.14);}
+  .sm{border-radius:8px;}
+  .cap{font-size:11px;color:#8A8276;text-align:center;margin-top:6px;}
+  .cell{text-align:center;}
+</style></head><body>
+<h1>Smith forges Alloy &mdash; forged-metal marks (struck hot)</h1>
+
+<!-- shared gradient defs -->
+<svg width="0" height="0" style="position:absolute"><defs>
+  <linearGradient id="molten" x1="8%" y1="100%" x2="60%" y2="2%">
+    <stop offset="0%" stop-color="#9E2F08"/><stop offset="38%" stop-color="#C8470F"/>
+    <stop offset="72%" stop-color="#EC6824"/><stop offset="100%" stop-color="#FAA64F"/>
+  </linearGradient>
+  <radialGradient id="glowL" cx="76%" cy="18%" r="62%">
+    <stop offset="0%" stop-color="#F0883E" stop-opacity="0.55"/><stop offset="52%" stop-color="#B83D0C" stop-opacity="0.13"/><stop offset="100%" stop-color="#B83D0C" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glowD" cx="76%" cy="18%" r="66%">
+    <stop offset="0%" stop-color="#F89B45" stop-opacity="0.42"/><stop offset="55%" stop-color="#E2622A" stop-opacity="0.10"/><stop offset="100%" stop-color="#B83D0C" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="spark" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#FFE9C9" stop-opacity="0.95"/><stop offset="100%" stop-color="#FAA64F" stop-opacity="0"/>
+  </radialGradient>
+</defs></svg>
+
+<!-- A path: sculpted forged peak, tapered legs, sharp apex -->
+<!-- F path: bold forged letter -->
+
+<div class="row"><span class="lab">Alloy &mdash; A</span>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><rect width="512" height="512" rx="96" fill="url(#glowL)"/><circle cx="256" cy="96" r="60" fill="url(#spark)"/><path d="M256 84 L432 428 L344 428 L256 264 L168 428 L80 428 Z" fill="url(#molten)"/></svg><div class="cap">light</div></div>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#141310"/><rect width="512" height="512" rx="96" fill="url(#glowD)"/><circle cx="256" cy="96" r="64" fill="url(#spark)"/><path d="M256 84 L432 428 L344 428 L256 264 L168 428 L80 428 Z" fill="url(#molten)"/></svg><div class="cap">dark</div></div>
+  <div class="cell"><svg class="sm" width="40" height="40" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><path d="M256 84 L432 428 L344 428 L256 264 L168 428 L80 428 Z" fill="url(#molten)"/></svg><div class="cap">32px</div></div>
+</div>
+
+<div class="row"><span class="lab">Forj &mdash; F molten</span>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><rect width="512" height="512" rx="96" fill="url(#glowL)"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="url(#molten)"/></svg><div class="cap">light</div></div>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#141310"/><rect width="512" height="512" rx="96" fill="url(#glowD)"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="url(#molten)"/></svg><div class="cap">dark</div></div>
+  <div class="cell"><svg class="sm" width="40" height="40" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="url(#molten)"/></svg><div class="cap">32px</div></div>
+</div>
+
+<div class="row"><span class="lab">Forj &mdash; F ink + forge-glow</span>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><rect width="512" height="512" rx="96" fill="url(#glowL)"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="#1A1916"/></svg><div class="cap">light</div></div>
+  <div class="cell"><svg class="tile" width="128" height="128" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#141310"/><rect width="512" height="512" rx="96" fill="url(#glowD)"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="#FDFAF5"/></svg><div class="cap">dark</div></div>
+  <div class="cell"><svg class="sm" width="40" height="40" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#F3EFE8"/><path d="M150 96 H384 V172 H230 V238 H350 V314 H230 V416 H150 Z" fill="#1A1916"/></svg><div class="cap">32px</div></div>
+</div>
+
+</body></html>

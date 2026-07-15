@@ -43,3 +43,8 @@ par_innov*.txt
 # Smith's ES256 signing key: NEVER commit (private key). Lives here for the resign script only.
 smith-signing-key.json
 forj-keys/
+Wagyu/
+
+# headless-browser profile junk (never version)
+brand/_archive/_cprofile/
+**/_cprofile/

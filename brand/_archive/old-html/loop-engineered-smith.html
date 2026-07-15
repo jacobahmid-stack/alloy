@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#16131f;--ink-mid:#4b4760;--ink-dim:#8b8799;--accent:#6B4DE0;--accent2:#7C5CFC;--violet-soft:#F1ECFF;--violet-line:#E4DCFB;--cream:#FCFAF6;--rule:#ebe6f3;--amber:#FF9E2C;--azure:#2E8BFF;--green:#34A853;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1500px;height:980px;background:radial-gradient(60% 50% at 84% 8%,rgba(255,158,44,.09),transparent 60%),radial-gradient(60% 50% at 12% 8%,rgba(46,139,255,.09),transparent 60%),radial-gradient(85% 70% at 50% 116%,rgba(124,92,252,.16),transparent 60%),var(--cream);font-family:'Inter',system-ui,sans-serif;color:var(--ink);overflow:hidden}
+.wrap{padding:46px 58px 38px;height:980px;display:flex;flex-direction:column}
+.lock{display:inline-flex;align-items:center;gap:11px;margin-bottom:16px}
+.lock .m{width:32px;height:32px;border-radius:9px}
+.lock .w{font-family:'Space Grotesk';font-size:18px;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.lock .by{font-family:'Space Mono';font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+h1{font-family:'Space Grotesk';font-size:44px;font-weight:700;letter-spacing:-.015em;line-height:1.03}
+h1 .v{color:var(--accent2)}
+.sub{font-size:18px;color:var(--ink-mid);font-weight:300;margin-top:10px}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;gap:18px;margin-top:6px}
+.col{display:flex;flex-direction:column;align-items:center;width:470px}
+.eyebrow{font-family:'Space Mono';font-size:12px;letter-spacing:.13em;text-transform:uppercase;margin-bottom:6px}
+.eyebrow.g{color:var(--ink-dim)} .eyebrow.v{color:var(--accent)}
+.panel{position:relative;width:460px;height:460px}
+.panel svg{position:absolute;inset:0}
+.medallion{position:absolute;left:230px;top:230px;transform:translate(-50%,-50%);width:128px;height:128px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.medallion.g{background:#eceaf0;border:1px solid #d9d6e0}
+.medallion.v{background:linear-gradient(150deg,var(--accent),var(--accent2));box-shadow:0 12px 30px -8px rgba(108,77,224,.6)}
+.medallion .who{font-family:'Space Grotesk';font-weight:700;font-size:17px;letter-spacing:.08em}
+.medallion.g .who{color:#6b6878} .medallion.v .who{color:#fff}
+.medallion .lp{font-size:26px;line-height:1;margin-top:2px}
+.medallion.g .lp{color:#a7a3b3} .medallion.v .lp{color:#fff}
+.node{position:absolute;transform:translate(-50%,-50%);max-width:138px;text-align:center;font-family:'Space Grotesk';font-size:13.5px;font-weight:500;line-height:1.15;padding:9px 13px;border-radius:11px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.node.g{background:#f3f1f6;border:1px solid #e2dfe8;color:#6b6878}
+.node.v{background:#fff;border:1px solid var(--violet-line);color:var(--ink);box-shadow:0 10px 22px -16px rgba(60,40,130,.5)}
+.node .ni{font-family:'Space Mono';font-size:10px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.node.g .ni{background:#e2dfe8;color:#8f8b9c} .node.v .ni{background:var(--violet-soft);color:var(--accent)}
+.cap{margin-top:10px;font-size:14px;font-weight:300;color:var(--ink-mid);max-width:380px;text-align:center;line-height:1.4}
+.cap b{color:var(--ink);font-weight:600}
+.mid{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none;width:90px}
+.mid .ar{font-size:40px;color:var(--accent2);line-height:1}
+.mid .ml{font-family:'Space Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);text-align:center}
+.foot{margin-top:14px;background:linear-gradient(120deg,#171331,#241a4d 60%,#2c1f57);border-radius:15px;padding:20px 28px;display:flex;align-items:center;justify-content:space-between;color:#efeafa}
+.foot .l{display:flex;align-items:center;gap:16px}
+.dots{display:flex;gap:6px;flex:none} .dots i{width:11px;height:11px;border-radius:50%;display:block}
+.brain{font-size:15px;font-weight:300;color:#d9d2f0;max-width:760px;line-height:1.4} .brain b{color:#fff;font-weight:600}
+.tag{text-align:right;flex:none;margin-left:24px}
+.tag .big{font-family:'Space Grotesk';font-size:17px;font-weight:600;color:#fff}
+.tag .small{font-family:'Space Mono';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#b3a8e0;margin-top:4px}
+</style></head><body><div class="wrap">
+  <div>
+    <span class="lock"><img class="m" src="file:///C:/Users/jacob/alloy-landing/alloy-mark.svg"><span class="w">Alloy</span><span class="by">by Forj</span></span>
+    <h1>You were the loop. Now <span class="v">Smith is</span>.</h1>
+    <div class="sub">Most sales AI is a chatbot you prompt. Smith runs the loop, and gets sharper every cycle.</div>
+  </div>
+  <div class="stage">
+    <div class="col">
+      <div class="eyebrow g">Before &middot; you were the loop</div>
+      <div class="panel">
+        <svg viewBox="0 0 460 460"><circle cx="230" cy="230" r="150" fill="none" stroke="#d9d6e0" stroke-width="2" stroke-dasharray="3 7"/></svg>
+        <div class="medallion g"><span class="who">YOU</span><span class="lp">&#8635;</span></div>
+        <div class="node g" style="left:230px;top:80px"><span class="ni">1</span>Prompt</div>
+<div class="node g" style="left:360px;top:305px"><span class="ni">2</span>Read the answer</div>
+<div class="node g" style="left:100px;top:305px"><span class="ni">3</span>Prompt again</div>
+      </div>
+      <div class="cap">A tool you hold, every move. <b>Same on day 100 as day 1.</b></div>
+    </div>
+    <div class="mid"><div class="ar">&rarr;</div><div class="ml">design it<br>once</div></div>
+    <div class="col">
+      <div class="eyebrow v">Now &middot; Smith is the loop</div>
+      <div class="panel">
+        <svg viewBox="0 0 460 460"><circle cx="230" cy="230" r="182" fill="none" stroke="url(#vg)" stroke-width="2.5"/><defs><linearGradient id="vg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6B4DE0"/><stop offset="1" stop-color="#A99BFF"/></linearGradient></defs></svg>
+        <div class="medallion v"><span class="who">SMITH</span><span class="lp">&#8635;</span></div>
+        <div class="node v" style="left:230px;top:48px"><span class="ni">1</span>Signal</div>
+<div class="node v" style="left:403px;top:174px"><span class="ni">2</span>Funded play</div>
+<div class="node v" style="left:337px;top:377px"><span class="ni">3</span>Draft the open</div>
+<div class="node v" style="left:123px;top:377px"><span class="ni">4</span>You close</div>
+<div class="node v" style="left:57px;top:174px"><span class="ni">5</span>Learn</div>
+      </div>
+      <div class="cap">Designed once, runs on its own. <b>Every cycle writes a lesson back.</b></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="l"><span class="dots"><i style="background:var(--amber)"></i><i style="background:var(--azure)"></i><i style="background:var(--green)"></i></span>
+      <div class="brain">The leverage moved one floor up: from prompting Smith to running the loop. A chatbot is the same on day one and day one hundred. <b>A loop compounds.</b></div></div>
+    <div class="tag"><div class="big">Smith forges it. You close it.</div><div class="small">Across AWS, Azure and Google Cloud</div></div>
+  </div>
+</div></body></html>
