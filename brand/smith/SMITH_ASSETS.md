@@ -1,30 +1,59 @@
-# Smith voxel asset kit
+# Smith asset kit — AWS-first era (2026-07-15; tri-cloud set below retired from forj.se)
 
-Premium voxel Smith, locked 2026-06-19 (replaced the realistic portrait). Generated in Nano Banana / Gemini.
-Legal: voxel-INSPIRED in the Forj ember palette. Never use Mojang assets or the word "Minecraft" publicly.
+Current Smith on forj.se = **AWS-forward: one glowing deal-piece, no cloud cubes** (per the
+2026-07-14 "built for AWS partners" remake). The tri-cloud cartoon set (2026-06-20) below is
+retired from the site but kept as source; the character model is unchanged.
 
-- Raw renders (archive): `../logos/smith-voxel1-20.png`
-- Transparent cutouts (rembg): `../logos/smith-voxelN-cut.png`
-- Curated role set: this folder
-- Web-optimized copies in use: `alloy-landing/` (forj.se)
-
-## Curated roles (this folder)
-| File | Source | Use |
+## AWS-first assets (2026-07-15)
+| File | Origin | Use |
 |---|---|---|
-| smith-hero.png | voxel12-cut | forj.se hero, full standing, transparent |
-| smith-hero-alt.png | voxel11-cut | hero alternate |
-| smith-bust.png | voxel18-cut | clean forward bust (console / larger avatar) |
-| smith-forging.png | voxel8-cut | "working" state (how-it-works, app loading) |
-| smith-forging-burst.png | voxel15-cut | dramatic forging burst (hero-action / banner) |
-| smith-win.png | voxel14-cut | success / win (proof, app win-state) |
-| smith-win-bust.png | voxel4-cut | compact win |
-| smith-avatar-ring.png | voxel5 | avatar / brand mark (face in ember ring) |
-| smith-avatar-ring-alt.png | voxel20 | avatar alt (fierier ring) |
-| smith-workshop.png | voxel2 | OG / share-card source (warm workshop) |
-| smith-moods-sheet.png | voxel17 | 4-up expression reference |
+| `smith-forging-aws.png` | Gemini `prti3p` (Jacob, 2026-07-15) — forging ONE glowing ingot, violet rounded frame, no cubes | Source art for the OG v5 card; hero-grade portrait for posts/decks |
+| `../banners/og-image-aws-v5.png` | PIL composition: `smith-forging-aws` left + "Built for **AWS** partners." (AWS in ember `#D9722E`, NOT AWS orange) + molten rule + Alloy tile + forj.se, Space Grotesk/Mono | **DEPLOYED** as `alloy-landing/og-image.png?v=5` (all og/twitter/JSON-LD refs bumped, landing `2f64af2`) |
+| `smith-present-clean-cut.png` | Derived from `smith-cosell-cut`: floating cloud + cubes erased (component-clean, verified no artifacts) | Presenting pose with open hand, nothing vendor-colored — pairs with any content placed beside him |
 
-## Web assets (alloy-landing/)
-smith-hero.png (h600 transparent) · smith-avatar.png (256 ring) · smith-bust.png (h460) · smith-forging.png (h560) · smith-win.png (h520)
+**Already AWS-safe in the old set (no rework needed):** `smith-cartoon-forging` (one glowing billet),
+`smith-alloy-cut` (tablet), `smith-bust-focused-cut` (neutral metal ingots in hand — reads as alloy),
+`smith-cartoon-new7`/`new8` (busts with a single AMBER cube → the live `smith.png`/`smith-avatar.png` avatars are these, fine as-is).
 
-## Raw library quick index
-1 bust · 2/3 workshop · 4 win-bust · 5 ring avatar · 6/7/11/12/13 standing · 8/9 forging · 10/14/16 win · 15 forging-burst · 17 moods-sheet · 18/19 clean bust · 20 ring-alt
+**Needs Gemini regeneration for AWS-only reuse (cubes touch the figure — classical-CV removal FAILED, do not retry):**
+`smith-hold-tricloud` (→ holding ONE glowing ingot), `smith-live`/`smith-live-3cube` (→ map with one amber piece),
+`smith-readiness` (→ one ingot onto the stone pile), `smith-ecosystem` (→ one ingot over the parts burst),
+`smith-armscross-3cube`/`smith-bust-cubes-a`/`smith-team` (→ same pose, single amber cube or none),
+`smith-forge-hero` (superseded by `smith-forging-aws`). Prompt base: "same semi-realistic cartoon blacksmith
+(dark hair, short beard, leather apron), [POSE], with ONE glowing amber deal-ingot, warm sparks, no cloud cubes,
+no logos, plain light grey background for cutting."
+
+**Rules (locked):**
+- Cubes are **solid/opaque** (never translucent glass — that washes out on background removal).
+- Cloud colours: **AWS amber `#FF9900` · Azure blue `#0089D6` · Google four-colour** (`#4285F4/#EA4335/#FBBC05/#34A853`).
+- **No trademarked cloud logos / partner badges** anywhere — Forj is not a cloud partner; colour + naming only (see memory `multicloud-pivot`).
+- Background strip = `rembg` (alpha-matting for busts) → `*-cut.png`. Plain light/grey source bg cuts cleanest.
+
+## Web assets in use (`alloy-landing/`, forj.se) — cache-bust `?v=` on swap
+| File | Source (this folder) | Use |
+|---|---|---|
+| `smith-hero.png` | `smith-hold-tricloud-cut` (Gemini a7ll3q) | Hero — 3/4, holds the 3 cloud cubes. Also the OG card (via `_og.html`). |
+| `smith.png` + `smith-avatar.png` | `smith-cartoon-new7-cut` (face crop) | Chat avatar — fab, panel header, hero console, "Smith's read" |
+| `smith-process.png` | `smith-cartoon-new2-cut` | How it works — forge action (hammer raised) |
+| `smith-win.png` | `smith-cartoon-new6-cut` | The commitment — cube raised in triumph |
+| `smith-bust.png` | `smith-cartoon-new5-cut` | CTA — confident bust |
+| `og-image.png` | rendered from `alloy-landing/_og.html` (pulls `smith-hero.png`) | OG / Twitter share card (1200×630) |
+
+## Source library (this folder) — tri-cloud cartoon set
+Each has a `.png` (original) and `-cut.png` (transparent).
+- `smith-hold-tricloud` — Gemini a7ll3q — 3/4, holds 3 solid cubes → **hero/OG**.
+- `smith-cartoon-new1` — 4-cube stack on the anvil (presenting), full body.
+- `smith-cartoon-new2` — forge action, hammer raised → **process**.
+- `smith-cartoon-new3` — 3 cubes on the anvil, hammer in hand (prior hero).
+- `smith-cartoon-new4` — bust holding 2 cubes.
+- `smith-cartoon-new5` — confident bust → **CTA**.
+- `smith-cartoon-new6` — cube raised in triumph → **win**.
+- `smith-cartoon-new7` — warm friendly bust, amber cube on shoulder → **avatar**.
+- `smith-cartoon-new8` — focused/serious bust, amber cube.
+- `smith-bust-cubes-a` / `-b` — Gemini 89cqxs / atf6yt — warm busts + floating tri-cloud cubes (avatar alternates).
+- `smith-bust-focused` — Gemini a64vkj — focused bust holding 2 cubes (a "working" mood).
+
+## Superseded (kept for reference, not used on forj.se)
+- Voxel set (`smith-voxel*`, `../logos/`) and the realistic portrait — replaced by this cartoon set.
+- Raw concept sheets `smith21`–`smith38` (multi-panel, translucent cubes on a baked checkerboard — do NOT extract cleanly; source only).
+- The raw Gemini drops `Gemini_Generated_Image_*.png` are duplicated above under clean names; safe to delete.
