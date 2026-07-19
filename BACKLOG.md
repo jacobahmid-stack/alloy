@@ -128,7 +128,7 @@ The grounding came from a source-read of AWS's own docs (MAP, ACE/Partner Centra
 
 ### Pillar 6 — Run the engagement (meetings, briefs, CRM, ACE submit)
 *Real EM:* drives the deal through to a co-sell close.
-- **Today:** **Smith Meetings (Tier C live)** — bot joins → transcript → brief; CRM sync (HubSpot + Pipedrive + Lime + webcrm + OnePageCRM, dedup by crm_id); **Slack live** (Novalo).
+- **Today:** **Smith Meetings (Tier C live)** — bot joins → transcript → brief; ~~CRM sync (HubSpot + Pipedrive + Lime + webcrm + OnePageCRM, dedup by crm_id)~~ **CRM sync is NOT live, corrected 2026-07-19**: measured 5,185 engagement rows, all with `crm_provider` NULL, so no connector has ever written a row; **Slack live** (Novalo).
 - **Ultimate:** **ACE submission loop** (`pc-mcp`, gated on the IAM identity #3) = close the co-sell loop in-product; Teams next; deal write-back; an engagement timeline on the card.
 
 ### Pillar 7 — Grounding + honesty (real AWS facts, never a guess)
