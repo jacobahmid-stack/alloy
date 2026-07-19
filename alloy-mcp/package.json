@@ -1,0 +1,22 @@
+{
+  "name": "alloy-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Alloy MCP server. Exposes Smith's grounded hyperscaler-partner GTM intelligence (cloud detection, company reads, funding-program fit, prospecting) as MCP tools, so it runs INSIDE Amazon Quick, Claude, Slack, or Teams. The vertical layer a horizontal identity graph (e.g. D&B) does not cover.",
+  "bin": {
+    "alloy-mcp": "src/index.mjs"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "start:http": "node src/http.mjs",
+    "test": "node test/smoke.mjs && node test/desk.smoke.mjs",
+    "inspect": "npx -y @modelcontextprotocol/inspector node src/index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "zod": "^3.23.0"
+  }
+}
