@@ -67,7 +67,7 @@ export function createAlloyServer() {
       try {
         const pc = partner_cloud.toUpperCase();
         const out = await proxy("smith_chat",
-          `Read this company for a ${pc} partner: ${company}. Lead with ${pc}; treat the other clouds as the customer's estate to migrate, modernize, or coexist with. Give a tight, grounded read: which cloud they run and how you know, their notable stack, rough size, the sharpest play for a ${pc} partner (migrate, modernize, or GenAI), and the funding angle named in ${pc}'s own program. Say "unknown" rather than guess.`,
+          `Read this company for a ${pc} partner: ${company}. Lead with ${pc}; treat the other clouds as the customer's estate to migrate, modernize, or coexist with. Give a tight, grounded read: which cloud they run and how you know, their notable stack, rough size, the sharpest play for a ${pc} partner (migrate, modernize, or GenAI), and the funding angle named in ${pc}'s own program, stated as a DIRECTION only. Never assert that an account is eligible, and never state a program threshold, cap or percentage: close the funding sentence with "confirm eligibility and amounts with the ${pc} partner manager". Say "unknown" rather than guess.`,
           { web: true, maxTokens: 1200 });
         return { content: [{ type: "text", text: out }] };
       } catch (e) { return { content: [{ type: "text", text: "Error: " + (e?.message || e) }], isError: true }; }
@@ -88,7 +88,7 @@ export function createAlloyServer() {
 
   server.tool(
     "alloy_funding_fit",
-    "Deterministic hyperscaler funding-program fit + ICP score for an account, from its cloud posture and size. Free, no LLM. Returns the recommended program (MAP, MAP-Modernize, GenAI PoC, Resell), an ICP score 0-100 with a hot/warm/cold band, and a directional funding estimate. The vertical partner layer a horizontal identity graph does not cover.",
+    "Deterministic hyperscaler funding-program fit + ICP score for an account, from its cloud posture and size. Free, no LLM. Returns the recommended program (MAP, MAP-Modernize, GenAI PoC, Resell), an ICP score 0-100 with a hot/warm/cold band, and a directional funding estimate. This is the authoritative funding verdict: prefer it over any funding statement in alloy_company_read, which is directional only. The vertical partner layer a horizontal identity graph does not cover.",
     {
       cloud: z.enum(["aws", "azure", "gcp", "on-prem", "other", "unknown"]).describe("The account's current cloud"),
       partner_cloud: z.enum(["aws", "azure", "gcp"]).default("aws").describe("The partner's primary (home) cloud"),
