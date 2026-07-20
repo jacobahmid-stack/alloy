@@ -12,15 +12,26 @@ import { createAlloyServer } from "./server.mjs";
 
 const PORT = Number(process.env.PORT || 8787);
 const TOKEN = process.env.ALLOY_MCP_TOKEN || "";
+// Explicit opt-in for local dev. Never set this anywhere reachable from the internet.
+const DEV_OPEN = process.env.ALLOY_MCP_DEV_OPEN === "1";
 
 const app = express();
 app.use(cors({ exposedHeaders: ["Mcp-Session-Id"], allowedHeaders: ["Content-Type", "Authorization", "Mcp-Session-Id", "mcp-protocol-version"] }));
 app.use(express.json({ limit: "1mb" }));
 
-// Bearer gate. In production ALLOY_MCP_TOKEN MUST be set (issue one per partner tenant so usage +
-// budget attribute correctly). If unset, the server runs open and logs a warning (local dev only).
+// FAIL CLOSED. A missing ALLOY_MCP_TOKEN must never become an authorization decision.
+//
+// This was fail-open until 2026-07-20: `if (!TOKEN) return next()`. The deployed container had no
+// token, so https://db.forj.se/mcp answered unauthenticated MCP calls from any host on the internet
+// for three weeks, returning a valid handshake and the full tool list. It announced itself on every
+// restart with "[NO AUTH - set ALLOY_MCP_TOKEN for production]", into a log nobody read.
+//
+// Local development sets ALLOY_MCP_DEV_OPEN=1 deliberately. Absence of configuration is not consent.
 function auth(req, res, next) {
-  if (!TOKEN) return next();
+  if (!TOKEN) {
+    if (DEV_OPEN) return next();
+    return res.status(503).json({ jsonrpc: "2.0", error: { code: -32001, message: "server misconfigured: no auth token" }, id: null });
+  }
   const got = (req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
   if (got !== TOKEN) return res.status(401).json({ jsonrpc: "2.0", error: { code: -32001, message: "unauthorized" }, id: null });
   next();
@@ -46,4 +57,8 @@ const noSession = (_req, res) => res.status(405).json({ jsonrpc: "2.0", error: {
 app.get("/mcp", noSession);
 app.delete("/mcp", noSession);
 
-app.listen(PORT, () => console.error(`alloy-mcp HTTP (streamable) on :${PORT}/mcp  ${TOKEN ? "[bearer auth ON]" : "[NO AUTH - set ALLOY_MCP_TOKEN for production]"}`));
+if (!TOKEN && !DEV_OPEN) {
+  console.error("alloy-mcp REFUSING TO SERVE: ALLOY_MCP_TOKEN is not set. Every request will 503.");
+  console.error("Set ALLOY_MCP_TOKEN, or ALLOY_MCP_DEV_OPEN=1 for local development only.");
+}
+app.listen(PORT, () => console.error(`alloy-mcp HTTP (streamable) on :${PORT}/mcp  ${TOKEN ? "[bearer auth ON]" : (DEV_OPEN ? "[DEV OPEN - never expose]" : "[REFUSING ALL REQUESTS - no token]")}`));
