@@ -1,4 +1,10 @@
-# ICP Qualification — rules & guidelines
+# ICP Qualification — Level B/C data pipeline gate
+
+> **SCOPE (2026-07-04): this file is NOT the ICP.** It is the enrichment-spend gate for accounts
+> (Level B) inside Alloy's data pipeline. **The canonical ICP — who Forj sells to, the Desk/Software
+> tiers, the anti-ICP, the unified 70/40 scoring vocabulary — lives in [FORJ_ICP.md](FORJ_ICP.md)
+> and wins on any conflict.** The two-tier free-before-paid gate below and the never-guess rule are
+> promoted into that doc; the mechanics stay here.
 
 How a raw Swedish org from `se_registry` (~489k companies) becomes a paid-for, enriched account in
 Alloy — and, critically, **what we check for free before spending a single Claude token**.

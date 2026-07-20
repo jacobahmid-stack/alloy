@@ -34,7 +34,7 @@ One page: what Smith does today, structured as the working day of the senior par
 - **ACE-ready opportunity drafts** shaped to pass validation, ready for a human to submit in Partner Central. **LIVE**
 - **Live co-sell pipeline pulled in** (pc-cosell-sync nightly, incl. AWS's own quality/engagement read on each opp). **LIVE**
 - **Partner Business Plan** (co-built from the partner's real book) and **tri-party plays** (partner + ISV on the stack + distribution). **LIVE**
-- **RA-ID attribution rhythm** - reminded before the 7th so launched deals count. **LIVE**
+- **RA-ID attribution rhythm** - monthly allocation review so launched deals count. **LIVE** (the "before the 7th" deadline was found not to exist; corrected 2026-07-20)
 - **Partner Central agents MCP access** (AWS's own agent, SigV4, both catalogs) - working; usable for funding checks and onboarding guidance the moment registration completes. **LIVE (data plane gated on registration)**
 
 ## 6. Technically: a builder's depth, not a copywriter

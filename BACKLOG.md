@@ -179,3 +179,7 @@ The card is where every sell decision is made, so it's the backbone — build it
 - **2026-06-09:** "Last stack scan" date/time on the card; Explorium fully removed (standardized on BuiltWith + free stack); BuiltWith merged into one "Scan the stack" (no reload); Forj-Q project (915 imported, 120 AWS-confirmed, 116→Novalo + contacts); Qubad onboard path; clean "ALLOY by FORJ" nav logo; **live** Smith hero console on forj.se.
 - **2026-06-08:** Smith Meetings reliable (poll-net + transcript view/download); Smith in Slack → per-tenant, tenant-walled, full grounding; move company between workspaces; self-serve member management.
 - **2026-06-04 stretch:** light/dark theme; human-voice sweep; forj.se rebuilt around the two-ways model; LIVE walled Smith demo; Smith personality; MS Learn + GCP grounding (tri-cloud); real AWS pricing in TCO; official AWS Knowledge MCP.
+
+> **Correction 2026-07-20:** any item above describing an RA-ID nudge "before the 7th" was built
+> against a deadline that does not exist. AWS PRM attribution is passive and evaluated on a monthly
+> billing cycle; there is no partner submission event. The build record stands, the premise does not.
