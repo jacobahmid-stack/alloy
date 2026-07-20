@@ -55,7 +55,7 @@ Any work on this brief must be grounded in these, not in aspiration.
 - **Reachability is 99.3% Swedish.** Norway 129 contacted companies. Finland 31. Any Nordic-reach claim is false today.
 - **97% of contacts and phone numbers came from a Vainu trial API of unverified licence status.** Until resolved, Forj must make no public claim about the provenance or ownership of its contact data, and must have an answer ready if a customer asks in a renewal conversation.
 - **Partner Smith usage was zero until 2026-07-15.**
-- AWS shipped opportunity drafting, scoring and enrichment first-party and free in July 2026, commoditising the assist layer. The one structural survivor: **AWS does no discovery.** Partner Central sees nothing until an account is already an opportunity. Forj's defensible ground is the layer *before* Partner Central.
+- AWS shipped opportunity drafting, scoring and enrichment first-party in July 2026 (available to all ACE-eligible partners; AWS published eligibility, not a price, so never say "free"), commoditising the assist layer. The one structural survivor: **AWS does not manufacture net-new accounts.** It sources and scores leads already in its own funnel, and its prospecting runs on leads AWS or the partner already hold; it does not go find accounts that are not yet touching AWS. Forj's defensible ground is that first discovery step, the layer *before* Partner Central. (Corrected 2026-07-20: "AWS does no discovery / Partner Central sees nothing" is false. Partner Central has a Leads layer before opportunities. A partner disproves the old line on the spot.)
 
 ---
 

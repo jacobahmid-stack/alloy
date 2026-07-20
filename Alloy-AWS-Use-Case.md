@@ -113,7 +113,7 @@ Alloy is a **global** SaaS; AWS consumption scales with partner-tenants and thei
 2. **ISV Workload Migration Program (primary).** On a successful PoC, convert to ISV WMP funding sized against the projected post-migration AWS ARR in §6, with milestones tied to realised AWS consumption.
 3. **Supporting vehicles** we intend to use alongside: **AWS Activate** (Forj startup credits, incl. Bedrock model credits), **APN Innovation Sandbox** credits (Novalo's build/dev AWS usage), **Marketing Development Funds** (joint launch demand-gen), and — as Alloy reaches GA on **AWS Marketplace** — **ISV Accelerate** co-sell.
 
-*(We understand PoC and WMP/MAP funding are sequential, not stacked, and that the PoC amount is credited against the subsequent WMP award.)*
+*(Our understanding, to confirm in the Partner Funding Benefits Guide: a PoC and MAP are not run on the same deal at once, and a PoC can be credited toward a later MAP award. We do NOT tie this to ISV WMP, which is a separate program, and we treat the netting rule as guide-gated, not published AWS doctrine. Corrected 2026-07-20.)*
 
 ---
 
@@ -154,7 +154,7 @@ Novalo delivers the funded engineering: **Bedrock integration** (Claude on Bedro
 >
 > **Vehicle & mechanics (from research; confirm with the AWS PDM/PSA against the gated Program Funding Guide):**
 > - **ISV WMP** is the primary fit (SaaS workload → net-new ARR), publicly described as **~10–15% of post-migration AWS ARR**, min **$36k ARR/12mo**, partner-applied, **FTR**-gated. *Do not quote the % to AWS — state the ARR projection and let AWS size it.*
-> - **GenAI PoC**: ~lower of **10% of year-1 spend or SOW cost**; **pre-approval email required before any work**; PoC is **deducted** from a later WMP award; **cannot** be stacked with WMP/MAP simultaneously.
+> - **PoC / Sell funding** (not a named "GenAI PoC" program): directional ~10% of year-1 spend bounded by project cost, AWS publishes no figure so treat as directional; **pre-approval in Partner Central** (the Fund Request reaches the Pre-Approval stage) before any work, NOT an "email"; a PoC can be credited toward a later **MAP** award (guide-gated, not published), and is not run on the same deal as MAP at once. Do NOT tie any of this to ISV WMP. Corrected 2026-07-20.
 > - **AWS Activate**: Founders **$1k initial, up to $5k**; Portfolio **up to $200k** (needs an Activate **Provider Org ID** — use Forj's VC/accelerator; pre-Series B, founded within 10 years, paid support plan). Activate credits are **redeemable on Bedrock 3P models (Claude)**. Verified 2026-07-20 vs aws.amazon.com/startups/credits (was "$100k", a stale figure).
 > - **Innovation Sandbox** (dev-env AWS credits) + **MDF** (pay-first, claim within 30 days) — Novalo-side.
 > - **ISV Accelerate / Marketplace**: later-stage; needs a Marketplace GA listing + opportunity history.
