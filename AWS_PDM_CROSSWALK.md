@@ -19,7 +19,7 @@
 | RESP 5. Drive EMEA / WW improvements via strategic insights and special projects | Generates the insight substrate: ranked plays, RA-ID patterns, which plays actually convert (proven on Forj's own calls), every run logged | PARTIAL. Supplies insight as data, the org and political change is human |
 | RESP 6. Develop deep executive relationships with decision-makers | Finds the cloud owner first, drafts a personal opener in their language | GAP. Smith opens the contact, the relationship is human |
 | QUAL 1. 5+ yrs B2B sales, track record exceeding KPIs | Encodes only plays proven on Forj's human calls, runs the KPI rhythm | GAP. Software has no tenure or quota, the human desk carries the record |
-| QUAL 2. Cloud computing and B2B tech knowledge | Names every play in AWS's own programs (MAP, MAP Lite, POC, MDF, ACE, RA-ID), reads each account's stack, built on Bedrock in the EU | EXACT. Arguably more current on program detail than most candidates |
+| QUAL 2. Cloud computing and B2B tech knowledge | Names every play in AWS's own programs (MAP, POC, MDF, ACE, revenue attribution), reads each account's stack, built on Bedrock in the EU | EXACT. Arguably more current on program detail than most candidates |
 | QUAL 3. Fluency in English | Drafts openers, ACE opps, PBPs, daily briefs in English | EXACT |
 | QUAL 4. Swedish a plus | Drafts the opener in the recipient's language, Swedish written outreach in scope | PARTIAL. Localizes written, conversational Swedish for the room is human |
 
