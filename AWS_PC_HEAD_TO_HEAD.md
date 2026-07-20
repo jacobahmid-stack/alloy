@@ -1,6 +1,6 @@
 # The Alto head-to-head artifact (the 30-day move)
 
-**Why this exists.** On 2026-07-09 AWS shipped Partner Lead Prospecting free to every ACE partner (drafting, scoring, enrichment). That takes the downstream half of Smith off the table as something to sell. The one thing AWS structurally does not do is DISCOVERY: its whole contract begins at "Submit your leads." This artifact makes that split undeniable in one page, and it is the single highest-leverage move to land the first paying tenant. Full context: [[aws-pc-commoditization-2026-07]].
+**Why this exists.** On 2026-07-09 AWS shipped Partner Lead Prospecting, available to all ACE-eligible partners globally (drafting, scoring, enrichment; AWS published *eligibility*, not a price, so do not say "free"). That takes the downstream half of Smith off the table as something to sell. What AWS does not do is manufacture net-new accounts: it enriches and scores leads already in a partner's funnel, and even its own prospecting (`StartProspectingFromEngagementTask`) starts from an existing engagement, not a national registry. That split is the wedge, and it is the single highest-leverage move to land the first paying tenant. Full context: [[aws-pc-commoditization-2026-07]]. Corrected 2026-07-20: earlier drafts said "free to every ACE partner" and "AWS does no discovery / its contract begins at submit your leads" — both false, both disprovable by a partner in the room.
 
 **The claim it lands, in the partner's own accounts:**
 1. *AWS itself scored these* (so the read is not my opinion, it is the counterparty's).
@@ -33,7 +33,7 @@ The migration to the Console Partner Central experience lapsed 2026-06-30. It ga
 4. In `gen.mjs`, set each account's `awsEnrichment` to the real result, or the literal string `'miss'`. Re-run. The rollup now shows AWS's OWN miss rate: every miss is a company AWS has no read on and Alloy surfaced.
 
 **Path B (fallback, if the migration is not done by day 5): docs-only.**
-Run the artifact as-is. The AWS column stands on AWS's published contract ("submit your leads"), which is enough to land the objection. Costs nothing, still true.
+Run the artifact as-is, but the AWS column must stand on the TRUE distinction, not "AWS does no discovery" (false: `StartProspectingFromEngagementTask` exists). The accurate, still-defensible line: AWS's tools all start from a lead or engagement already in the partner's funnel; they enrich, score and prospect from that set, they do not manufacture net-new accounts from a national registry. That is enough to land the objection and it survives a partner checking.
 
 ## The talk track (30 seconds)
 "Here are three accounts. Alloy found each one from observable signals, read the cloud, named the funded AWS play, and named who owns the call, before any of them was a lead anywhere. Now watch: I put the same three into AWS's own free enrichment. AWS scores the ones I hand it, and it says outright it has no data on the rest. AWS is the free downstream. Alloy is the upstream that feeds it. You bring my accounts to their free tool, not the other way around."

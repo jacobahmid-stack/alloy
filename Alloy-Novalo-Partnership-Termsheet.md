@@ -50,6 +50,18 @@ genuinely contribute to the build — which is exactly what BOX requires.
 
 ## 4. The build & funding ladder (BOX, 2026)
 
+> ⚠️ **DO NOT QUOTE ANY FIGURE IN THIS TABLE TO NOVALO OR AWS.** Flagged 2026-07-20 by the corpus claim
+> audit. None of these funding amounts ($140K, $290K, $100K, the milestone figures) is traceable to an
+> AWS primary source; per memory `aws-funding-for-forj` the "BOX ladder" is folklore, and this whole
+> document is a superseded discussion draft (the in-house Bedrock rebuild 2026-06-19 replaced its premise).
+> The **WMP row is specifically wrong**: the "10-15% of post-migration ARR" comes from a 2019 AWS blog
+> whose neighbouring clause still names retired partner tiers; the live program page carries **no
+> percentage**, the disbursement mechanism has changed, and even in 2019 AWS wrote "*may invest up to*"
+> (a ceiling, not "credits ="). If WMP comes up, say only: "WMP funding is a percentage of post-migration
+> AWS ARR against a per-migration minimum; the current rate is in the Partner Central Program Funding
+> Guide, I'm not quoting a number until we pull yours." Salvage from this doc = the co-sell-referral
+> clause (§3.3) only.
+
 | Milestone | What it is | Funding | Prereq |
 |---|---|---|---|
 | **Entry — Enhanced Standard BOX** | Alloy = packaged repeatable solution | **up to $140K** | Multi-partner; 1 partner Validated+ (Novalo qualifies). **No competency needed** — this is the on-ramp. |

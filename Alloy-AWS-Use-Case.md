@@ -155,7 +155,7 @@ Novalo delivers the funded engineering: **Bedrock integration** (Claude on Bedro
 > **Vehicle & mechanics (from research; confirm with the AWS PDM/PSA against the gated Program Funding Guide):**
 > - **ISV WMP** is the primary fit (SaaS workload → net-new ARR), publicly described as **~10–15% of post-migration AWS ARR**, min **$36k ARR/12mo**, partner-applied, **FTR**-gated. *Do not quote the % to AWS — state the ARR projection and let AWS size it.*
 > - **GenAI PoC**: ~lower of **10% of year-1 spend or SOW cost**; **pre-approval email required before any work**; PoC is **deducted** from a later WMP award; **cannot** be stacked with WMP/MAP simultaneously.
-> - **AWS Activate**: Founders **$1k**; Portfolio **up to $100k** (needs an Activate **Provider Org ID** — use Forj's VC/accelerator). Activate credits are **redeemable on Bedrock 3P models (Claude)**.
+> - **AWS Activate**: Founders **$1k initial, up to $5k**; Portfolio **up to $200k** (needs an Activate **Provider Org ID** — use Forj's VC/accelerator; pre-Series B, founded within 10 years, paid support plan). Activate credits are **redeemable on Bedrock 3P models (Claude)**. Verified 2026-07-20 vs aws.amazon.com/startups/credits (was "$100k", a stale figure).
 > - **Innovation Sandbox** (dev-env AWS credits) + **MDF** (pay-first, claim within 30 days) — Novalo-side.
 > - **ISV Accelerate / Marketplace**: later-stage; needs a Marketplace GA listing + opportunity history.
 > - All funding flows through **AWS Partner Central → AWS Partner Funding Portal (APFP)**; requires an **AWS Payee Central** account.

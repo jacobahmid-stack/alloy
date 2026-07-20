@@ -7,7 +7,7 @@ Owner: Jacob. Applies to every build hour in `alloy-page` and every roadmap line
 
 ## Why this exists
 
-In July 2026 AWS shipped opportunity drafting, scoring and enrichment first-party and free to all ACE partners. Forj then verified in its own code that what had been its flagship asset was a thin proxy over AWS's own `GetAwsOpportunitySummary`. A quarter of build effort was destroyed by the platform Forj depends on. Nothing prevented that, and nothing prevented a repeat. This document is the thing that does.
+In July 2026 AWS shipped opportunity drafting, scoring and enrichment first-party, available to all ACE-eligible partners (AWS published eligibility, not a price; see the caveat at the end of this doc, "free" is unconfirmed). Forj then verified in its own code that what had been its flagship asset was a thin proxy over AWS's own `GetAwsOpportunitySummary`. A quarter of build effort was destroyed by the platform Forj depends on. Nothing prevented that, and nothing prevented a repeat. This document is the thing that does.
 
 ## The gate question
 
