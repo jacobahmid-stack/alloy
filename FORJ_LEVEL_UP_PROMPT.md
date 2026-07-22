@@ -8,14 +8,20 @@ sequentially, in the main loop. That mode was proven today. Report the cap, keep
 
 ## 0. Mission
 
-Three deliverables, in this order:
+Four deliverables, in this order:
 
 1. **Tri-surface audit** of forj.se (public site), Alloy (the app), and Smith (the AI co-worker's
    actual output quality), judged against one question: *what stops a Nordic AWS partner from paying,
    activating, and staying?* Not a polish list. The gaps between surfaces are the audit.
-2. **Vainu data-parity audit**: field-by-field gap analysis of https://www.vainu.com/product/data/
+2. **THE VISUAL AUDIT (Task 4, mandatory, eyes required).** The aesthetic judgment pass over all
+   three surfaces. It GATES every design decision: no aesthetic redesign proceeds blind. Full brief
+   in §6b; it is part of this prompt, not an optional annex.
+3. **Vainu data-parity audit**: field-by-field gap analysis of https://www.vainu.com/product/data/
    against Alloy's measured library, ending in a build/buy/skip decision per field with cost.
-3. **Pricing rebuild**: exactly two offers on forj.se, specified below, shipped to production.
+   (DONE 2026-07-21: `alloy\VAINU_PARITY.md`. Re-run only if the library moves materially.)
+4. **Pricing rebuild**: exactly two offers on forj.se. (SHIPPED LIVE 2026-07-21: Alloy+Smith
+   10 000 SEK/mo quarterly; Desk+all 100 000 SEK/mo quarterly, effective 50 000 shown, MDF
+   track-record wording. Verify it still matches §6 before touching anything near it.)
 
 ## 1. Ground truth (do not rediscover, do not trust beyond this)
 
@@ -88,8 +94,8 @@ Do not re-run those first. Instead audit what was NOT covered: (1) the conversio
 "read a company" to the email gate to the booked call; walk it end to end, find every point of friction
 or silence; (2) message architecture: can a first-time visitor say back, in one sentence, what Forj
 sells and what it costs; (3) the two-nav split (rail on home/legal, topbar on pricing/integrations/
-cookies): unify after the visual verdict picks a winner; (4) the visual pass NEEDS HUMAN EYES via
-`alloy\FORJSE_VISUAL_AUDIT_PROMPT.md` in Claude desktop; fold its verdicts in.
+cookies): unify after the visual verdict picks a winner; (4) THE VISUAL AUDIT, §6b: mandatory, runs
+with human eyes, and its verdicts gate every aesthetic change on this surface.
 
 **Surface B: Alloy.** Audit as an activation product, not a codebase: (1) first-session experience of
 a brand-new partner workspace: what do they see before any data warms up, how many clicks to first
@@ -174,6 +180,81 @@ SPINE line if present; quarterly terms stated plainly ("runs a quarter at a time
 `LAUNCH_RUNBOOK.md` if it references old pricing. Verify rendered, both themes, mobile, then ship.
 Note: pricing.html currently uses the TOPBAR nav; do not let the pricing rewrite silently decide the
 nav question if the visual audit has not answered it yet.
+
+## 6b. TASK 4: THE VISUAL AUDIT (mandatory, eyes required, gates all design work)
+
+**Why this section exists and is non-negotiable.** The Claude Code environment CANNOT see rendered
+pixels: screenshots and zoom time out. Every DOM measurement can pass while the page still looks
+wrong: that exact failure produced the "looks practically the same" round of 2026-07-21, where a
+blind restraint pass shipped and landed as no change at all. Therefore: **no aesthetic redesign,
+no band restyle, no nav unification, no new illustration placement proceeds until this audit has
+been run by something with eyes and its verdicts are in.** Machine checks verify geometry; this
+verifies whether it is any good.
+
+**How to run it (either path):**
+- **Path 1:** open Claude desktop or claude.ai with browsing, give it https://forj.se and the brief
+  below. It must actually scroll the full page, toggle the theme in the rail, and view mobile width.
+  For Alloy, Jacob screenshots the app (dashboard letter, an account card, the co-sell panel, an
+  empty new workspace) and pastes them into the same conversation.
+- **Path 2:** Jacob screenshots every surface and pastes them into any Claude with this brief.
+  Screenshots must cover: forj.se full scroll in BOTH themes at desktop and phone width,
+  pricing.html both themes, /smith, and the Alloy views above.
+
+**What the reviewer is judging (all three surfaces, in this order):**
+
+1. **Five-second test, no scrolling.** What does this company appear to do? Expensive or template?
+   Where does the eye land first, and is that the right place?
+2. **Smith, the character.** He appears in the forj.se hero as a cut-out with an ink name-bar, on
+   three scene cards, above the closing CTA, as the chat avatar, and in the Alloy app. Judge: does
+   he read as a credible senior colleague, a mascot, or stock AI art? Right size in the hero? Does
+   the name-bar sit naturally or look stuck on? Clean cut-out edges on BOTH grounds? Is the face
+   THE SAME MAN everywhere (site hero, cards, console avatar, /smith page, app)? Be blunt: if the
+   illustration style undercuts the enterprise positioning, that is the single biggest visual bet
+   on the table and it must be said plainly.
+3. **The bands ("the boxes").** Homepage order: hero, co-sell record, morning brief, signals wall,
+   loop track, free read, Smith console, product shots, program grid, two-doors comparison, FAQ,
+   CTA. Does each band feel like a distinct KIND of thing, or is it card-card-card (the owner's
+   standing complaint)? Which bands earn their space; which should be cut entirely? Specifically
+   judge the **record band**: four large numbers plus two figures inline in sentences: composed or
+   crowded? And the **pricing page's two plates**: does the 100k card's three-line price block
+   (price, quarterly+effective line, MDF sentence) read as confident or as small print?
+4. **Colour.** Is steel-violet earning its rare appearances or sprinkled? Do the amber AWS tags sit
+   with the violet or fight it? Is dark mode a design or an inversion? Name specific wrong-coloured
+   elements. (#FF9900 must appear nowhere; amber anchors #D98A33.)
+5. **Type.** Hierarchy at a glance? Headline weight right or timid? Too many sizes? Do the Space
+   Mono labels help or clutter? Anything hard to read?
+6. **Iconography and illustration language.** Rail icons, line icons, the signals convergence
+   lines, the arc dividers, Smith's painterly style: one language or several? Anything that looks
+   borrowed from a different design system?
+7. **Motion.** The hero reading panel cycles rows; counters animate; the molten bar draws on load.
+   Purposeful or fidgety? Anything that stutters, distracts, or repeats often enough to annoy?
+   Anything that SHOULD move and does not? Does everything respect reduced motion?
+8. **Density and rhythm.** Dead zones, pile-ups, or a consistent beat while scrolling? forj.se
+   carries far more copy per band than the Alta benchmark: does it breathe?
+9. **The rail.** Fixed left nav on desktop, topbar on pricing/integrations. Two paradigms is a known
+   defect; the visual verdict PICKS THE WINNER (rail everywhere, topbar everywhere, or a redesign),
+   and the unification work follows it.
+10. **Cross-surface coherence.** Put forj.se, pricing, /smith and the Alloy app side by side: one
+    company or three? Same Smith, same violet, same type discipline, same tone?
+11. **Mobile.** Full scroll at phone width: what breaks, what gets ugly, what becomes pointless.
+
+**Reviewer rules:** do not touch any number, statistic or factual claim (verified separately, live).
+No em dashes in any suggested copy. No customer or partner names. Prefer removing over adding. Vague
+encouragement is useless; every point names the element and the fix.
+
+**Required output format:**
+1. The five things that most damage the impression of quality, ranked, each with element + fix.
+2. Three things that are genuinely good and must survive any redesign.
+3. The one structural change with the highest payoff, even if expensive.
+4. The rail-vs-topbar verdict (axis 9), stated as a decision.
+5. Blunt verdict: does this look like software a Nordic AWS partner pays 10 000 SEK/month for, and
+   is the Desk page worth 100 000? If not, the gap in one sentence each.
+
+**How verdicts flow back:** split every finding into BLIND-SAFE (structural/copy/CSS changes Claude
+Code can implement and verify by measurement: it builds these immediately) and JUDGMENT (anything
+whose success is itself visual: implement, then re-show to eyes before shipping). Jacob arbitrates
+conflicts between the visual verdicts and the conversion audit. The standalone paste-ready version
+of this brief lives at `alloy\FORJSE_VISUAL_AUDIT_PROMPT.md`; if the two ever drift, THIS section wins.
 
 ## 7. Flags: RESOLVED by Jacob 2026-07-21 (do not reopen)
 
