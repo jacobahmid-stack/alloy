@@ -79,9 +79,9 @@ Apply as the human for the room, arriving equipped with Smith. The application i
 > The work sample attached is Smith's, not mine. That is rather the point.
 >
 > Jacob Ahmid
-> Founder, Forj — forj.se
+> Founder, Forj (forj.se)
 
-*(Note: the em dash in the signature line above is MINE in this draft doc; remove it in the sent version: "Founder, Forj (forj.se)".)*
+*(Signature em dash removed 2026-07-22; the letter is send-clean as written. Number check same day: the live outcomes RPC reads exactly 20 meetings / 3 proposals / 1 won since June 1, so the letter's figures are current truth, not stale — re-glance at forj.se's hero numbers the day you submit.)*
 
 ## Smith's addendum (Smith's voice, canon-gated — attach as the work sample)
 

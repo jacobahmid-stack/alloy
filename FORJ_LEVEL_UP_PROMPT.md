@@ -102,9 +102,12 @@ a brand-new partner workspace: what do they see before any data warms up, how ma
 value ("the letter" dashboard was built for this: verify it actually lands for an empty tenant);
 (2) does every funded-door claim on the site exist as a workable feature (play on every card, funding
 view, co-sell panel, briefs); (3) vocabulary lock: MAP / PoC / MAP Modernize / Generative AI PoC used
-identically in forge.jsx, scoring.js, smith-tools.js, prompts, and the site (known drift: "GenAI POC"
-casing in smith-tools.js); (4) the KPI sheet's RLS bug (project_id vs claimed_by membership) is
-diagnosed-not-fixed: fix it; (5) 391 tests stay green.
+identically in forge.jsx, scoring.js, smith-tools.js, prompts, and the site (✅ FIXED 2026-07-22:
+smith-tools/suggestion-map/test fixture aligned to canonical POC="New workload", GENAI_POC="GenAI
+PoC"; 391 tests green, commit 9d00beb); (4) ✅ RESOLVED 2026-07-22, no bug in shipped code: the
+project_id-grouped play matrix was ad-hoc audit SQL, never product code (searched repo + box
+functions/views). The shipped KPI path (forj_kpi_snapshot + kpi-sheet) is engagements/tenant-scoped,
+which is the correct membership model; (5) 391 tests stay green.
 
 **Surface C: Smith.** Audit the OUTPUT, not the plumbing: (1) pull real recent runs (action-trace
 logs, brief history) and judge against the voice bar: senior PDM, amplify-not-replace, no slop,
