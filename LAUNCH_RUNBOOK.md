@@ -23,6 +23,7 @@ The hold is yours; this file makes lifting it a checklist instead of a decision 
 - [ ] forj.se untouched-check: proof band shows live numbers, free read works in incognito, /smith
       verifies green. (All verified today; re-check the morning you fire.)
 - [x] PRICE CARD LIVE (published 2026-07-06, ahead of Post #0 by Jacob's call): forj.se/pricing.html
+  - v2 TWO-OFFER MODEL shipped 2026-07-21: Alloy+Smith 10 000 SEK/mo quarterly, Desk+Alloy+Smith 100 000 SEK/mo quarterly (effective 50 000 with approved MDF, track-record framing, no guarantee wording, no partner names). Founding rates and Alloy Plus retired.
       with footer link + sitemap + aligned FAQ. Post #0 can now link pricing directly. The Desk
       number (100k SEK/mo blocks) stays OFF the site; the one-pager paragraph is in
       Forj_Pricing_Strategy.md under SIGNED.
