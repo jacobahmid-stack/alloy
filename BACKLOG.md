@@ -4,6 +4,26 @@ Rebuilt 2026-06-09 around the North Star: **build Smith into the ultimate AWS En
 
 ---
 
+## 🌍 EUROPE BUILD ORDER (set 2026-07-30, opportunity-ranked — see `EUROPE_OPENING_ORDER.md`)
+
+Jacob asked to rank Europe by market opportunity and build country by country. The ranking OVERTURNED
+the ease order, because **Alloy's customer is an AWS partner, so a country's AWS channel count is the
+real TAM**: Croatia has ZERO AWS partners, Estonia 7, France 123, Germany 171, UK 499.
+
+1. **France — BUILDING** (`FRANCE_LOAD.md`). Rank 4 overall, #1 among openable. .fr zone oracle +
+   Sirene ICT cohort. Gate: `statutDiffusionUniteLegale='P'` non-diffusible must hard-gate outreach.
+2. **Belgium — next.** Rank 9 but the cheapest good market nobody watches: sovereign Local Zone
+   landing, no local sales-intelligence incumbent, KBO now publishes DAILY, EF 608.
+3. **Estonia — BUILDING** (`ESTONIA_LOAD.md`), Slovakia, Croatia. Cheap (2 nights each) library
+   assets, NOT revenue markets. Do not expect them to sell.
+4. **Netherlands — one night of re-examination.** Best payability scores in Europe (highest ICT
+   density, highest CRM adoption, EF rank 1) and parked ONLY on data access. Re-check the KVK route.
+5. ⛔ **Germany (rank 2) and Spain (rank 3) are TRAPS**: the two biggest prizes in Europe, excluded on
+   legal reachability, not merit. Between them 340,000 un-clouded 10+ enterprises and the largest AWS
+   capital commitments on the continent (Spain EUR 33.7bn, Mar 2026). If either opens a lawful cold
+   channel, the whole order gets rewritten.
+6. ⛔ Never build outreach for **Austria or Poland**: no lawful cold channel exists at all.
+
 ## 🎯 Now — highest priorities (updated 2026-07-06)
 
 **⭐ NEW TOP PRIORITY 2026-07-14 — ACTIVATION 30D (Jul 15 → Aug 14): the full plan lives in `alloy\ACTIVATION_30D.md`.** Smith usage by Alto/Novalo = 0 calls EVER (all 440 MTD calls are Jacob-as-master; the brief reaches only Jacob) while pipeline sits loaded (Novalo 71 in-flight/13 meetings/1 won; Alto 18/4/1 proposal). The 30-day window ends 2 weeks before Marc's Sep-1 day-91 gate and doubles as the annual-paper close. Week-0 code SHIPPED (`07ab844`): per-tenant Smith attribution (app now sends tenant_id — metric was corrupt: master/NULL fallback) + /forge + /campaign dashboard chips. Jacob's pre-Jul-15 confirmations: rep names (Qubad/Anders?), sponsor yes from both owners (opens annual-paper talk), Slack guest invites vs email fallback, per-partner language setting, Novalo's own APN/ACE seat, vacation windows. Claude's Week-0 remainder: verify/patch `app_accept_invite` writes tenant_members, Gatling remap (lost→ny), NULL-tenant canary in Jacob's brief, funding-fit coverage one-shot, worklist click-through (W1), brief INSERTs after Slack decision. Also shipped 2026-07-14: `/campaign` grounded first-touch batch (`f974652`, human-sent, enskild-firma legal gate) — the BDR doorway the plan uses Tuesdays.
@@ -83,6 +103,40 @@ The grounding came from a source-read of AWS's own docs (MAP, ACE/Partner Centra
 ---
 
 ## 🔴 Needs you (credentials / actions that unblock the next builds)
+
+-1. **✅ R2 pilot RAN 2026-07-29 — one retrieval left (~2 min).** Icypeas 24/50; Dropcontact's
+   batch completed on their side and consumed 42 of 50 credits (bills only on returned verified
+   emails), implying **~42/50 ≈ 84%, even with FullEnrich** — but the request id was lost to an
+   SSM timeout, so the results live only in your dashboard. **Action: log in to
+   app.dropcontact.com, find the completed batch/file from 2026-07-29, export the CSV** and drop
+   it anywhere in `alloy\` — I load it into `r2_pilot_results` and the R2 verdict goes from
+   provisional to measured. Scoreboard + verdict: `ENRICHMENT_WATERFALL_SPEC.md`, R2 pilot section.
+
+-0.75. **The $39 that fixes the broken rung (added 2026-07-29).** Icypeas Premium, one month,
+   $39 = 4,000 credits that roll over forever even if you cancel the same day (the CEO's email
+   says so in writing, and their site confirms). That funds verification of ALL 26,978 staged
+   pattern candidates at 0.1cr each (~2,698cr, ~$51 worth at Basic rates but covered by the 4,000)
+   with ~1,300 spare. Subscribe → cancel → tell me; I run the verifier, promote DELIVERABLE-only,
+   and the cheapest reachability we own finally flows. Expected yield at even 25%: ~6,700 verified
+   emails, which FullEnrich would price at ~$390.
+
+-0.6. **Finland's missing column — EUR 2,336/yr from Tilastokeskus, no agreement of the
+   Asiakastieto kind needed (added 2026-07-30).** Finland is the only shelf with **zero headcount**
+   (19,996 companies, 0 with employees), which gates both the 10+ ICP and the Activate track — 786
+   young Finnish companies already measured on AWS score nothing for want of this one field.
+   **Section 18 of the Statistics Act makes `henkilokunnan maara` public per company** (the actual
+   number, not a band). Email **yritystietopalvelut@stat.fi** and order **Y-tunnus +
+   `henkilostomaara` and nothing else** — the "identifier plus one variable" rule is 40% of base, and
+   a second variable triples the bill to EUR 7,300/yr. Working: EUR 3,650 base (15,000-19,999 units)
+   x 0.40 x 2.0 (commercial use) x 1.0 (annual delivery), less 20% for 3 years = **EUR 2,336/yr net**
+   (+25.5% VAT, reclaimable). Order before the FI shelf passes 20,000 rows or the base steps up.
+   Confirm in writing that `henkilostomaara` qualifies for the 40% rate and that the licence covers
+   loading it into Alloy and showing it to partners. Full working: `FINLAND_TILASTOKESKUS.md`.
+
+-0.5. **CVR password hygiene (optional, 2 min).** ERST emailed the system-to-system password in
+   plaintext and it was pasted in chat. It is a free public-data account, so low stakes, but if CVR
+   selvbetjening offers a password change, do it and drop the new one in SSM `/forj/cvr/pass`;
+   I will re-materialize the box file.
 
 00. ✅ **www.forj.se → forj.se 301 — DONE 2026-07-06** (Jacob saved the bare-form rule + the domain-level redirect now shows in Custom domains; verified live: root and deep paths 301 with path preserved). Gotchas recorded in memory: the `/<*>` wildcard host form silently never matches; cache-busting with query strings proves nothing (cache key ignores them); redirect-rule changes need a redeploy to flush the year-long edge cache.
 
