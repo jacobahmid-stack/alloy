@@ -1,7 +1,7 @@
 # The minimum GDPR pack
 
 Prepared 2026-08-01. **Not legal advice.** This is the smallest set of documents and controls that
-puts Forj AB in a defensible position on the Forgeby contact library, written for a Swedish-qualified
+puts Zmart Com West AB (trading as Forgeby) in a defensible position on the contact library, written for a Swedish-qualified
 data protection lawyer to review and sign. IMY is the lead authority.
 
 The instruction this was written to: *minimum possible legal way forward, GDPR and ISO as north
@@ -29,8 +29,8 @@ Also serves ISO 27001 A.5.34. This is the one document a regulator asks for firs
 
 | Field | Entry |
 | --- | --- |
-| Controller | Forj AB, org. nr 559019-9161, Gothenburg, Sweden |
-| ⚠️ Name check | `NOMINET_UK_EMAIL.md` records the company as still registered under the former name **Zmart Com West AB**, rename in progress. **Confirm before the notice is published.** The controller must be named as the register names it. |
+| Controller | **Zmart Com West AB**, org. nr 559019-9161, Gothenburg, Sweden. Trades as Forgeby. Registered-name change to **Forgeby AB** in progress. |
+| ✅ Name confirmed | Jacob confirmed 2026-08-01: the register says **Zmart Com West AB**; the rename in flight is to **Forgeby AB**, NOT Forj AB as older repo notes assumed. The notice names the registered entity and states the pending change, so it stays true on both sides of the rename. |
 | Contact | privacy@forj.se |
 | Processing activity | Identification and prioritisation of business accounts for technology partners, and provision of business contact details to those partners for their own direct outreach |
 | Categories of data subject | Employees in professional decision-making roles at companies in the library |
@@ -59,7 +59,7 @@ the balance tractable.
 
 **Necessity test.** The processing is limited to professional identity in a professional context:
 who holds which role at which company. Consent is not a workable basis because the people concerned
-have no prior relationship with Forj AB, and asking for consent would itself require processing the
+have no prior relationship with the controller, and asking for consent would itself require processing the
 same data. No less intrusive route achieves the purpose.
 
 **Balancing test.**
@@ -92,7 +92,7 @@ These are the controls, and they are load-bearing for section 2.
 | 2 | **The objection survives re-import.** | Built. The trigger runs on the way in, so a later bulk load cannot resurrect a suppressed person. It neutralises rather than raising an error, deliberately: a hard failure would break loaders and invite someone to disable the trigger. |
 | 3 | **Provenance per record.** Every row can name its source category and URL. | Built. 98.9%. `source_category`, `source_url`, `provenance_note`, `email_independently_derived`. |
 | 4 | **Honest dating.** Where the collection date was never captured, the record says so. | Built. `provenance_note` forbids presenting the documentation date as a collection date. |
-| 5 | **Public Article 14 notice.** The Article 14(5)(b) compensating measure. | Page built (`alloy-landing/notice.html`), `noindex`, unlinked. **Blocked on: the company-name check and legal sign-off.** |
+| 5 | **Public Article 14 notice.** The Article 14(5)(b) compensating measure. | Page built (`alloy-landing/notice.html`), `noindex`, unlinked. Company name confirmed and corrected 2026-08-01. **Now blocked only on legal sign-off.** |
 | 6 | **Article 21(4) notice at first contact.** The objection right stated clearly and separately in every first-touch message. | **Not built.** Next code change. Article 21(4) is not subject to any Article 14(5) exemption, so this one cannot be traded away. |
 | 7 | **No bulk email.** One-to-one, human-sent, from the sender's own mailbox. | In force by product design. |
 | 8 | **No special categories.** | In force. Not collected, not inferred. |
@@ -114,8 +114,8 @@ because it is a published statement that is untrue.
 
 ## 5. What is Jacob's, and in what order
 
-1. **Confirm the registered company name** (Forj AB or still Zmart Com West AB). One lookup. Blocks the notice.
-2. **Send the Vainu letter** (`VAINU_LETTER.md`). Converts a verbal understanding into a written permission.
+1. ~~Confirm the registered company name.~~ **Done: Zmart Com West AB, becoming Forgeby AB.** Re-check the notice when the rename completes.
+2. ~~Send the Vainu letter.~~ **Done 2026-08-01, confirmed by Jacob.** Store the reply with full headers.
 3. **Get counsel to review this pack and the notice.** Swedish, GDPR, ideally with B2B data experience.
 4. **Decide the residency question** so section 4 can close.
 
