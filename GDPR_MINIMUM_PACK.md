@@ -38,7 +38,7 @@ Also serves ISO 27001 A.5.34. This is the one document a regulator asks for firs
 | Special categories | **None.** Not collected, not inferred, not wanted. |
 | Lawful basis | Article 6(1)(f) legitimate interests. LIA at section 2. |
 | Recipients | Partner customers of Forgeby, who receive contact details for accounts they are working and become controllers of their own copy |
-| Third-country transfers | To confirm. See the residency note at section 4; this line must not be written until measured. |
+| Third-country transfers | **Yes.** AI inference to **Anthropic PBC (United States)** under Standard Contractual Clauses, in three cases established from the deployed proxy code on 2026-08-01: tasks needing live web search (Bedrock does not offer it), streamed responses (`claude-proxy` line 919: Bedrock streaming is pending, so streamed calls use the Anthropic API), and fallback when the EU route is unavailable (line 1042 logs `anthropic-fallback`). Default non-streaming inference runs on Amazon Bedrock EU (`eu.anthropic.*` profiles, eu-north-1). All storage is EU (Stockholm). No customer records are stored in the US. |
 | Retention | While professionally relevant, reviewed periodically. On objection, only the minimum needed to prevent re-addition. |
 | Security measures | Section 3 |
 | Sources | Official business registers; licensed B2B data providers; public web pages; the founder's own professional-network export |
@@ -92,17 +92,37 @@ These are the controls, and they are load-bearing for section 2.
 | 2 | **The objection survives re-import.** | Built. The trigger runs on the way in, so a later bulk load cannot resurrect a suppressed person. It neutralises rather than raising an error, deliberately: a hard failure would break loaders and invite someone to disable the trigger. |
 | 3 | **Provenance per record.** Every row can name its source category and URL. | Built. 98.9%. `source_category`, `source_url`, `provenance_note`, `email_independently_derived`. |
 | 4 | **Honest dating.** Where the collection date was never captured, the record says so. | Built. `provenance_note` forbids presenting the documentation date as a collection date. |
-| 5 | **Public Article 14 notice.** The Article 14(5)(b) compensating measure. | Page built (`alloy-landing/notice.html`), `noindex`, unlinked. Company name confirmed and corrected 2026-08-01. **Now blocked only on legal sign-off.** |
-| 6 | **Article 21(4) notice at first contact.** The objection right stated clearly and separately in every first-touch message. | **Not built.** Next code change. Article 21(4) is not subject to any Article 14(5) exemption, so this one cannot be traded away. |
+| 5 | **Public Article 14 notice.** The Article 14(5)(b) compensating measure. | **LIVE** at forgeby.com/notice.html, indexable, linked from the footer and from every outreach message. A compensating measure that cannot be found is not one, so `noindex` was removed deliberately. |
+| 6 | **Article 21(4) notice at first contact.** | **BUILT.** `article14Notice()` in `src/bdr.js`: named source categories (never "public sources", the wording CNIL fined KASPR over), the registered controller, the partner named alongside Forgeby so objecting to one cannot leave the other holding the data, the notice URL, the objection route, and "no reason needed". Separated by a rule per Art 21(4). Appended in `draftOutreach` AFTER the critic, because the critic would trim a legal footer it read as clutter, and onto `alt_body` too, which is the variant a footer would otherwise be dropped from. `draftCarriesNotice()` is a hard boolean, not a warning. Swedish only for SE recipients; English elsewhere, since a Swedish footer on a Danish message is the KASPR mistake. 10 compliance tests. |
 | 7 | **No bulk email.** One-to-one, human-sent, from the sender's own mailbox. | In force by product design. |
 | 8 | **No special categories.** | In force. Not collected, not inferred. |
 
 ---
 
-## 4. Two things that must be measured before they are claimed
+## 4. Residency and sub-processors: RESOLVED 2026-08-01
 
-**Data residency.** `CLAUDE.md` records a real incident on 2026-07-20 in which a stale read produced
-an EU-residency claim while live measurement showed 91.7% of inference going to the US API. Do not
+**Data residency: settled from the code, not from a percentage.** A percentage was the wrong
+instrument. What the RoPA needs is whether transfers occur and under what mechanism, and the
+deployed `claude-proxy` answers that unambiguously: streamed calls always use the Anthropic API
+(line 919), non-streaming falls back to it (line 1042 logs `anthropic-fallback`), and only the
+public free-read tier is EU-only with no fallback (line 142). So transfers DO occur, and the honest
+line is the one now in the RoPA above. Storage is genuinely EU-only.
+
+**Sub-processors: the earlier claim was wrong and is withdrawn.** The competitive review asserted the
+live sub-processor table omits the primary AI sub-processor. It does not. `dpa.html` names
+**Anthropic PBC**, discloses the US transfer and cites Standard Contractual Clauses. The real defect
+was narrower: both `dpa.html` and `trust.html` said the US transfer was ONLY for live web search,
+which understated it. Corrected 2026-08-01 to name all three cases.
+
+**A third correction, on the public site.** `trust.html` claimed "nothing is LinkedIn-derived" and
+carried a "Never LinkedIn-derived" badge. That was false: the founder's own 2,616-contact network
+export is LinkedIn-derived, lawfully. Now reads "no LinkedIn-derived data is bought from anyone"
+with the exception stated plainly. The true claim is about *how it was obtained*, never a blanket
+never.
+
+**Superseded note, kept for the record.** `CLAUDE.md` records a real incident on 2026-07-20 in which
+a stale read produced an EU-residency claim while live measurement showed 91.7% of inference going
+to the US API. Do not
 write a residency line into the RoPA, the notice, or any public copy until it is measured again.
 Third-country transfers are a RoPA field and a notice field, so this blocks both.
 
@@ -112,11 +132,37 @@ because it is a published statement that is untrue.
 
 ---
 
+## 4b. FOUNDER DECISION, recorded under Article 5(2)
+
+**Decision: rely on Article 14(5)(b) disproportionate effort. Do not run a retrospective notice
+campaign to the 44,477 contacts holding a deliverable email address.**
+
+Decided by: Jacob Ahmid, founder and controller representative. Date: 2026-08-01. Stated as "relying
+on Art 14(5)(b) 100%, my decision."
+
+Reasoning of record:
+- The library is assembled substantially from official public business registers, which is the
+  archetypal case the provision contemplates.
+- The compensating measure the provision itself requires is in force: the public notice is live,
+  indexable and linked, and it carries the source categories, the lawful basis and a working
+  objection route.
+- Every person reached is given the Article 14 information at first contact regardless, because the
+  notice block is appended to every draft and the send path checks for it. So the exemption is
+  relied on only for people who are never contacted.
+- Contacting 44,477 people who have not been contacted, solely to tell them they are in a database,
+  would itself be a large unsolicited mailing to people who have shown no interest.
+
+Known counter-argument, recorded rather than hidden: EDPB guidance treats 14(5)(b) as narrow, and
+the one-month clock in 14(3)(a) has expired for the historic rows. This decision accepts that
+residual risk knowingly. Revisit if a complaint is received or if counsel advises otherwise.
+
+---
+
 ## 5. What is Jacob's, and in what order
 
 1. ~~Confirm the registered company name.~~ **Done: Zmart Com West AB, becoming Forgeby AB.** Re-check the notice when the rename completes.
 2. ~~Send the Vainu letter.~~ **Done 2026-08-01, confirmed by Jacob.** Store the reply with full headers.
-3. **Get counsel to review this pack and the notice.** Swedish, GDPR, ideally with B2B data experience.
+3. **Optional: have counsel review this pack.** The floor is built and live. Two positions remain judgment calls rather than settled facts: the Art 6(1)(f) balance, and relying on Art 14(5)(b) instead of notifying 44,477 people. A lawyer's sign-off converts "we decided" into "we took advice", which is a different conversation with IMY. Not a blocker.
 4. **Decide the residency question** so section 4 can close.
 
 Everything else on this page is built or is Claude's next code change.
