@@ -48,3 +48,10 @@ Wagyu/
 # headless-browser profile junk (never version)
 brand/_archive/_cprofile/
 **/_cprofile/
+
+# Bulk data drops. This is the STRATEGY repo; registry dumps and enrichment exports live on the box,
+# not in git. A 147MB no.csv.gz was swept in by a `git add -A` on 2026-08-01 and rejected by GitHub's
+# 100MB limit, which is the only reason it was noticed.
+*.csv.gz
+*.zip
+no.csv
